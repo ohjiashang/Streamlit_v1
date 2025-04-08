@@ -3,7 +3,7 @@ import pandas as pd
 import os
 import matplotlib.pyplot as plt
 
-folder_path = r"C:\Users\Jia Shang\OneDrive - Hotei Capital\Desktop\Notebooks\Streamlit_Notebooks\Test"
+folder_path = "Test"
 
 # Get list of available diffs based on file names
 diff_files = [f for f in os.listdir(folder_path) if f.endswith(".xlsx") and f.startswith("df_")]
