@@ -55,7 +55,7 @@ if median_cols:
         summary_df = pd.read_excel(summary_file, sheet_name="yearly_breakdown")
 
         # Extract the desired "month" format from contract: e.g., 'Jan2025'
-        month_str = selected_contract[:3] + selected_contract[6:10]
+        month_str = selected_contract[:3] + "/" + selected_contract[6:9]
 
         # Extract window size from the median column: e.g., '3m'
         window_str = median_col[-2:]
@@ -65,15 +65,18 @@ if median_cols:
             (summary_df['diff'] == selected_diff) &
             (summary_df['month'] == month_str) &
             (summary_df['window'] == window_str)
-        ]
+        ].reset_index()
+
+        print(selected_diff)
+        print(month_str)
+        print(window_str)
 
         # Columns to display
         display_cols = [
-            'contract', 'window', 'returns', 'max_loss', 'ratio',
-            'avg_holding_period', 'num_trades', 'overall_skew'
+            'contract', 'window', 'returns', 'max_loss', 'ratio', 'num_trades', 'overall_skew', 'is_long'
         ]
 
-        st.subheader("Filtered Performance Table")
+        st.subheader("Historical Performance")
         if not filtered_summary.empty:
             st.dataframe(filtered_summary[display_cols])
         else:
