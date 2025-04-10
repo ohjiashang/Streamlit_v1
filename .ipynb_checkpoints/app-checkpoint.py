@@ -49,6 +49,35 @@ if median_cols:
         ax.set_ylabel("Price")
         ax.legend(loc='center left', bbox_to_anchor=(1.0, 0.5))
         st.pyplot(fig)
+
+        # Step 6: Load mean reversion summary table
+        summary_file = os.path.join(folder_path, "MeanReversion_Boxes_20250409.xlsx")
+        summary_df = pd.read_excel(summary_file, sheet_name="yearly_breakdown")
+
+        # Extract the desired "month" format from contract: e.g., 'Jan2025'
+        month_str = selected_contract[:3] + selected_contract[6:10]
+
+        # Extract window size from the median column: e.g., '3m'
+        window_str = median_col[-2:]
+
+        # Filter the summary dataframe
+        filtered_summary = summary_df[
+            (summary_df['diff'] == selected_diff) &
+            (summary_df['month'] == month_str) &
+            (summary_df['window'] == window_str)
+        ]
+
+        # Columns to display
+        display_cols = [
+            'contract', 'window', 'returns', 'max_loss', 'ratio',
+            'avg_holding_period', 'num_trades', 'overall_skew'
+        ]
+
+        st.subheader("Filtered Performance Table")
+        if not filtered_summary.empty:
+            st.dataframe(filtered_summary[display_cols])
+        else:
+            st.warning("No matching rows found in performance summary.")
     else:
         st.warning("The column 'Date' is missing from the data.")
 else:
