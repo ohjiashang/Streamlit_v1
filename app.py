@@ -1,11 +1,9 @@
 import streamlit as st
 import pandas as pd
 import os
-import matplotlib.pyplot as plt
 from tabs import MR_live_tab, MR_hist_tab
 
 # st.set_page_config(initial_sidebar_state="expanded")
-
 folder_path = "Test"
 
 # Get list of available diffs based on file names

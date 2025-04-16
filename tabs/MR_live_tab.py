@@ -15,7 +15,12 @@ def render():
     selected_contract = st.selectbox("Select Contract:", CONTRACTS)
 
     # Define your options
-    rolling_window_options = ['1m', '3m', '12m']
+    keywords = ["[FO]", "0.5", "180", "380", "3.5"]
+    if any(keyword in selected_diff for keyword in keywords):
+        rolling_window_options = ['1m', '2m', '3m', '6m', '12m']
+    else:
+        rolling_window_options = ['1m', '2m', '3m', '6m', '12m', '24m', '36m']
+
     sd_options = [1, 2]
 
     # Create two columns
