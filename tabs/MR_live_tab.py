@@ -30,7 +30,8 @@ def render():
 
     # Firebase public file URL
     folder = "Outrights"
-    filename = f"{selected_diff}_Outrights.xlsx"
+    diff = selected_diff.partition("]")[2].lstrip()
+    filename = f"{diff}_Outrights.xlsx"
 
     encoded_filename = urllib.parse.quote(filename)
     url = f"https://firebasestorage.googleapis.com/v0/b/hotei-streamlit.firebasestorage.app/o/{folder}%2F{encoded_filename}?alt=media"
@@ -44,7 +45,7 @@ def render():
             st.warning(f"No data found for sheet: {selected_contract[:3]}")
             st.stop()
 
-        plot_live(df, selected_diff, selected_contract, selected_rolling_window, selected_sd)
+        plot_live(df, diff, selected_contract, selected_rolling_window, selected_sd)
         print("test")
 
 
