@@ -45,3 +45,71 @@ DIFF_NAMES = [
 ]
 
 CONTRACTS = ['Jun25', 'Jul25', 'Aug25', 'Sep25', 'Oct25', 'Nov25', 'Dec25', 'Jan26']
+
+CONTRACT_TYPES = [
+    'Box',
+    'Outright',
+    'Leg1 M0 - Leg2 M1',
+    'Leg1 M0 - Leg2 M2',
+    'Leg1 M0 - Leg2 M3',
+    'Leg1 M1 - Leg2 M0',
+    'Leg1 M2 - Leg2 M0',
+    'Leg1 M3 - Leg2 M0',
+]
+
+MONTHS_SCENARIO_MAP = {
+    'Box': (1,4),
+    'Outright': (1,1),
+    'Leg1 M0 - Leg2 M1': (1,2),
+    'Leg1 M0 - Leg2 M2': (1,3),
+    'Leg1 M0 - Leg2 M3': (1,4),
+    'Leg1 M1 - Leg2 M0': (2,1),
+    'Leg1 M2 - Leg2 M0': (3,1),
+    'Leg1 M3 - Leg2 M0': (4,1),
+}
+
+
+DIFFS_MAP = {
+    '[Crude] Brt-Dub': [('BSP','DBI'), ('BSP-DBI','BSP-DBI')],
+    '[Crude] Dated-Brt': [('PDB','BSP'), ('PDB-BSP','PDB-BSP')],
+    '[Crude] Wti-Brt': [('BTD+BSP','BSP'), ('BTD','BTD')],
+    '[FO] 0.5 EW': [('MF4','MF3'), ('MF4-MF3','MF4-MF3')],
+    '[FO] 3.5Rdm-Brt': [('BAR','BSP'), ('BAR-BSP','BAR-BSP')],
+    '[FO] 380 EW': [('SYS','BAR'), ('SYS-BAR','SYS-BAR')],
+    '[FO] EU0.5-3.5Rdm': [('MF3','BAR'), ('MF3-BAR','MF3-BAR')],
+    '[FO] EU0.5-Brt': [('MF3','BSP'), ('MF3-BSP','MF3-BSP')],
+    '[FO] S0.5-Brt': [('MF4','BSP'), ('MF4-BSP','MF4-BSP')],
+    '[FO] S0.5-S380': [('MF4','SYS'), ('MF4-SYS','MF4-SYS')],
+    '[FO] S180-Brt': [('SZS','BSP'), ('SZS-BSP','SZS-BSP')],
+    '[FO] S180-S380': [('SZS','SYS'), ('SZS-SYS','SZS-SYS')],
+    '[FO] S380-Brt': [('SYS','BSP'), ('SYS-BSP','SYS-BSP')],
+    '[IP] 92-380': [('SMT','SYS'), ('SMT-SYS','SMT-SYS')],
+    '[IP] 92-S0.5': [('SMT','MF4'), ('SMT-MF4','SMT-MF4')],
+    '[IP] 92-S10ppm': [('SMT','Swap_IPE_GO_FP+GST-ULA'), ('SMT-Swap_IPE_GO_FP-GST+ULA','SMT-Swap_IPE_GO_FP-GST+ULA')],
+    '[IP] Ebob-3.5Rdm': [('AEO','BAR'), ('AEO-BAR','AEO-BAR')],
+    '[IP] Ebob-ICEGO': [('AEO','Swap_IPE_GO_FP'), ('AEO-Swap_IPE_GO_FP','AEO-Swap_IPE_GO_FP')],
+    '[IP] RB-HO': [('RBS','HOF'), ('RBS-HOF','RBS-HOF')],
+    '[IP] S10ppm-S0.5': [('Swap_IPE_GO_FP+GST-ULA','MF4'), ('Swap_IPE_GO_FP+GST-ULA-MF4','Swap_IPE_GO_FP+GST-ULA-MF4')],
+    '[Lights] 92 EW': [('SMT','AEO'), ('SMT-AEO','SMT-AEO')],
+    '[Lights] Ebob-Brt': [('AEO','BSP'), ('AEO-BSP','AEO-BSP')],
+    '[Lights] EU GasNap': [('AEO','NEC'), ('AEO-NEC','AEO-NEC')],
+    '[Lights] FEI Propane-MOPJ Naph': [('Swap_FEI_C3_FP','NJC'), ('Swap_FEI_C3_FP-NJC','Swap_FEI_C3_FP-NJC')],
+    '[Lights] MOPJ Naph-Brt': [('NJC','BSP'), ('NJC-BSP','NJC-BSP')],
+    '[Lights] Naph EW': [('NJC','NEC'), ('NJC-NEC','NJC-NEC')],
+    '[Lights] NWE Naph-Brt': [('NEC','BSP'), ('NEC-BSP','NEC-BSP')],
+    '[Lights] NWE Propane-Naph': [('Swap_NWE_C3_FP','NEC'), ('Swap_NWE_C3_FP-NEC','Swap_NWE_C3_FP-NEC')],
+    '[Lights] Rbob-Brt': [('RBS','BSP'), ('RBS-BSP','RBS-BSP')],
+    '[Lights] Rbob-Ebob': [('RBS','AEO'), ('RBS-AEO','RBS-AEO')],
+    '[Lights] S92-Brt': [('SMT','BSP'), ('SMT-BSP','SMT-BSP')],
+    '[Lights] SG GasNap': [('SMT','NJC'), ('SMT-NJC','SMT-NJC')],
+    '[Dist] GO EW': [('Swap_IPE_GO_FP+GST-ULA','Swap_IPE_GO_FP'), ('Swap_IPE_GO_FP+GST-ULA-Swap_IPE_GO_FP','Swap_IPE_GO_FP+GST-ULA-Swap_IPE_GO_FP')],
+    '[Dist] HO-Brt': [('HOF','BSP'), ('HOF-BSP','HOF-BSP')],
+    '[Dist] HOGO': [('HOF','Swap_IPE_GO_FP'), ('HOF-Swap_IPE_GO_FP','HOF-Swap_IPE_GO_FP')],
+    '[Dist] ICEGO-Brt': [('Swap_IPE_GO_FP','BSP'), ('Swap_IPE_GO_FP-BSP','Swap_IPE_GO_FP-BSP')],
+    '[Dist] Jet diff': [('Swap_IPE_GO_FP+ULJ','Swap_IPE_GO_FP'), ('Swap_IPE_GO_FP+ULJ-Swap_IPE_GO_FP','Swap_IPE_GO_FP+ULJ-Swap_IPE_GO_FP')],
+    '[Dist] NWE Jet-Brt': [('Swap_IPE_GO_FP+ULJ','BSP'), ('Swap_IPE_GO_FP+ULJ-BSP','Swap_IPE_GO_FP+ULJ-BSP')],
+    '[Dist] Regrade': [('Swap_IPE_GO_FP+SRS-ULA','Swap_IPE_GO_FP+GST-ULA'), ('SRS-GST','SRS-GST')],
+    '[Dist] SGO-Brt': [('Swap_IPE_GO_FP+GST-ULA','BSP'), ('Swap_IPE_GO_FP+GST-ULA-BSP','Swap_IPE_GO_FP+GST-ULA-BSP')],
+    '[Dist] SKO-Brt': [('Swap_IPE_GO_FP+SRS-ULA','BSP'), ('Swap_IPE_GO_FP+SRS-ULA-BSP','Swap_IPE_GO_FP+SRS-ULA-BSP')],
+    '[Dist] SKO-NWE Jet': [('Swap_IPE_GO_FP+SRS-ULA','Swap_IPE_GO_FP+ULJ'), ('SRS-ULA-ULJ','SRS-ULA-ULJ')],
+}
