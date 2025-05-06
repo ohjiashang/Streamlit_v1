@@ -1,8 +1,5 @@
 import streamlit as st
 import pandas as pd
-import os
-import matplotlib.pyplot as plt
-import urllib.parse
 from utils.plot_live import plot_live_contract_roll
 from utils.backtest import generate_sd_entry_sd_exit_signals_with_rolling
 from utils.constants import DIFF_NAMES, CONTRACT_TYPES, MONTHS_SCENARIO_MAP, DIFFS_MAP

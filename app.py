@@ -1,7 +1,5 @@
 import streamlit as st
-import pandas as pd
-import os
-from tabs import MR_live_tab, MR_hist_tab
+from tabs import MR_live_tab
 
 # st.set_page_config(initial_sidebar_state="expanded")
 st.set_page_config(layout="wide")
