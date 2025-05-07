@@ -189,7 +189,6 @@ def plot_live_contract_roll(df, selected_diff, selected_contract, selected_rolli
 
 
     ##### PLOTTING #####
-
     fig, ax = plt.subplots(figsize=(12, 6))
     ax.plot(filtered_df['Date'], filtered_df[price_col], label='Price', color='black', linewidth=2)
 
@@ -215,11 +214,15 @@ def plot_live_contract_roll(df, selected_diff, selected_contract, selected_rolli
         f"Median: {last_median}\n"
         f"SD: {last_std}\n"
         f"No. SD: {num_sd_formatted}"
+
+        # f"+{selected_sd}σ: {last_upper}\n"
+        # f"{selected_rolling_window} Median: {last_median}\n"
+        # f"-{selected_sd}σ: {last_lower}\n"
     )
 
-    ax.text(1.05, 0.98, annotation_text, transform=ax.transAxes,
-            color='black', fontsize=12, verticalalignment='top', horizontalalignment='left',
-            bbox=dict(facecolor='white', edgecolor='black', boxstyle='round,pad=0.5'))
+    ax.text(1.02, 0.98, annotation_text, transform=ax.transAxes,
+            color='black', fontsize=11, verticalalignment='top', horizontalalignment='left',
+            bbox=dict(facecolor='white', edgecolor='white', boxstyle='round,pad=0.5'))
 
     # --- Text for individual points with white highlight ---
     ax.text(last_date, last_median, f'  {selected_rolling_window} Median ({last_median})',
@@ -234,7 +237,7 @@ def plot_live_contract_roll(df, selected_diff, selected_contract, selected_rolli
             color='green', fontsize=11, verticalalignment='baseline', horizontalalignment='left',
             bbox=dict(facecolor='white', edgecolor='white', boxstyle='round,pad=0.1'))
 
-    ax.set_xlim(filtered_df['Date'].min() - pd.Timedelta(days=7), filtered_df['Date'].max() + pd.Timedelta(days=60))
+    ax.set_xlim(filtered_df['Date'].min() - pd.Timedelta(days=7), filtered_df['Date'].max() + pd.Timedelta(days=7))
     ax.set_title(f"{selected_diff} (Normalised) — {selected_contract}")
     ax.set_xlabel("Date")
     ax.set_ylabel("Price")

@@ -535,7 +535,7 @@ def generate_sd_entry_sd_exit_signals_with_rolling(df, diff, entry_col, exit_col
         "year",
         "returns", 
         "ratio",
-        # "max_loss",
+        "max_loss",
         "num_trades",
         "avg_holding_period",
         "rolling_window", 
