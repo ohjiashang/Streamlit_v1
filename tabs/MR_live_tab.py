@@ -3,7 +3,7 @@ import pandas as pd
 from utils.plot_live import plot_live_contract_roll, add_rolling_cols
 from utils.backtest import generate_sd_entry_sd_exit_signals_with_rolling
 from utils.constants import DIFF_NAMES, CONTRACT_TYPES, MONTHS_SCENARIO_MAP, DIFFS_MAP
-from utils.month_offsets import process_offset_mths
+from utils.month_offsets import get_price_series
 
 def render():
     # Step 1: Set initial session state values (only if not already set)
@@ -54,13 +54,14 @@ def render():
 
         with col4:
             selected_sd = st.selectbox(
-                "Select SD:", 
+                "Select Entry SD:", 
                 [1, 2], 
                 key="selected_sd"
             )
 
         # --- Load and Plot Data ---
-        df = process_offset_mths(diff_scenario, selected_diff, months_scenario)
+
+        df = get_price_series(diff_scenario, selected_diff, months_scenario)
         
         if df is None:
             return

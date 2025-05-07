@@ -109,7 +109,7 @@ import matplotlib.pyplot as plt
 
 #     return filtered_df
 
-
+@st.cache_data
 def add_rolling_cols(df, selected_contract, selected_rolling_window, selected_sd):
     # Mapping of months to approximate trading days
     trading_days_map = {
@@ -135,7 +135,6 @@ def add_rolling_cols(df, selected_contract, selected_rolling_window, selected_sd
     return df
 
 
-
 def plot_live_contract_roll(df, selected_diff, selected_contract, selected_rolling_window, selected_sd):
     # Mapping of months to approximate trading days
     trading_days_map = {
@@ -158,21 +157,36 @@ def plot_live_contract_roll(df, selected_diff, selected_contract, selected_rolli
     latest_date = df['Date'].max()
     cutoff_date = latest_date - pd.DateOffset(months=12)
 
-    # Add date range slider
-    min_date = df['Date'].min()
-    max_date = df['Date'].max()
-    date_range = st.slider(
+    # --- Defaults ---
+    min_date = df['Date'].min().date()
+    max_date = df['Date'].max().date()
+    default_start = cutoff_date.date()
+    default_end = max_date
+
+    # --- Reset logic ---
+    if st.button("Reset Date Range"):
+        st.session_state.date_range = (default_start, default_end)
+        st.session_state.reset_date_range = True
+
+    # --- Initialize session state ---
+    if "reset_date_range" not in st.session_state:
+        st.session_state.reset_date_range = False
+
+    # --- Date range slider with direct session state binding ---
+    st.slider(
         "Select Date Range:",
-        min_value=min_date.date(),
-        max_value=max_date.date(),
-        value=(cutoff_date.date(), max_date.date()),
-        format="YYYY-MM-DD"
+        min_value=min_date,
+        max_value=max_date,
+        value=(default_start, default_end),
+        format="YYYY-MM-DD",
+        key="date_range"
     )
 
-    # Convert slider dates to pandas Timestamp for comparison
-    start_date = pd.to_datetime(date_range[0])
-    end_date = pd.to_datetime(date_range[1])
+    # --- Convert to Timestamp for filtering ---
+    start_date = pd.to_datetime(st.session_state.date_range[0])
+    end_date = pd.to_datetime(st.session_state.date_range[1])
     filtered_df = df[(df['Date'] >= start_date) & (df['Date'] <= end_date)]
+
 
     ##### PLOTTING #####
 

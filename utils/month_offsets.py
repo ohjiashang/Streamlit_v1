@@ -3,6 +3,7 @@ import re
 import urllib.parse
 from functools import lru_cache
 from concurrent.futures import ThreadPoolExecutor
+import streamlit as st
 
 # Global month dictionary
 month_dct = {
@@ -18,7 +19,9 @@ def get_start_end_dates(contract, num_lookback_months=5):
     end_date = pd.Timestamp(year, month, 1) - pd.DateOffset(days=1) - pd.offsets.MonthEnd(2)
     return start_date.strftime('%Y-%m-%d'), end_date.strftime('%Y-%m-%d')
 
-@lru_cache(maxsize=100)
+# @lru_cache(maxsize=100)
+
+@st.cache_data
 def read_excel_cached(url, sheet_name):
     return pd.read_excel(url, sheet_name=sheet_name)
 
@@ -110,7 +113,8 @@ def calculate_diff(diff_scenario_tup, contract_m1, month_scenario_tup):
     
     return df_3
 
-def process_offset_mths(diff_scenario, diff_name, months_scenario):
+@st.cache_data
+def get_price_series(diff_scenario, diff_name, months_scenario):
     month1, month2 = months_scenario[0], months_scenario[1]
     sheet_name = f"m{month1-1}m{month2-1}"
     months_m1_lst = ["Mar", "Jun", "Sep", "Dec"]
@@ -140,24 +144,6 @@ def process_offset_mths(diff_scenario, diff_name, months_scenario):
                 last_price = df_contract["price"].iloc[0]
                 df_contract['norm_price'] = df_contract['price'] - df_contract['norm_value']
                 dfs.append(df_contract)
-
-    # df_new = pd.concat(reversed(dfs), ignore_index=True)
-    # df_new['contract'] = df_new['contract_1'].astype(str) + "-" + df_new['contract_2'].astype(str)
-    # df_new['contract_month'] = df_new['contract_1'].astype(str).str[:3] + "-" + df_new['contract_2'].astype(str).str[:3]
-
-    # cols_to_keep = ['Date', 'diff_1', 'diff_2', 'mths_scenario', 'contract', 'contract_month', 'price', 'norm_value', 'norm_price']
-    # df_entry = df_new.drop_duplicates(subset="Date", keep="last")[cols_to_keep]
-    # df_exit = df_new.drop_duplicates(subset="Date", keep="first")[cols_to_keep]
-    
-    # cols_to_rename = ['contract', 'contract_month', 'price', 'norm_value', 'norm_price']
-    # df_entry = df_entry.rename(columns={col: f"entry_{col}" for col in cols_to_rename})
-    # df_exit = df_exit.rename(columns={col: f"exit_{col}" for col in cols_to_rename})
-    
-    # cols_to_merge = ['Date', 'diff_1', 'diff_2', 'mths_scenario']
-    # df_final = df_entry.merge(df_exit, on=cols_to_merge, how='left')
-
-    # df_final['mths_scenario'] = sheet_name
-    # df_final['diff'] = diff_name
 
     if not dfs:
         raise ValueError("Input list of DataFrames is empty")

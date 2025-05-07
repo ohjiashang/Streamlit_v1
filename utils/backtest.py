@@ -197,6 +197,7 @@ def generate_sd_entry_sd_exit_signals(df, selected_diff, selected_contract, sele
     st.dataframe(temp)
 
 
+@st.cache_data
 def generate_sd_entry_sd_exit_signals_with_rolling(df, diff, entry_col, exit_col, window, sd_entry):
     """
     Generate entry and exit signals with contract rolling logic.
@@ -206,8 +207,9 @@ def generate_sd_entry_sd_exit_signals_with_rolling(df, diff, entry_col, exit_col
     ### Backtest 19 months of data
     df['Date'] = pd.to_datetime(df['Date'])
     latest_date = df['Date'].max()
-    cutoff_date_backtest = latest_date - pd.DateOffset(months=19)
-    df = df[df['Date'] >= cutoff_date_backtest].copy()
+
+    # cutoff_date_backtest = latest_date - pd.DateOffset(months=19)
+    # df = df[df['Date'] >= cutoff_date_backtest].copy()
     df = df.reset_index(drop=True)
 
     scenario = f'{window}_{sd_entry}sd_0sd'
@@ -429,25 +431,24 @@ def generate_sd_entry_sd_exit_signals_with_rolling(df, diff, entry_col, exit_col
     temp.rename(columns={col: col.replace(f"_{scenario}", "") for col in temp.columns}, inplace=True)
     temp.rename(columns={'signal_exit': 'trade_direction'}, inplace=True)
     temp[f'year'] = pd.to_datetime(temp[f'entry_date']).dt.year
+    temp['diff'] = diff
 
-    cutoff_date = latest_date - pd.DateOffset(months=12)
-    temp = temp[temp['entry_date'] >= cutoff_date].copy()
+    # cutoff_date = latest_date - pd.DateOffset(months=12)
+    # temp = temp[temp['entry_date'] >= cutoff_date].copy()
 
     temp['entry_date'] = pd.to_datetime(temp['entry_date']).dt.strftime("%Y-%m-%d")
     temp['exit_date'] = pd.to_datetime(temp['exit_date']).dt.strftime("%Y-%m-%d")
-    temp['diff'] = diff
 
     column_order = [ 
+        "trade_direction", 
         "entry_date", 
         "exit_date", 
-        "holding_period", 
-        "trade_direction", 
         "returns", 
         "max_loss",
+        "holding_period", 
         "contracts",
-        "entry_exit_prices", 
+        # "entry_exit_prices", 
         "year",
-        # "scenario", 
         "rolling_window", 
         "entry_sd",
         "diff"
@@ -456,6 +457,12 @@ def generate_sd_entry_sd_exit_signals_with_rolling(df, diff, entry_col, exit_col
     temp = temp[column_order]
     float_cols = ["returns", "max_loss"]
     temp[float_cols] = temp[float_cols].astype(float).round(2)
+
+    df2 = temp.copy()
+    
+    cutoff_date = (latest_date - pd.DateOffset(months=12)).strftime("%Y-%m-%d")
+    temp = temp[temp['entry_date'] >= cutoff_date].copy()
+
     temp = temp.sort_values(by='entry_date', ascending=False).reset_index(drop=True)
     temp.index = temp.index + 1
     ###########################################################
@@ -478,9 +485,13 @@ def generate_sd_entry_sd_exit_signals_with_rolling(df, diff, entry_col, exit_col
         cum_max_loss = round(cum_max_loss, 2)
         ratio = round(ratio, 2)
 
+    # st.markdown(f"""
+    # <span style='font-size:24px; font-weight:600'>Trades (Last 12 Months) | </span>
+    # <span style='font-size:16px'> {diff} | {window} Rolling Window | {sd_entry}SD Entry; Median Exit</span>
+    # """, unsafe_allow_html=True)
+
     st.markdown(f"""
-    <span style='font-size:24px; font-weight:600'>Trades (Last 12 Months) | </span>
-    <span style='font-size:16px'> {diff} | {window} Rolling Window | {sd_entry}SD Entry; Median Exit</span>
+    <span style='font-size:24px; font-weight:600'>Trades (Last 12 Months) </span>
     """, unsafe_allow_html=True)
 
 
@@ -498,3 +509,40 @@ def generate_sd_entry_sd_exit_signals_with_rolling(df, diff, entry_col, exit_col
         st.metric("Win Rate", f"{win_rate:.1f}%")
 
     st.dataframe(temp)
+
+    ###################################################################################################
+    st.markdown(f"""
+    <span style='font-size:24px; font-weight:600'>Yearly Performance</span>
+    """, unsafe_allow_html=True)
+
+    # Create the pivot table
+    pivot = df2.groupby(['year', 'rolling_window', 'entry_sd', 'diff']).agg(
+        returns=('returns', 'sum'),
+        max_loss=('max_loss', 'sum'),
+        avg_holding_period=('holding_period', 'mean'),
+        num_trades=('entry_date', 'count')
+    ).reset_index()
+
+
+    pivot['ratio'] = (pivot['returns']/-pivot['max_loss']).astype(float).round(2)
+    pivot['avg_holding_period'] = pivot['avg_holding_period'].astype(int)
+
+    # Sort the pivot table by descending 'year'
+    pivot = pivot.sort_values(by='year', ascending=False).reset_index(drop=True)
+    pivot.index = pivot.index + 1
+
+    column_order_pivot = [ 
+        "year",
+        "returns", 
+        "ratio",
+        # "max_loss",
+        "num_trades",
+        "avg_holding_period",
+        "rolling_window", 
+        "entry_sd",
+        "diff"
+    ]
+
+    pivot = pivot[column_order_pivot]
+
+    st.dataframe(pivot)
