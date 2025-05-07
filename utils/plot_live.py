@@ -217,16 +217,22 @@ def plot_live_contract_roll(df, selected_diff, selected_contract, selected_rolli
         f"No. SD: {num_sd_formatted}"
     )
 
-    ax.text(1.02, 0.98, annotation_text, transform=ax.transAxes,
+    ax.text(1.05, 0.98, annotation_text, transform=ax.transAxes,
             color='black', fontsize=12, verticalalignment='top', horizontalalignment='left',
             bbox=dict(facecolor='white', edgecolor='black', boxstyle='round,pad=0.5'))
 
+    # --- Text for individual points with white highlight ---
     ax.text(last_date, last_median, f'  {selected_rolling_window} Median ({last_median})',
-            color='red', fontsize=11, verticalalignment='baseline', horizontalalignment='left')
+            color='red', fontsize=11, verticalalignment='baseline', horizontalalignment='left',
+            bbox=dict(facecolor='white', edgecolor='white', boxstyle='round,pad=0.1'))
+
     ax.text(last_date, last_upper, f'  +{selected_sd}σ ({last_upper})',
-            color='green', fontsize=11, verticalalignment='baseline', horizontalalignment='left')
+            color='green', fontsize=11, verticalalignment='baseline', horizontalalignment='left',
+            bbox=dict(facecolor='white', edgecolor='white', boxstyle='round,pad=0.1'))
+
     ax.text(last_date, last_lower, f'  -{selected_sd}σ ({last_lower})',
-            color='green', fontsize=11, verticalalignment='baseline', horizontalalignment='left')
+            color='green', fontsize=11, verticalalignment='baseline', horizontalalignment='left',
+            bbox=dict(facecolor='white', edgecolor='white', boxstyle='round,pad=0.1'))
 
     ax.set_xlim(filtered_df['Date'].min() - pd.Timedelta(days=7), filtered_df['Date'].max() + pd.Timedelta(days=60))
     ax.set_title(f"{selected_diff} (Normalised) — {selected_contract}")
