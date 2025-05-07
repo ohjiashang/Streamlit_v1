@@ -110,6 +110,32 @@ import matplotlib.pyplot as plt
 #     return filtered_df
 
 
+def add_rolling_cols(df, selected_contract, selected_rolling_window, selected_sd):
+    # Mapping of months to approximate trading days
+    trading_days_map = {
+        1: 22, 2: 44, 3: 65, 4: 87, 5: 108,
+        6: 130, 9: 195, 12: 260,
+        15: 325, 18: 390, 21: 455, 24: 520,
+        27: 585, 30: 650, 33: 715, 36: 780
+    }
+
+    price_col = 'exit_norm_price'
+
+    rolling_window_months = int(selected_rolling_window[:-1])
+    window = trading_days_map.get(rolling_window_months)
+
+    if df.empty:
+        st.warning(f"No data found for contract: {selected_contract}")
+        return
+
+    df['rolling_median'] = df[price_col].rolling(window=window, min_periods=window).median()
+    df['rolling_std'] = df[price_col].rolling(window=window, min_periods=window).std()
+    df['upper_bound'] = df['rolling_median'] + selected_sd * df['rolling_std']
+    df['lower_bound'] = df['rolling_median'] - selected_sd * df['rolling_std']
+    return df
+
+
+
 def plot_live_contract_roll(df, selected_diff, selected_contract, selected_rolling_window, selected_sd):
     # Mapping of months to approximate trading days
     trading_days_map = {
@@ -132,18 +158,9 @@ def plot_live_contract_roll(df, selected_diff, selected_contract, selected_rolli
     latest_date = df['Date'].max()
     cutoff_date = latest_date - pd.DateOffset(months=12)
 
-    # # Filter to include only rows within the last 12 months
-    # filtered_df = df[df['Date'] >= cutoff_date]
-
-    filtered_df = df.copy()
-
-    if filtered_df.empty:
-        st.warning(f"No data found for contract: {selected_contract}")
-        return
-
     # Add date range slider
-    min_date = filtered_df['Date'].min()
-    max_date = filtered_df['Date'].max()
+    min_date = df['Date'].min()
+    max_date = df['Date'].max()
     date_range = st.slider(
         "Select Date Range:",
         min_value=min_date.date(),
@@ -155,24 +172,9 @@ def plot_live_contract_roll(df, selected_diff, selected_contract, selected_rolli
     # Convert slider dates to pandas Timestamp for comparison
     start_date = pd.to_datetime(date_range[0])
     end_date = pd.to_datetime(date_range[1])
-    filtered_df = filtered_df[(filtered_df['Date'] >= start_date) & (filtered_df['Date'] <= end_date)]
+    filtered_df = df[(df['Date'] >= start_date) & (df['Date'] <= end_date)]
 
-    if filtered_df.empty:
-        st.warning("No data in selected date range.")
-        return
-
-    rolling_df = df.tail(window + len(filtered_df)).copy()
-    rolling_df['rolling_median'] = rolling_df[price_col].rolling(window=window, min_periods=window).median()
-    rolling_df['rolling_std'] = rolling_df[price_col].rolling(window=window, min_periods=window).std()
-
-    filtered_df = filtered_df.merge(
-        rolling_df[['Date', 'rolling_median', 'rolling_std']],
-        on='Date',
-        how='left'
-    )
-
-    filtered_df['upper_bound'] = filtered_df['rolling_median'] + selected_sd * filtered_df['rolling_std']
-    filtered_df['lower_bound'] = filtered_df['rolling_median'] - selected_sd * filtered_df['rolling_std']
+    ##### PLOTTING #####
 
     fig, ax = plt.subplots(figsize=(12, 6))
     ax.plot(filtered_df['Date'], filtered_df[price_col], label='Price', color='black', linewidth=2)
@@ -219,6 +221,4 @@ def plot_live_contract_roll(df, selected_diff, selected_contract, selected_rolli
     ax.tick_params(axis='x', labelrotation=45)
     fig.tight_layout()
     st.pyplot(fig)
-
-    return filtered_df
 

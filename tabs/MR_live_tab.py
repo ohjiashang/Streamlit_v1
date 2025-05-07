@@ -1,6 +1,6 @@
 import streamlit as st
 import pandas as pd
-from utils.plot_live import plot_live_contract_roll
+from utils.plot_live import plot_live_contract_roll, add_rolling_cols
 from utils.backtest import generate_sd_entry_sd_exit_signals_with_rolling
 from utils.constants import DIFF_NAMES, CONTRACT_TYPES, MONTHS_SCENARIO_MAP, DIFFS_MAP
 from utils.month_offsets import process_offset_mths
@@ -38,11 +38,13 @@ def render():
         
         with col3:
             # Step 3: Conditional options based on selected_diff
-            keywords = ["0.5"]
-            if any(keyword in selected_diff for keyword in keywords):
-                rolling_window_options = ['1m', '2m', '3m', '6m', '12m']
-            else:
-                rolling_window_options = ['1m', '2m', '3m', '6m', '12m', '24m', '36m']
+            # keywords = ["0.5"]
+            # if any(keyword in selected_diff for keyword in keywords):
+            #     rolling_window_options = ['1m', '2m', '3m', '6m', '12m']
+            # else:
+            #   rolling_window_options = ['1m', '2m', '3m', '6m', '12m', '24m', '36m']
+            
+            rolling_window_options = ['1m', '3m', '6m', '12m']
 
             selected_rolling_window = st.selectbox(
                 "Select Rolling Window:", 
@@ -58,24 +60,19 @@ def render():
             )
 
         # --- Load and Plot Data ---
-        # df = load_data(selected_diff, selected_contract)
-
         df = process_offset_mths(diff_scenario, selected_diff, months_scenario)
+        
         if df is None:
             return
-        
-        # st.dataframe(df.head())
-        df_1 = plot_live_contract_roll(df, diff, selected_contract, selected_rolling_window, selected_sd)
+
+        df = add_rolling_cols(df, selected_contract, selected_rolling_window, selected_sd)
+        plot_live_contract_roll(df, diff, selected_contract, selected_rolling_window, selected_sd)
 
     with col_right:
         try:
 
-            latest_date = df_1['Date'].max()
-            cutoff_date = latest_date - pd.DateOffset(months=12)
-            filtered_df = df_1[df_1['Date'] >= cutoff_date]
-
             generate_sd_entry_sd_exit_signals_with_rolling(
-                filtered_df, 
+                df, 
                 diff, 
                 'entry_norm_price', 
                 'exit_norm_price',

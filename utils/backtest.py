@@ -197,52 +197,17 @@ def generate_sd_entry_sd_exit_signals(df, selected_diff, selected_contract, sele
     st.dataframe(temp)
 
 
-def get_historicals(diff, selected_contract, selected_rolling_window):
-    folder_path = "Test"
-    summary_file = os.path.join(folder_path, "MeanReversion_Outrights_20250409.xlsx")
-    summary_df = pd.read_excel(summary_file, sheet_name="yearly_breakdown")
-
-    # # Extract the desired "month" format from contract: e.g., 'Jan2025'
-    # month_str = selected_contract[:3] + "/" + selected_contract[6:9]
-    month_str = selected_contract[:3]
-
-    # Extract window size from the median column: e.g., '3m'
-    window_str = selected_rolling_window
-
-    # Filter the summary dataframe
-    filtered_summary = summary_df[
-        (summary_df['diff'] == diff) &
-        (summary_df['month'] == month_str) &
-        (summary_df['window'] == window_str)
-    ].reset_index()
-
-    filtered_summary.rename(columns={
-        'is_long': 'trade_direction', 
-        'window': 'rolling_window',
-        'returns_lst': 'trade_returns_list'
-        }, inplace=True)
-
-    # Columns to display
-    display_cols = [
-        'contract', 'returns', 'max_loss', 'ratio', 
-        'num_trades', 'avg_holding_period', 'overall_skew', 'trade_direction', 
-        'trade_returns_list',
-        'diff', 'rolling_window',
-    ]
-
-    st.subheader(f"Historical Base Case (1SD Entry) Performance")
-    if not filtered_summary.empty:
-        st.dataframe(filtered_summary[display_cols])
-    else:
-        st.warning("No matching rows found in performance summary.")
-
-
-
 def generate_sd_entry_sd_exit_signals_with_rolling(df, diff, entry_col, exit_col, window, sd_entry):
     """
     Generate entry and exit signals with contract rolling logic.
     Return column displays accumulated returns AFTER each trade and resets to 0 after every exit.
     """
+    
+    ### Backtest 19 months of data
+    df['Date'] = pd.to_datetime(df['Date'])
+    latest_date = df['Date'].max()
+    cutoff_date_backtest = latest_date - pd.DateOffset(months=19)
+    df = df[df['Date'] >= cutoff_date_backtest].copy()
     df = df.reset_index(drop=True)
 
     scenario = f'{window}_{sd_entry}sd_0sd'
@@ -284,25 +249,17 @@ def generate_sd_entry_sd_exit_signals_with_rolling(df, diff, entry_col, exit_col
 
     for i in range(len(df)):
         row = df.iloc[i]
-        entry_contract_month = row['entry_contract_month']
         exit_contract_month = row['exit_contract_month']
-
         exit_contract = row['exit_contract']
-        
         current_date = row['Date']
         
         is_last_day_of_contract = (
             i == len(df) - 1 or df.at[i + 1, 'exit_contract_month'] != exit_contract_month
         )
 
-        is_first_day_of_contract = (
-            i != 0 and df.at[i - 1, 'entry_contract_month'] != entry_contract_month
-        )
-
         is_last_day_of_data = i == len(df) - 1
 
         mid = row[f"rolling_median"]
-        rolling_sd = row['rolling_std']
         upper_bound = row["upper_bound"]
         lower_bound = row["lower_bound"]
 
@@ -461,6 +418,7 @@ def generate_sd_entry_sd_exit_signals_with_rolling(df, diff, entry_col, exit_col
 
     selected_columns = trade_columns
     temp = df[selected_columns].dropna(subset=trade_columns).reset_index(drop=True)
+
     temp['scenario'] = scenario
     temp['rolling_window'] = window
     temp['entry_sd'] = sd_entry
@@ -471,6 +429,10 @@ def generate_sd_entry_sd_exit_signals_with_rolling(df, diff, entry_col, exit_col
     temp.rename(columns={col: col.replace(f"_{scenario}", "") for col in temp.columns}, inplace=True)
     temp.rename(columns={'signal_exit': 'trade_direction'}, inplace=True)
     temp[f'year'] = pd.to_datetime(temp[f'entry_date']).dt.year
+
+    cutoff_date = latest_date - pd.DateOffset(months=12)
+    temp = temp[temp['entry_date'] >= cutoff_date].copy()
+
     temp['entry_date'] = pd.to_datetime(temp['entry_date']).dt.strftime("%Y-%m-%d")
     temp['exit_date'] = pd.to_datetime(temp['exit_date']).dt.strftime("%Y-%m-%d")
     temp['diff'] = diff
@@ -496,7 +458,6 @@ def generate_sd_entry_sd_exit_signals_with_rolling(df, diff, entry_col, exit_col
     temp[float_cols] = temp[float_cols].astype(float).round(2)
     temp = temp.sort_values(by='entry_date', ascending=False).reset_index(drop=True)
     temp.index = temp.index + 1
-
     ###########################################################
 
     num_trades = len(temp)
