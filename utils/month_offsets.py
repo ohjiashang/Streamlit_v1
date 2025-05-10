@@ -114,11 +114,9 @@ def calculate_diff(diff_scenario_tup, contract_m1, month_scenario_tup):
     return df_3
 
 @st.cache_data
-def get_price_series(diff_scenario, diff_name, months_scenario):
+def get_price_series(diff_scenario, months_scenario, months_m1_lst, years):
     month1, month2 = months_scenario[0], months_scenario[1]
     sheet_name = f"m{month1-1}m{month2-1}"
-    months_m1_lst = ["Mar", "Jun", "Sep", "Dec"]
-    years = [16, 17, 18, 19, 20, 21, 22, 23, 24, 25]
 
     def process_contract(year, month_m1):
         contract_m1 = month_m1 + str(year)

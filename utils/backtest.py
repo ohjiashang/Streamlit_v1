@@ -546,3 +546,5 @@ def generate_sd_entry_sd_exit_signals_with_rolling(df, diff, entry_col, exit_col
     pivot = pivot[column_order_pivot]
 
     st.dataframe(pivot)
+
+

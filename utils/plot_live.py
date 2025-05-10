@@ -110,7 +110,7 @@ import matplotlib.pyplot as plt
 #     return filtered_df
 
 @st.cache_data
-def add_rolling_cols(df, selected_contract, selected_rolling_window, selected_sd):
+def add_rolling_cols(df, selected_rolling_window, selected_sd):
     # Mapping of months to approximate trading days
     trading_days_map = {
         1: 22, 2: 44, 3: 65, 4: 87, 5: 108,
@@ -125,7 +125,7 @@ def add_rolling_cols(df, selected_contract, selected_rolling_window, selected_sd
     window = trading_days_map.get(rolling_window_months)
 
     if df.empty:
-        st.warning(f"No data found for contract: {selected_contract}")
+        st.warning(f"No data found")
         return
 
     df['rolling_median'] = df[price_col].rolling(window=window, min_periods=window).median()

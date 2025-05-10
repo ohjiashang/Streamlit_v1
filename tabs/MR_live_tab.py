@@ -60,13 +60,15 @@ def render():
             )
 
         # --- Load and Plot Data ---
+        months_m1_lst = ["Mar", "Jun", "Sep", "Dec"]
+        years = [16, 17, 18, 19, 20, 21, 22, 23, 24, 25]
 
-        df = get_price_series(diff_scenario, selected_diff, months_scenario)
+        df = get_price_series(diff_scenario, months_scenario, months_m1_lst, years)
         
         if df is None:
             return
 
-        df = add_rolling_cols(df, selected_contract, selected_rolling_window, selected_sd)
+        df = add_rolling_cols(df, selected_rolling_window, selected_sd)
         plot_live_contract_roll(df, diff, selected_contract, selected_rolling_window, selected_sd)
 
     with col_right:

@@ -113,3 +113,17 @@ DIFFS_MAP = {
     '[Dist] SKO-Brt': [('Swap_IPE_GO_FP+SRS-ULA','BSP'), ('Swap_IPE_GO_FP+SRS-ULA-BSP','Swap_IPE_GO_FP+SRS-ULA-BSP')],
     '[Dist] SKO-NWE Jet': [('Swap_IPE_GO_FP+SRS-ULA','Swap_IPE_GO_FP+ULJ'), ('SRS-ULA-ULJ','SRS-ULA-ULJ')],
 }
+
+DIFFS_TO_TRACK_MAP = {
+    'S10ppm-S0.5': ['IP', 12, 'Box'],
+    'SKO-NWE Jet': ['Dist', 1, 'Box'],
+    'Naph EW': ['Lights', 1, 'Box'],
+    'S180-S380': ['FO', 3, 'Box'],
+    'Regrade': ['Dist', 3, 'Box'],
+    'Rbob-Ebob': ['Lights', 1, 'Box'],
+    'HOGO': ['Dist', 1, 'Box'],
+    '92-S0.5': ['IP', 12, 'Box'],
+    'GO EW': ['Dist', 6, 'Box'],
+    '0.5 EW': ['FO', 1, 'Box'],
+    '92-S10ppm': ['IP', 12, 'Box'],
+}
