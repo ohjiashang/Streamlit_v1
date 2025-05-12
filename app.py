@@ -1,26 +1,14 @@
 import streamlit as st
-from tabs import MR_live_tab
+from tabs import MR_live_tab, MR_top_diffs_tab
+from utils.constants import DIFFS_TO_TRACK_MAP
 
-# st.set_page_config(initial_sidebar_state="expanded")
 st.set_page_config(layout="wide")
-# folder_path = "Test"
+st.title("Mean Reversion")
 
-# # Get list of available diffs based on file names
-# diff_files = [f for f in os.listdir(folder_path) if f.endswith(".xlsx") and f.startswith("df_")]
-# # diff_options = [f.replace("df_", "").replace(".xlsx", "") for f in diff_files]
+tab1, tab2 = st.tabs(["Top Diffs", "Backtest by Diff"])
 
+with tab1:
+    MR_top_diffs_tab.get_table(DIFFS_TO_TRACK_MAP)
 
-# tab1, tab2, tab3 = st.tabs(["Live Data", "Top 10", "Historicals"])
-
-# with tab1:
-#     MR_live_tab.render()
-
-# with tab2:
-#     st.title("Top 10")
-#     st.image("Test/Boxes_top10_20250409.png", caption="Boxes Top 10", use_container_width=True)
-#     st.image("Test/Outrights_top10_20250409.png", caption="Outrights Top 10", use_container_width=True)
-
-# with tab3:
-#     MR_hist_tab.render()
-
-MR_live_tab.render()
+with tab2:
+    MR_live_tab.render()

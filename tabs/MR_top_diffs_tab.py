@@ -1,4 +1,4 @@
-from utils.constants import DIFFS_TO_TRACK_MAP, DIFFS_MAP, MONTHS_SCENARIO_MAP
+from utils.constants import DIFFS_MAP, MONTHS_SCENARIO_MAP
 from utils.month_offsets import get_price_series
 from utils.plot_live import add_rolling_cols
 import pandas as pd
@@ -94,5 +94,3 @@ def get_table(diffs_to_track_map):
     })
 
     st.dataframe(styled_df, height=dynamic_height, width=1500)
-
-get_table(DIFFS_TO_TRACK_MAP)
