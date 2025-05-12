@@ -185,7 +185,7 @@ def plot_live_contract_roll(df, selected_diff, selected_contract, selected_rolli
     # --- Convert to Timestamp for filtering ---
     start_date = pd.to_datetime(st.session_state.date_range[0])
     end_date = pd.to_datetime(st.session_state.date_range[1])
-    filtered_df = df[(df['Date'] >= start_date) & (df['Date'] <= end_date)]
+    filtered_df = df[(df['Date'] > start_date) & (df['Date'] <= end_date)]
 
 
     ##### PLOTTING #####

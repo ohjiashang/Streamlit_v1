@@ -41,20 +41,22 @@ def get_table(diffs_to_track_map):
          # Step 2: collect row data as a dict
         row = {
             'diff': diff,
-            # 'product_family': product_fam,
             'contract': last_contract.replace('-', '/'),
             'num_sd': num_sd,
             'price': last_price,
             'median': last_median,
             'std': last_std,
-            '+1SD': last_upper,
             '-1SD': last_lower,
+            '+1SD': last_upper,
             'window': window_str,
+            'product_fam': product_fam,
         }
         rows.append(row)
 
     # Step 3: convert to DataFrame
     result_df = pd.DataFrame(rows)
+    result_df = result_df.reindex(result_df["num_sd"].abs().sort_values(ascending=False).index).reset_index(drop=True)
+    result_df.index = result_df.index + 1
 
     num_rows = result_df.shape[0]
     row_height = 35
