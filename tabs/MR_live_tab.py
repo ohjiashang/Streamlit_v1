@@ -27,13 +27,21 @@ def render():
 
             if selected_contract == "Box":
                 diff_scenario = DIFFS_MAP[selected_diff][1]
+                print(diff_scenario) 
+                print(months_scenario)
+
 
             elif selected_contract == "Outright":
-                diff_scenario_og = DIFFS_MAP[selected_diff][0]
+                diff_scenario_og = DIFFS_MAP[selected_diff][1]
                 diff_scenario = (f"{diff_scenario_og[0]}+{diff_scenario_og[0]}", diff_scenario_og[1])
+                print(diff_scenario) 
+                print(months_scenario)
+
 
             else:
                 diff_scenario = DIFFS_MAP[selected_diff][0]
+                print(diff_scenario) 
+                print(months_scenario)
 
         
         with col3:
