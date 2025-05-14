@@ -5,7 +5,7 @@ import numpy as np
 import os
 
 @st.cache_data
-def generate_sd_entry_sd_exit_signals_with_rolling(df, diff, entry_col, exit_col, window, sd_entry):
+def generate_sd_entry_sd_exit_signals_with_rolling(df, diff, selected_contract, entry_col, exit_col, window, sd_entry):
     """
     Generate entry and exit signals with contract rolling logic.
     Return column displays accumulated returns AFTER each trade and resets to 0 after every exit.
@@ -59,7 +59,13 @@ def generate_sd_entry_sd_exit_signals_with_rolling(df, diff, entry_col, exit_col
     for i in range(len(df)):
         row = df.iloc[i]
         exit_contract_month = row['exit_contract_month']
-        exit_contract = row['exit_contract'].replace('-', '/')
+        exit_contract = row['exit_contract']
+
+        if selected_contract == "Box":
+            exit_contract = exit_contract.replace('-', '/')
+        if selected_contract == "Outright":
+            exit_contract = exit_contract[:5]
+
         current_date = row['Date']
         
         is_last_day_of_contract = (
@@ -138,7 +144,6 @@ def generate_sd_entry_sd_exit_signals_with_rolling(df, diff, entry_col, exit_col
                 trade_low = float('inf')
                 trade_high = float('-inf')
                 rolled_once = False
-
 
             # SHORT
             elif (not is_long_trade) and ((exit_price <= mid) or is_last_day_of_data):

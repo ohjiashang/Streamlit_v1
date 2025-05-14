@@ -1,6 +1,6 @@
 import streamlit as st
 import pandas as pd
-from utils.plot_live import plot_live_contract_roll, add_rolling_cols
+from utils.plot_live import plot_live_contract_roll, add_rolling_cols, plot_live_contract_roll_plotly
 from utils.backtest import generate_sd_entry_sd_exit_signals_with_rolling
 from utils.constants import DIFF_NAMES, CONTRACT_TYPES, MONTHS_SCENARIO_MAP, DIFFS_MAP
 from utils.month_offsets import get_price_series
@@ -27,31 +27,15 @@ def render():
 
             if selected_contract == "Box":
                 diff_scenario = DIFFS_MAP[selected_diff][1]
-                print(diff_scenario) 
-                print(months_scenario)
-
 
             elif selected_contract == "Outright":
                 diff_scenario_og = DIFFS_MAP[selected_diff][1]
                 diff_scenario = (f"{diff_scenario_og[0]}+{diff_scenario_og[0]}", diff_scenario_og[1])
-                print(diff_scenario) 
-                print(months_scenario)
-
 
             else:
                 diff_scenario = DIFFS_MAP[selected_diff][0]
-                print(diff_scenario) 
-                print(months_scenario)
-
         
         with col3:
-            # Step 3: Conditional options based on selected_diff
-            # keywords = ["0.5"]
-            # if any(keyword in selected_diff for keyword in keywords):
-            #     rolling_window_options = ['1m', '2m', '3m', '6m', '12m']
-            # else:
-            #   rolling_window_options = ['1m', '2m', '3m', '6m', '12m', '24m', '36m']
-            
             rolling_window_options = ['1m', '3m', '6m', '12m']
 
             selected_rolling_window = st.selectbox(
@@ -77,7 +61,7 @@ def render():
             return
 
         df = add_rolling_cols(df, selected_rolling_window, selected_sd)
-        plot_live_contract_roll(df, diff, selected_contract, selected_rolling_window, selected_sd)
+        plot_live_contract_roll_plotly(df, diff, selected_contract, selected_rolling_window, selected_sd)
 
     with col_right:
         try:
@@ -85,6 +69,7 @@ def render():
             generate_sd_entry_sd_exit_signals_with_rolling(
                 df, 
                 diff, 
+                selected_contract,
                 'entry_norm_price', 
                 'exit_norm_price',
                 selected_rolling_window,
