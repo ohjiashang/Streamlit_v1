@@ -163,30 +163,30 @@ def plot_live_contract_roll(df, selected_diff, selected_contract, selected_rolli
     default_start = cutoff_date.date()
     default_end = max_date
 
-    # --- Reset logic ---
+    # --- Initialize session state before the slider is created ---
+    if "date_range" not in st.session_state:
+        st.session_state["date_range"] = (default_start, default_end)
+
+    # --- Reset logic (must also happen before slider) ---
     if st.button("Reset Date Range"):
-        st.session_state.date_range = (default_start, default_end)
-        st.session_state.reset_date_range = True
+        st.session_state["date_range"] = (default_start, default_end)
 
-    # --- Initialize session state ---
-    if "reset_date_range" not in st.session_state:
-        st.session_state.reset_date_range = False
-
-    # --- Date range slider with direct session state binding ---
-    st.slider(
+    # --- Date range slider using session state (no direct set after) ---
+    selected_range = st.slider(
         "Select Date Range:",
         min_value=min_date,
         max_value=max_date,
-        value=(default_start, default_end),
+        value=st.session_state["date_range"],
         format="YYYY-MM-DD",
         key="date_range"
     )
 
-    # --- Convert to Timestamp for filtering ---
-    start_date = pd.to_datetime(st.session_state.date_range[0])
-    end_date = pd.to_datetime(st.session_state.date_range[1])
-    filtered_df = df[(df['Date'] > start_date) & (df['Date'] <= end_date)]
+    # --- Use selected_range instead of accessing session state again ---
+    start_date = pd.to_datetime(selected_range[0])
+    end_date = pd.to_datetime(selected_range[1])
 
+    # --- Filter data ---
+    filtered_df = df[(df['Date'] > start_date) & (df['Date'] <= end_date)]
 
     ##### PLOTTING #####
     fig, ax = plt.subplots(figsize=(12, 6))
