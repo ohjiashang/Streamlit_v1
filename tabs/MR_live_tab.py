@@ -47,7 +47,7 @@ def render():
         with col4:
             selected_sd = st.selectbox(
                 "Select Entry SD:", 
-                [1, 2], 
+                [1, 2, 3, 4], 
                 key="selected_sd"
             )
 
