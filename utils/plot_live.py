@@ -214,10 +214,6 @@ def plot_live_contract_roll(df, selected_diff, selected_contract, selected_rolli
         f"Median: {last_median}\n"
         f"SD: {last_std}\n"
         f"No. SD: {num_sd_formatted}"
-
-        # f"+{selected_sd}σ: {last_upper}\n"
-        # f"{selected_rolling_window} Median: {last_median}\n"
-        # f"-{selected_sd}σ: {last_lower}\n"
     )
 
     ax.text(1.02, 0.98, annotation_text, transform=ax.transAxes,

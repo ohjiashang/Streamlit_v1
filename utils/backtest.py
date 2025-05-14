@@ -59,7 +59,7 @@ def generate_sd_entry_sd_exit_signals_with_rolling(df, diff, entry_col, exit_col
     for i in range(len(df)):
         row = df.iloc[i]
         exit_contract_month = row['exit_contract_month']
-        exit_contract = row['exit_contract']
+        exit_contract = row['exit_contract'].replace('-', '/')
         current_date = row['Date']
         
         is_last_day_of_contract = (
@@ -240,9 +240,6 @@ def generate_sd_entry_sd_exit_signals_with_rolling(df, diff, entry_col, exit_col
     temp[f'year'] = pd.to_datetime(temp[f'entry_date']).dt.year
     temp['diff'] = diff
 
-    # cutoff_date = latest_date - pd.DateOffset(months=12)
-    # temp = temp[temp['entry_date'] >= cutoff_date].copy()
-
     temp['entry_date'] = pd.to_datetime(temp['entry_date']).dt.strftime("%Y-%m-%d")
     temp['exit_date'] = pd.to_datetime(temp['exit_date']).dt.strftime("%Y-%m-%d")
 
@@ -254,7 +251,6 @@ def generate_sd_entry_sd_exit_signals_with_rolling(df, diff, entry_col, exit_col
         "max_loss",
         "holding_period", 
         "contracts",
-        # "entry_exit_prices", 
         "year",
         "rolling_window", 
         "entry_sd",
@@ -291,11 +287,6 @@ def generate_sd_entry_sd_exit_signals_with_rolling(df, diff, entry_col, exit_col
         cum_returns = round(cum_returns, 2)
         cum_max_loss = round(cum_max_loss, 2)
         ratio = round(ratio, 2)
-
-    # st.markdown(f"""
-    # <span style='font-size:24px; font-weight:600'>Trades (Last 12 Months) | </span>
-    # <span style='font-size:16px'> {diff} | {window} Rolling Window | {sd_entry}SD Entry; Median Exit</span>
-    # """, unsafe_allow_html=True)
 
     st.markdown(f"""
     <span style='font-size:24px; font-weight:600'>Trades (Last 12 Months) </span>
