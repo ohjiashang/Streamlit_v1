@@ -248,8 +248,8 @@ def plot_live_contract_roll_plotly(df, selected_diff, selected_contract, selecte
     # Update layout
     fig.update_layout(
         title=f"Normalised {selected_diff} — {selected_contract} ({last_contract})",
-        title_x=0.5,  # Centers the title (0 is left, 1 is right)
-        title_xanchor="center",
+        # title_x=0.5,  # Centers the title (0 is left, 1 is right)
+        # title_xanchor="center",
 
         xaxis_title="Date", yaxis_title="Price",
         xaxis=dict(tickformat="%Y-%m-%d", tickangle=45),
