@@ -57,13 +57,12 @@ def get_table(diffs_to_track_map):
     # Step 3: convert to DataFrame
     result_df = pd.DataFrame(rows)
     result_df = result_df.reindex(result_df["num_sd"].abs().sort_values(ascending=False).index).reset_index(drop=True)
-    result_df.index = result_df.index + 1
 
-    static_df = pd.read_excel('data/MeanReversion_ContractRolls_20250430.xlsx', sheet_name="scenarios_Boxes")
-    columns_needed = ['diff', 'rolling_window', 'avg_yearly_returns', 'ratio', 'cv']
+    static_df = pd.read_excel('data/ContractRolls_1-4sd.xlsx', sheet_name="top_diffs")
+    columns_needed = ['diff', 'rolling_window', 'entry_sd', 'avg_yearly_returns', 'ratio', 'cv']
     filtered_df = static_df[columns_needed]
     matching_df = filtered_df.merge(result_df[['diff', 'rolling_window']], on=['diff', 'rolling_window'], how='inner')
-    result_df = result_df.merge(matching_df[['diff', 'avg_yearly_returns', 'ratio', 'cv']], on='diff', how='left')
+    result_df = result_df.merge(matching_df[['diff', 'avg_yearly_returns', 'ratio', 'cv', 'entry_sd']], on='diff', how='left')
 
     result_df = result_df.drop(columns='rolling_window')
 
@@ -71,12 +70,15 @@ def get_table(diffs_to_track_map):
         'diff','contract',
         'num_sd',
         'price',
+        'entry_sd',
         'avg_yearly_returns', 'ratio', 'cv',
         'median', 'sd',
         'window',
         'product_fam'
     ]
     result_df = result_df[col_order]
+    result_df['entry_sd'] = result_df['entry_sd'].astype(str) + 'sd'
+    result_df.index = result_df.index + 1
 
     num_rows = result_df.shape[0]
     row_height = 35

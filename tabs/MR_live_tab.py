@@ -1,6 +1,6 @@
 import streamlit as st
 import pandas as pd
-from utils.plot_live import plot_live_contract_roll, add_rolling_cols, plot_live_contract_roll_plotly
+from utils.plot_live import add_rolling_cols, plot_live_contract_roll_plotly
 from utils.backtest import generate_sd_entry_sd_exit_signals_with_rolling
 from utils.constants import DIFF_NAMES, CONTRACT_TYPES, MONTHS_SCENARIO_MAP, DIFFS_MAP
 from utils.month_offsets import get_price_series
