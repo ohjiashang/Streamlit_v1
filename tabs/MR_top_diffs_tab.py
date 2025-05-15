@@ -58,7 +58,7 @@ def get_table(diffs_to_track_map):
     result_df = pd.DataFrame(rows)
     result_df = result_df.reindex(result_df["num_sd"].abs().sort_values(ascending=False).index).reset_index(drop=True)
 
-    static_df = pd.read_excel('data/ContractRolls_1-4sd.xlsx', sheet_name="top_diffs")
+    static_df = pd.read_excel('data/ContractRolls_1-4sd.xlsx', sheet_name="scenarios_Boxes")
     columns_needed = ['diff', 'rolling_window', 'entry_sd', 'avg_yearly_returns', 'ratio', 'cv']
     filtered_df = static_df[columns_needed]
     matching_df = filtered_df.merge(result_df[['diff', 'rolling_window']], on=['diff', 'rolling_window'], how='inner')
