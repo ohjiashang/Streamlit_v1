@@ -46,8 +46,6 @@ def get_table(diffs_to_track_map):
             'price': last_price,
             'median': last_median,
             'sd': last_std,
-            # '-1SD': last_lower,
-            # '+1SD': last_upper,
             'window': window_str,
             'rolling_window': window,
             'product_fam': product_fam,
@@ -58,7 +56,7 @@ def get_table(diffs_to_track_map):
     result_df = pd.DataFrame(rows)
     result_df = result_df.reindex(result_df["num_sd"].abs().sort_values(ascending=False).index).reset_index(drop=True)
 
-    static_df = pd.read_excel('data/ContractRolls_1-4sd.xlsx', sheet_name="scenarios_Boxes")
+    static_df = pd.read_excel('data/ContractRolls_1-4sd_V3.xlsx', sheet_name="scenarios_Boxes_50")
     columns_needed = ['diff', 'rolling_window', 'entry_sd', 'avg_yearly_returns', 'ratio', 'cv']
     filtered_df = static_df[columns_needed]
     matching_df = filtered_df.merge(result_df[['diff', 'rolling_window']], on=['diff', 'rolling_window'], how='inner')
