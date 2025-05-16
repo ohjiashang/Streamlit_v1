@@ -21,6 +21,11 @@ def get_table(diffs_to_track_map, sheet_name):
         months_scenario = MONTHS_SCENARIO_MAP[scenario]
         if scenario == 'Box':
             diff_scenario = DIFFS_MAP[diff_w_pf][1]
+
+        elif scenario == "Outright":
+            diff_scenario_og = DIFFS_MAP[diff_w_pf][1]
+            diff_scenario = (f"{diff_scenario_og[0]}+{diff_scenario_og[0]}", diff_scenario_og[1])
+
         else:
             diff_scenario = DIFFS_MAP[diff_w_pf][0]
 
@@ -36,7 +41,11 @@ def get_table(diffs_to_track_map, sheet_name):
         last_upper = round(last_row['upper_bound'], 2)
         last_lower = round(last_row['lower_bound'], 2)
         num_sd = round((last_price - last_median) / last_std, 2) if last_std != 0 else 0
-        last_contract = last_row['entry_contract']
+
+        if scenario == "Box":
+            last_contract = last_row['entry_contract']
+        else:
+            last_contract = last_row['entry_contract'][:5]
 
          # Step 2: collect row data as a dict
         row = {
@@ -108,7 +117,7 @@ def get_table(diffs_to_track_map, sheet_name):
         if val > 0:
             color = lighten_color("red", lighten_amt)
         else:
-            color = lighten_color("green", lighten_amt)
+            color = lighten_color("blue", lighten_amt)
 
         return f"background-color: {color}"
 

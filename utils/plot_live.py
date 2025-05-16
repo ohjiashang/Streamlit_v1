@@ -99,8 +99,8 @@ def plot_live_contract_roll_plotly(df, selected_diff, selected_contract, selecte
     # Plot rolling median, upper, and lower bounds
     if not filtered_df['rolling_median'].isnull().all():
         fig.add_trace(go.Scatter(x=filtered_df['Date'], y=filtered_df['rolling_median'], mode='lines', name=f'Median', line=dict(color='red', width=1.3)))
-        fig.add_trace(go.Scatter(x=filtered_df['Date'], y=filtered_df['upper_bound'], mode='lines', name=f'+{selected_sd}SD', line=dict(color='green', dash='dot', width=1.3)))
-        fig.add_trace(go.Scatter(x=filtered_df['Date'], y=filtered_df['lower_bound'], mode='lines', name=f'-{selected_sd}SD', line=dict(color='green', dash='dot', width=1.3)))
+        fig.add_trace(go.Scatter(x=filtered_df['Date'], y=filtered_df['upper_bound'], mode='lines', name=f'+{selected_sd}SD', line=dict(color='blue', dash='dot', width=1.3)))
+        fig.add_trace(go.Scatter(x=filtered_df['Date'], y=filtered_df['lower_bound'], mode='lines', name=f'-{selected_sd}SD', line=dict(color='blue', dash='dot', width=1.3)))
 
     # Last row for annotations
     last_row = filtered_df.iloc[-1]
@@ -140,11 +140,11 @@ def plot_live_contract_roll_plotly(df, selected_diff, selected_contract, selecte
     )
     fig.add_annotation(
         x=last_date, y=last_upper, text=f' +{selected_sd}σ ({last_upper})', showarrow=False,
-        font=dict(size=13, color="green"), xshift=30, align="left"
+        font=dict(size=13, color="blue"), xshift=30, align="left"
     )
     fig.add_annotation(
         x=last_date, y=last_lower, text=f' -{selected_sd}σ ({last_lower})', showarrow=False,
-        font=dict(size=13, color="green"), xshift=30, align="left"
+        font=dict(size=13, color="blue"), xshift=30, align="left"
     )
 
     # Update layout
