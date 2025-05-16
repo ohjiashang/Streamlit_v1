@@ -117,7 +117,7 @@ def get_table(diffs_to_track_map, sheet_name):
         if val > 0:
             color = lighten_color("red", lighten_amt)
         else:
-            color = lighten_color("blue", lighten_amt)
+            color = lighten_color("#065DDF", lighten_amt)
 
         return f"background-color: {color}"
 
