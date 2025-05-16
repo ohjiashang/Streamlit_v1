@@ -57,15 +57,24 @@ def plot_live_contract_roll_plotly(df, selected_diff, selected_contract, selecte
     default_start = cutoff_date.date()
     default_end = max_date
 
-    # --- Initialize session state before the slider is created ---
+     # --- Track last selected_diff ---
+    if "prev_selected_diff" not in st.session_state:
+        st.session_state["prev_selected_diff"] = selected_diff
+
+    # --- Reset date_range if selected_diff changed ---
+    if st.session_state["selected_diff"] != st.session_state["prev_selected_diff"]:
+        st.session_state["date_range"] = (default_start, default_end)
+        st.session_state["prev_selected_diff"] = st.session_state["selected_diff"]
+
+    # --- Initialize date_range if not already set ---
     if "date_range" not in st.session_state:
         st.session_state["date_range"] = (default_start, default_end)
 
-    # --- Reset logic ---
+    # --- Reset button ---
     if st.button("Reset Date Range"):
         st.session_state["date_range"] = (default_start, default_end)
 
-    # --- Date range slider (no 'value' param because key is used) ---
+    # --- Date range slider ---
     st.slider(
         "Select Date Range:",
         min_value=min_date,
