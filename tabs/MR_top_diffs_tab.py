@@ -6,7 +6,7 @@ import streamlit as st
 import matplotlib.colors as mcolors
 
 @st.cache_data
-def get_table(diffs_to_track_map):
+def get_table(diffs_to_track_map, sheet_name):
     months_m1_lst = ["Mar", "Jun", "Sep", "Dec"]
     years = [24, 25]
     rows = []  # Step 1: initialize a list to store row dicts
@@ -56,7 +56,8 @@ def get_table(diffs_to_track_map):
     result_df = pd.DataFrame(rows)
     result_df = result_df.reindex(result_df["num_sd"].abs().sort_values(ascending=False).index).reset_index(drop=True)
 
-    static_df = pd.read_excel('data/ContractRolls_1-4sd_V3.xlsx', sheet_name="scenarios_Boxes_50")
+    # static_df = pd.read_excel('data/ContractRolls_1-4sd_V3.xlsx', sheet_name="scenarios_Boxes_50")
+    static_df = pd.read_excel('data/ContractRolls_1-4sd_V3.xlsx', sheet_name=sheet_name)
     columns_needed = ['diff', 'rolling_window', 'entry_sd', 'avg_yearly_returns', 'ratio', 'cv']
     filtered_df = static_df[columns_needed]
     matching_df = filtered_df.merge(result_df[['diff', 'rolling_window']], on=['diff', 'rolling_window'], how='inner')

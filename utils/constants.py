@@ -189,5 +189,13 @@ DIFFS_TO_TRACK_MAP = {
     'NWE Propane-Naph': ['Lights', 1, 'Box'],
     'Jet diff': ['Dist', 3, 'Box'],
 
+}
 
+DIFFS_TO_TRACK_MAP_OR = {
+    'EU0.5-Brt': ['FO', 12, 'Outright'],
+    'HOGO': ['Dist', 6, 'Outright'],
+    '0.5 EW': ['FO', 3, 'Outright'],
+    'NWE Propane-Naph': ['Lights', 1, 'Outright'],
+    'S0.5-Brt': ['FO', 1, 'Outright'],
+    '92-S0.5': ['IP', 3, 'Outright'],
 }
