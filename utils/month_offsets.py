@@ -26,7 +26,12 @@ def get_start_end_dates(contract, num_lookback_months=5):
     end_date = pd.Timestamp(year, month, 1) - pd.DateOffset(days=1) - pd.offsets.MonthEnd(2)
 
     # Step 2: Read Dates from static file
-    static_df = pd.read_excel('data/Dates.xlsx')
+
+    folder = "Data"
+    filename = f"Dates.xlsx"
+    encoded_filename = urllib.parse.quote(filename)
+    url = f"https://firebasestorage.googleapis.com/v0/b/hotei-streamlit.firebasestorage.app/o/{folder}%2F{encoded_filename}?alt=media"
+    static_df = pd.read_excel(url)
     static_df['Date'] = pd.to_datetime(static_df['Date'])
     static_df = static_df.sort_values('Date').reset_index(drop=True)
 
