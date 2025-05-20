@@ -199,3 +199,25 @@ DIFFS_TO_TRACK_MAP_OR = {
     'S0.5-Brt': ['FO', 1, 'Outright'],
     '92-S0.5': ['IP', 3, 'Outright'],
 }
+
+CASH = [
+    '92R',
+    'SGO',
+    'Sing Kero',
+    'MOPJ Naphtha',
+    'S180',
+    'S380',
+    'MFO 0.5',
+    'Dubai',
+]
+
+CASH_MAP = {
+    '92R': ['SMT', '92r prem/disc', 100],
+    'SGO': ['GST', 'SGO 10ppm prem/disc', 10],
+    'Sing Kero': ['SRS', 'Sing Kero prem/disc', 120],
+    'MOPJ Naphtha': ['NJC', 'MOPJ Naphtha prem/disc', 70],
+    'S180': ['SZS', 'HSFO_180 prem/disc', 10],
+    'S380': ['SYS', 'HSFO_380 prem/disc', 120],
+    'MFO 0.5': ['MF4', 'MFO_0.5 prem/disc', 70],
+    'Dubai': ['DBI', 'Dubai prem/disc', 120]
+}
