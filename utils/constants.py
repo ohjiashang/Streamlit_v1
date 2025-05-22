@@ -44,8 +44,6 @@ DIFF_NAMES = [
 
 ]
 
-CONTRACTS = ['Jun25', 'Jul25', 'Aug25', 'Sep25', 'Oct25', 'Nov25', 'Dec25', 'Jan26']
-
 CONTRACT_TYPES = [
     'Box',
     'Outright',
@@ -115,58 +113,6 @@ DIFFS_MAP = {
 }
 
 DIFFS_TO_TRACK_MAP = {
-    # 'S10ppm-S0.5': ['IP', 12, 'Box'],
-    # 'SKO-NWE Jet': ['Dist', 1, 'Box'],
-    # 'Naph EW': ['Lights', 1, 'Box'],
-    # 'S180-S380': ['FO', 3, 'Box'],
-    # 'Regrade': ['Dist', 3, 'Box'],
-    # 'Rbob-Ebob': ['Lights', 1, 'Box'],
-    # 'HOGO': ['Dist', 1, 'Box'],
-    # '92-S0.5': ['IP', 12, 'Box'],
-    # 'GO EW': ['Dist', 6, 'Box'],
-    # '0.5 EW': ['FO', 1, 'Box'],
-    # '92-S10ppm': ['IP', 12, 'Box'],
-
-    # 'Wti-Brt': ['Crude',12, 'Box'],
-    # 'S10ppm-S0.5': ['IP',12, 'Box'],
-    # 'ICEGO-Brt': ['Dist',1, 'Box'],
-    # '0.5 EW': ['FO',1, 'Box'],
-    # 'GO EW': ['Dist',6, 'Box'],
-    # 'SKO-NWE Jet': ['Dist',1, 'Box'],
-    # 'S180-S380': ['FO',3, 'Box'],
-    # 'HOGO': ['Dist',1, 'Box'],
-    # '92-S0.5': ['IP',12, 'Box'],
-    # 'Rbob-Ebob': ['Lights',1, 'Box'],
-    # '380 EW': ['FO',6, 'Box'],
-    # '92-S10ppm': ['IP',12, 'Box'],
-    # 'S0.5-S380': ['FO',1, 'Box'],
-
-    # 'S10ppm-S0.5': ['IP', 12, 'Box'],
-    # 'SKO-NWE Jet': ['Dist', 1, 'Box'],
-    # 'FEI Propane-MOPJ Naph': ['Lights', 12, 'Box'],
-    # '380 EW': ['FO', 1, 'Box'],
-    # 'SKO-Brt': ['Dist', 1, 'Box'],
-    # 'GO EW': ['Dist', 6, 'Box'],
-    # '92-380': ['IP', 6, 'Box'],
-    # 'RB-HO': ['IP', 12, 'Box'],
-    # 'S180-S380': ['FO', 12, 'Box'],
-    # 'S92-Brt': ['Lights', 6, 'Box'],
-    # 'NWE Propane-Naph': ['Lights', 1, 'Box'],
-    # 'S380-Brt': ['FO', 1, 'Box'],
-    # 'S180-Brt': ['FO', 1, 'Box'],
-    # 'HOGO': ['Dist', 1, 'Box'],
-    # 'S0.5-Brt': ['FO', 3, 'Box'],
-    # 'Rbob-Ebob': ['Lights', 1, 'Box'],
-    # '92-S0.5': ['IP', 12, 'Box'],
-    # 'Ebob-ICEGO': ['IP', 3, 'Box'],
-    # 'EU0.5-Brt': ['FO', 1, 'Box'],
-    # '92-S10ppm': ['IP', 12, 'Box'],
-    # 'S0.5-S380': ['FO', 1, 'Box'],
-    # 'MOPJ Naph-Brt': ['Lights', 3, 'Box'],
-    # '3.5Rdm-Brt': ['FO', 3, 'Box'],
-    # 'Regrade': ['Dist', 3, 'Box'],
-    # 'Jet diff': ['Dist', 3, 'Box'],
-
     'S10ppm-S0.5': ['IP', 12, 'Box'],
     'SKO-NWE Jet': ['Dist', 1, 'Box'],
     'FEI Propane-MOPJ Naph': ['Lights', 12, 'Box'],

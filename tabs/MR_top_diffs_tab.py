@@ -79,9 +79,9 @@ def get_table(diffs_to_track_map, sheet_name):
         'num_sd',
         'price',
         'entry_sd',
+        'window',
         'avg_yearly_returns', 'ratio', 'cv',
         'median', 'sd',
-        'window',
         'product_fam'
     ]
     result_df = result_df[col_order]
