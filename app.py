@@ -6,7 +6,8 @@ import warnings
 warnings.filterwarnings("ignore")
 
 
-st.set_page_config(layout="wide")
+st.set_page_config(layout="wide", page_title="MeanReversion")
+st.sidebar.title("MeanReversion")
 st.title("Mean Reversion")
 
 tab1, tab2, tab3 = st.tabs(["Top Diffs (Boxes)", "Top Diffs (Outrights)", "Backtest by Diff"])
