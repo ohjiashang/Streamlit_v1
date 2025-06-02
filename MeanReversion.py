@@ -1,9 +1,13 @@
 import streamlit as st
 from tabs import MR_live_tab, MR_top_diffs_tab, MR_cash
 from utils.constants import DIFFS_TO_TRACK_MAP, DIFFS_TO_TRACK_MAP_OR
+import warnings
+# warnings.filterwarnings("ignore", message=".*missing ScriptRunContext.*")
+warnings.filterwarnings("ignore")
+
 
 st.set_page_config(layout="wide")
-st.title("Mean Reversion Model")
+st.title("Mean Reversion")
 
 tab1, tab2, tab3 = st.tabs(["Top Diffs (Boxes)", "Top Diffs (Outrights)", "Backtest by Diff"])
 
