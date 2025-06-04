@@ -2,8 +2,6 @@ import pandas as pd
 from datetime import datetime
 import calendar
 from functools import reduce
-from matplotlib import cm
-from matplotlib.colors import Normalize
 import urllib.parse
 import streamlit as st
 from utils.oi_constants import FORWARD_CONTRACTS_TO_SKIP
@@ -16,7 +14,160 @@ def read_dfs(symbol):
     url = f"https://firebasestorage.googleapis.com/v0/b/hotei-streamlit.firebasestorage.app/o/{folder}%2F{encoded_filename}?alt=media"
     dfs = pd.read_excel(url, sheet_name=None)
     return dfs
+#################################################################################################
 
+def get_terminal_OI(symbol, months, years, forwards):
+    dfs = read_dfs(symbol)
+    
+    contract_lst = []
+    for year in years:
+        for month in months:
+            contract = f"{month}{year}"
+            if contract in forwards:
+                continue
+            
+            sheet = f"{symbol}_{month}"
+            if sheet not in dfs:
+                continue
+
+            df = dfs[sheet]
+            df["Date"] = pd.to_datetime(df["Date"])
+            df_contract = df[df["contract"] == contract].copy()
+            
+            df_contract["n_trading_day"] = range(1, len(df_contract) + 1)
+            df_contract["contract_month"] = month
+            df_contract["year"] = 2000+year
+            df_contract_terminal = df_contract.tail(1)
+
+            if not df_contract_terminal.empty:
+                contract_lst.append(df_contract_terminal)
+
+    df = pd.concat(contract_lst, ignore_index=True)
+    df = df.sort_values("Date").reset_index(drop=True)
+    return df
+
+
+def get_forward_today_OI(symbol, months, years, forwards):
+    dfs = read_dfs(symbol)
+    
+    contract_lst = []
+    for year in years:
+        for month in months:
+            contract = f"{month}{year}"
+            if contract not in forwards:
+                continue
+            
+            sheet = f"{symbol}_{month}"
+            if sheet not in dfs:
+                continue
+
+            df = dfs[sheet]
+            df["Date"] = pd.to_datetime(df["Date"])
+            df_contract = df[df["contract"] == contract].copy()
+            
+            df_contract["n_trading_day"] = range(1, len(df_contract) + 1)
+            df_contract["contract_month"] = month
+            df_contract["year"] = 2000+year
+            df_contract_terminal = df_contract.tail(1)
+
+            if not df_contract_terminal.empty:
+                contract_lst.append(df_contract_terminal)
+
+    df = pd.concat(contract_lst, ignore_index=True)
+    return df
+
+def get_all_OI(symbol, months, years, forwards):
+    """
+    Combines terminal and forward OI into a single DataFrame.
+    """
+    df_terminal = get_terminal_OI(symbol, months, years, forwards)
+    df_forward = get_forward_today_OI(symbol, months, years, forwards)
+
+    if df_terminal.empty and df_forward.empty:
+        return pd.DataFrame()
+
+    combined_df = pd.concat([df_terminal, df_forward], ignore_index=True)
+    return combined_df
+
+def get_n_day_OI(symbol, months, years, forwards):
+    """
+    Combines terminal and forward OI into a single DataFrame.
+    """
+    df_forward = get_forward_today_OI(symbol, months, years, forwards)
+
+    n_trading_day_dct = (
+        df_forward
+        .drop_duplicates(subset=["contract_month"], keep="first")
+        .set_index("contract_month")["n_trading_day"].to_dict()
+    )
+
+    dfs = read_dfs(symbol)
+    
+    contract_lst = []
+    for year in years:
+        for month in months:
+            n_trading_day = n_trading_day_dct[month]
+            
+            contract = f"{month}{year}"
+            if contract in forwards:
+                continue
+            
+            sheet = f"{symbol}_{month}"
+            if sheet not in dfs:
+                continue
+
+            df = dfs[sheet]
+            df["Date"] = pd.to_datetime(df["Date"])
+            df_contract = df[df["contract"] == contract].copy()
+            df_contract["n_trading_day"] = range(1, len(df_contract) + 1)
+            df_contract["contract_month"] = month
+            df_contract["year"] = 2000+year
+
+            df_nth_day = df_contract[df_contract["n_trading_day"] == n_trading_day]
+
+            if not df_nth_day.empty:
+                contract_lst.append(df_nth_day)
+
+    df = pd.concat(contract_lst, ignore_index=True)
+    df = df.sort_values("Date").reset_index(drop=True)
+
+    combined_df = pd.concat([df, df_forward], ignore_index=True)
+    return combined_df
+
+def get_pivot_table(df):
+    month_order = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
+                   "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+    df['contract_month'] = pd.Categorical(df['contract_month'], categories=month_order, ordered=True)
+    
+    # Create pivot table
+    pivot = pd.pivot_table(
+        df,
+        index='contract_month',
+        columns='year',
+        values='OI',
+        aggfunc='sum'  # or 'mean', depending on what you want
+    )
+    
+    # Optional: sort index (months)
+    pivot = pivot.sort_index()
+    return pivot
+
+def highlight_forward(val, row, col):
+    """Returns light yellow background if the cell is a forward contract."""
+    light_yellow = "background-color: #FFFFE0"  # very light yellow
+    if col == 2026:
+        return light_yellow
+    if col == 2025 and row in ["Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]:
+        return light_yellow
+    return ""
+
+def style_forward_cells(pivot_df):
+    return pivot_df.style.apply(lambda row: [
+        highlight_forward(row[col], row.name, col) if not pd.isna(row[col]) else ""
+        for col in pivot_df.columns
+    ], axis=1)
+
+#################################################################################################
 def construct_prompt_mth_rolling_df(symbol):
     dfs = read_dfs(symbol)
     months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
