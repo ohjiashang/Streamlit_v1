@@ -75,4 +75,4 @@ product_fam_map_main = {
     "HO": 'Dist',  
 }
 
-FORWARD_CONTRACTS_TO_SKIP = ["Jul25", "Aug25", "Sep25", "Oct25", "Nov25", "Dec25"]
+FORWARD_CONTRACTS_TO_SKIP = ["Aug25", "Sep25", "Oct25", "Nov25", "Dec25"]
