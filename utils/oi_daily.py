@@ -46,7 +46,6 @@ def get_terminal_OI(symbol, months, years, forwards):
     df = df.sort_values("Date").reset_index(drop=True)
     return df
 
-
 def get_forward_today_OI(symbol, months, years, forwards):
     dfs = read_dfs(symbol)
     
@@ -97,8 +96,9 @@ def get_n_day_OI(symbol, months, years, forwards):
 
     n_trading_day_dct = (
         df_forward
-        .drop_duplicates(subset=["contract_month"], keep="first")
-        .set_index("contract_month")["n_trading_day"].to_dict()
+        .groupby("contract_month")["n_trading_day"]
+        .apply(lambda x: tuple(x))  # Will return a tuple even if there's only one value
+        .to_dict()
     )
 
     dfs = read_dfs(symbol)
@@ -106,8 +106,6 @@ def get_n_day_OI(symbol, months, years, forwards):
     contract_lst = []
     for year in years:
         for month in months:
-            n_trading_day = n_trading_day_dct[month]
-            
             contract = f"{month}{year}"
             if contract in forwards:
                 continue
@@ -123,14 +121,12 @@ def get_n_day_OI(symbol, months, years, forwards):
             df_contract["contract_month"] = month
             df_contract["year"] = 2000+year
 
-            df_nth_day = df_contract[df_contract["n_trading_day"] == n_trading_day]
-
-            if not df_nth_day.empty:
-                contract_lst.append(df_nth_day)
+            for n_trading_day in n_trading_day_dct[month]:
+                df_nth_day = df_contract[df_contract["n_trading_day"] == n_trading_day]
+                if not df_nth_day.empty:
+                    contract_lst.append(df_nth_day)
 
     df = pd.concat(contract_lst, ignore_index=True)
-    df = df.sort_values("Date").reset_index(drop=True)
-
     combined_df = pd.concat([df, df_forward], ignore_index=True)
     return combined_df
 
@@ -138,17 +134,25 @@ def get_pivot_table(df):
     month_order = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
                    "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
     df['contract_month'] = pd.Categorical(df['contract_month'], categories=month_order, ordered=True)
-    
-    # Create pivot table
+
+    # Custom aggregation function for formatting
+    def format_oi(series):
+        values = list(series)
+        if len(values) == 1:
+            return values[0]
+        elif len(values) >= 2:
+            return f"{values[0]} ({values[1]})"
+        else:
+            return None
+
     pivot = pd.pivot_table(
         df,
         index='contract_month',
         columns='year',
         values='OI',
-        aggfunc='sum'  # or 'mean', depending on what you want
+        aggfunc=format_oi
     )
-    
-    # Optional: sort index (months)
+
     pivot = pivot.sort_index()
     return pivot
 
