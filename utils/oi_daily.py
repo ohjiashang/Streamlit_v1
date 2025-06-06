@@ -4,6 +4,9 @@ import calendar
 from functools import reduce
 import urllib.parse
 import streamlit as st
+import plotly.graph_objects as go
+import numpy as np
+from datetime import datetime, timedelta
 from utils.oi_constants import FORWARD_CONTRACTS_TO_SKIP
 
 @st.cache_data
@@ -34,7 +37,7 @@ def get_terminal_OI(symbol, months, years, forwards):
             df["Date"] = pd.to_datetime(df["Date"])
             df_contract = df[df["contract"] == contract].copy()
             
-            df_contract["n_trading_day"] = range(1, len(df_contract) + 1)
+            df_contract["n_trading_day"] = 0
             df_contract["contract_month"] = month
             df_contract["year"] = 2000+year
             df_contract_terminal = df_contract.tail(1)
@@ -46,41 +49,169 @@ def get_terminal_OI(symbol, months, years, forwards):
     df = df.sort_values("Date").reset_index(drop=True)
     return df
 
-def get_forward_today_OI(symbol, months, years, forwards):
-    dfs = read_dfs(symbol)
+# def get_forward_today_OI(symbol, months, years, forwards):
+#     dfs = read_dfs(symbol)
     
+#     contract_lst = []
+#     for year in years:
+#         for month in months:
+#             contract = f"{month}{year}"
+#             if contract not in forwards:
+#                 continue
+            
+#             sheet = f"{symbol}_{month}"
+#             if sheet not in dfs:
+#                 continue
+
+#             df = dfs[sheet]
+#             df["Date"] = pd.to_datetime(df["Date"])
+#             df_contract = df[df["contract"] == contract].copy()
+            
+#             df_contract["n_trading_day"] = range(1, len(df_contract) + 1)
+#             df_contract["contract_month"] = month
+#             df_contract["year"] = 2000+year
+#             df_contract_terminal = df_contract.tail(1)
+
+#             if not df_contract_terminal.empty:
+#                 contract_lst.append(df_contract_terminal)
+
+#     df = pd.concat(contract_lst, ignore_index=True)
+#     return df
+
+
+def get_terminal_date(contract: str) -> datetime:
+    """
+    Given a contract string like "Jun25", return the day before the 1st of that month.
+    Compatible with pandas datetime format.
+    """
+    month_str = contract[:3]
+    year_suffix = contract[3:]
+    
+    # Convert to numeric month and full year
+    month_number = datetime.strptime(month_str, "%b").month
+    year_full = 2000 + int(year_suffix)
+    
+    # First of the contract month
+    first_of_month = datetime(year_full, month_number, 1)
+    
+    # Return the previous day
+    return first_of_month - timedelta(days=1)
+
+def get_forward_today_OI(symbol, months, years, forwards):        
+    dfs = read_dfs(symbol)
     contract_lst = []
     for year in years:
         for month in months:
             contract = f"{month}{year}"
             if contract not in forwards:
                 continue
-            
+                
             sheet = f"{symbol}_{month}"
             if sheet not in dfs:
                 continue
 
+            terminal_date = get_terminal_date(contract)
+
             df = dfs[sheet]
             df["Date"] = pd.to_datetime(df["Date"])
             df_contract = df[df["contract"] == contract].copy()
-            
-            df_contract["n_trading_day"] = range(1, len(df_contract) + 1)
             df_contract["contract_month"] = month
             df_contract["year"] = 2000+year
+            df_contract["n_trading_day"] = df_contract["Date"].apply(
+                lambda d: np.busday_count(terminal_date.date(), d.date()))
             df_contract_terminal = df_contract.tail(1)
-
             if not df_contract_terminal.empty:
                 contract_lst.append(df_contract_terminal)
 
     df = pd.concat(contract_lst, ignore_index=True)
     return df
 
-def get_all_OI(symbol, months, years, forwards):
+
+def get_aggregated_terminal_OI(symbols, months, years, forwards):
+    """
+    Aggregates terminal OI for multiple symbols.
+    - OI is summed
+    - n_trading_day is averaged and rounded
+    - symbol column is replaced with 'SYM1+SYM2+...'
+    """
+    all_dfs = []
+
+    for symbol in symbols:
+        df = get_terminal_OI(symbol, months, years, forwards)
+        all_dfs.append(df)
+
+    # Base merge keys
+    base_df = all_dfs[0][["contract", "Date", "contract_month", "year"]].copy()
+
+    for i, df in enumerate(all_dfs):
+        df_subset = df[["contract", "Date", "contract_month", "year", "OI", "n_trading_day"]].copy()
+        df_subset = df_subset.rename(columns={
+            "OI": f"OI_{i}",
+            "n_trading_day": f"n_day_{i}"
+        })
+        base_df = base_df.merge(df_subset, on=["contract", "Date", "contract_month", "year"], how="inner")
+
+    # Aggregate columns
+    oi_cols = [col for col in base_df.columns if col.startswith("OI_")]
+    n_day_cols = [col for col in base_df.columns if col.startswith("n_day_")]
+
+    base_df["OI"] = base_df[oi_cols].sum(axis=1)
+    base_df["n_trading_day"] = 0
+
+    # Clean up and finalize
+    base_df.drop(columns=oi_cols + n_day_cols, inplace=True)
+    base_df["symbol"] = "+".join(symbols)
+
+    # Reorder
+    base_df = base_df[["Date", "OI", "symbol", "contract", "n_trading_day", "contract_month", "year"]]
+
+    return base_df
+
+def get_aggregated_forward_today_OI(symbols, months, years, forwards):
+    """
+    Aggregates forward OI for multiple symbols.
+    - OI is summed
+    - n_trading_day is averaged and rounded
+    - symbol column is replaced with 'SYM1+SYM2+...'
+    """
+    all_dfs = []
+
+    for symbol in symbols:
+        df = get_forward_today_OI(symbol, months, years, forwards)
+        all_dfs.append(df)
+
+    # Start with base keys
+    base_df = all_dfs[0][["contract", "Date", "contract_month", "year"]].copy()
+
+    for i, df in enumerate(all_dfs):
+        df_subset = df[["contract", "Date", "contract_month", "year", "OI", "n_trading_day"]].copy()
+        df_subset = df_subset.rename(columns={
+            "OI": f"OI_{i}",
+            "n_trading_day": f"n_day_{i}"
+        })
+        base_df = base_df.merge(df_subset, on=["contract", "Date", "contract_month", "year"], how="inner")
+
+    # Sum OI and average n_trading_day
+    oi_cols = [col for col in base_df.columns if col.startswith("OI_")]
+    n_day_cols = [col for col in base_df.columns if col.startswith("n_day_")]
+
+    base_df["OI"] = base_df[oi_cols].sum(axis=1)
+    base_df["n_trading_day"] = base_df[n_day_cols].max(axis=1)
+    # Final cleanup
+    base_df.drop(columns=oi_cols + n_day_cols, inplace=True)
+    base_df["symbol"] = "+".join(symbols)
+
+    # Reorder columns
+    base_df = base_df[["Date", "OI", "symbol", "contract", "n_trading_day", "contract_month", "year"]]
+
+    return base_df
+
+def get_all_OI(symbols, months, years, forwards):
     """
     Combines terminal and forward OI into a single DataFrame.
     """
-    df_terminal = get_terminal_OI(symbol, months, years, forwards)
-    df_forward = get_forward_today_OI(symbol, months, years, forwards)
+    df_terminal = get_aggregated_terminal_OI(symbols, months, years, forwards)
+    df_forward = get_aggregated_forward_today_OI(symbols, months, years, forwards)
 
     if df_terminal.empty and df_forward.empty:
         return pd.DataFrame()
@@ -114,10 +245,12 @@ def get_n_day_OI(symbol, months, years, forwards):
             if sheet not in dfs:
                 continue
 
+            terminal_date = get_terminal_date(contract)
             df = dfs[sheet]
             df["Date"] = pd.to_datetime(df["Date"])
             df_contract = df[df["contract"] == contract].copy()
-            df_contract["n_trading_day"] = range(1, len(df_contract) + 1)
+            df_contract["n_trading_day"] = df_contract["Date"].apply(
+                lambda d: np.busday_count(terminal_date.date(), d.date()))
             df_contract["contract_month"] = month
             df_contract["year"] = 2000+year
 
@@ -129,6 +262,38 @@ def get_n_day_OI(symbol, months, years, forwards):
     df = pd.concat(contract_lst, ignore_index=True)
     combined_df = pd.concat([df, df_forward], ignore_index=True)
     return combined_df
+
+def get_combined_n_day_OI(symbols, months, years, forwards):
+    from functools import reduce
+
+    df_list = []
+
+    for symbol in symbols:
+        df = get_n_day_OI(symbol, months, years, forwards)
+        df = df.drop(columns=["Date", "symbol"])
+        df = df.rename(columns={"OI": f"OI_{symbol}"})  # Rename OI per symbol
+        df_list.append(df)
+
+    join_cols = ["contract", "n_trading_day", "contract_month", "year"]
+
+    combined_df = reduce(
+        lambda left, right: pd.merge(left, right, on=join_cols),
+        df_list
+    )
+
+    # Sum all renamed OI columns
+    oi_cols = [col for col in combined_df.columns if col.startswith("OI_")]
+    combined_df["OI"] = combined_df[oi_cols].sum(axis=1)
+
+    # Drop individual OI_ columns
+    combined_df = combined_df.drop(columns=oi_cols)
+
+    # Set symbol column to combined string
+    combined_df["symbol"] = " + ".join(symbols)
+
+    return combined_df
+
+#######################################################################################################
 
 def get_pivot_table(df):
     month_order = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
@@ -170,6 +335,110 @@ def style_forward_cells(pivot_df):
         highlight_forward(row[col], row.name, col) if not pd.isna(row[col]) else ""
         for col in pivot_df.columns
     ], axis=1)
+
+
+def plot_forwards(symbol, forwards):
+    dfs = read_dfs(symbol)
+    contract_dfs = {}
+
+    for contract in forwards:
+        month = contract[:3]
+        sheet = f"{symbol}_{month}"
+        if sheet not in dfs:
+            continue
+
+        df = dfs[sheet]
+        df["Date"] = pd.to_datetime(df["Date"])
+        df_contract = df[df["contract"] == contract].copy()
+
+        if not df_contract.empty:
+            latest_date = df_contract["Date"].max()
+            one_year_ago = latest_date - pd.DateOffset(years=1)
+            df_contract = df_contract[df_contract["Date"] >= one_year_ago]
+            contract_dfs[contract] = df_contract
+
+    # Create Plotly figure
+    fig = go.Figure()
+    for contract, df_contract in contract_dfs.items():
+        fig.add_trace(go.Scatter(
+            x=df_contract["Date"],
+            y=df_contract["OI"],
+            mode='lines',
+            name=contract
+        ))
+
+    fig.update_layout(
+        title=f"{symbol} Forward Contracts OI",
+        xaxis_title="Date",
+        yaxis_title="Open Interest (OI)",
+        legend_title="Contracts",
+        height=600,
+        width=1000
+    )
+
+    st.plotly_chart(fig, use_container_width=True)
+
+def plot_forwards_combined(symbols, forwards):
+    all_contract_data = {}
+
+    for symbol in symbols:
+        dfs = read_dfs(symbol)
+        
+        for contract in forwards:
+            month = contract[:3]
+            sheet = f"{symbol}_{month}"
+            if sheet not in dfs:
+                continue
+
+            df = dfs[sheet]
+            df["Date"] = pd.to_datetime(df["Date"])
+            df_contract = df[df["contract"] == contract].copy()
+
+            if not df_contract.empty:
+                latest_date = df_contract["Date"].max()
+                one_year_ago = latest_date - pd.DateOffset(years=1)
+                df_contract = df_contract[df_contract["Date"] >= one_year_ago]
+
+                # Aggregate into all_contract_data
+                if contract not in all_contract_data:
+                    all_contract_data[contract] = df_contract[["Date", "OI"]].copy()
+                else:
+                    all_contract_data[contract] = pd.merge(
+                        all_contract_data[contract],
+                        df_contract[["Date", "OI"]],
+                        on="Date",
+                        how="outer",
+                        suffixes=('', '_dup')
+                    )
+
+    # Sum OI across symbols for each contract
+    fig = go.Figure()
+    for contract, df_combined in all_contract_data.items():
+        # Sum all OI columns (some may be OI_dup, OI_dup1, etc.)
+        oi_cols = [col for col in df_combined.columns if col.startswith("OI")]
+        df_combined["OI_sum"] = df_combined[oi_cols].sum(axis=1)
+
+        df_combined = df_combined.sort_values("Date")
+
+        fig.add_trace(go.Scatter(
+            x=df_combined["Date"],
+            y=df_combined["OI_sum"],
+            mode='lines',
+            name=contract
+        ))
+
+    symbol_label = " + ".join(symbols)
+    fig.update_layout(
+        title=f"[{symbol_label}] Forward Contracts OI",
+        xaxis_title="Date",
+        yaxis_title="Open Interest (OI)",
+        legend_title="Contracts",
+        height=600,
+        width=1000
+    )
+
+    st.plotly_chart(fig, use_container_width=True)
+
 
 #################################################################################################
 def construct_prompt_mth_rolling_df(symbol):
@@ -239,25 +508,6 @@ def construct_prompt_mth_rolling_df(symbol):
         100*(df_1["OI"] - df_1["3m_avg_OI"]) / df_1["3m_avg_OI"]
     ).round(1)
     return df_1
-
-
-def combined_oi_dfs(symbols):
-    df_list = []
-    for symbol in symbols:
-        df_oi = construct_prompt_mth_rolling_df(symbol)
-        df_oi_1 = df_oi.rename(columns={
-            'OI': f'{symbol}_OI',
-            'avg_OI': f'{symbol}_avg_OI',
-            '3m_avg_OI': f'{symbol}_3m_avg_OI',
-            'pct_from_avg': f'{symbol}_pct_from_avg',
-        })
-        df_oi_1 = df_oi_1.drop(columns='symbol')
-        df_list.append(df_oi_1)
-
-    # Inner join on 'Date' and 'contract'
-    combined_df = reduce(lambda left, right: pd.merge(left, right, on=['Date', 'contract'], how='inner'), df_list)
-    return combined_df
-
 
 import concurrent.futures
 def combined_oi_dfs(symbols):
