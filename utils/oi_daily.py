@@ -18,6 +18,24 @@ def read_dfs(symbol):
     dfs = pd.read_excel(url, sheet_name=None)
     return dfs
 #################################################################################################
+def get_terminal_date(contract: str) -> datetime:
+    """
+    Given a contract string like "Jun25", return the day before the 1st of that month.
+    Compatible with pandas datetime format.
+    """
+    month_str = contract[:3]
+    year_suffix = contract[3:]
+    
+    # Convert to numeric month and full year
+    month_number = datetime.strptime(month_str, "%b").month
+    year_full = 2000 + int(year_suffix)
+    
+    # First of the contract month
+    first_of_month = datetime(year_full, month_number, 1)
+    
+    # Return the previous day
+    return first_of_month - timedelta(days=1)
+
 
 def get_terminal_OI(symbol, months, years, forwards):
     dfs = read_dfs(symbol)
@@ -48,54 +66,6 @@ def get_terminal_OI(symbol, months, years, forwards):
     df = pd.concat(contract_lst, ignore_index=True)
     df = df.sort_values("Date").reset_index(drop=True)
     return df
-
-# def get_forward_today_OI(symbol, months, years, forwards):
-#     dfs = read_dfs(symbol)
-    
-#     contract_lst = []
-#     for year in years:
-#         for month in months:
-#             contract = f"{month}{year}"
-#             if contract not in forwards:
-#                 continue
-            
-#             sheet = f"{symbol}_{month}"
-#             if sheet not in dfs:
-#                 continue
-
-#             df = dfs[sheet]
-#             df["Date"] = pd.to_datetime(df["Date"])
-#             df_contract = df[df["contract"] == contract].copy()
-            
-#             df_contract["n_trading_day"] = range(1, len(df_contract) + 1)
-#             df_contract["contract_month"] = month
-#             df_contract["year"] = 2000+year
-#             df_contract_terminal = df_contract.tail(1)
-
-#             if not df_contract_terminal.empty:
-#                 contract_lst.append(df_contract_terminal)
-
-#     df = pd.concat(contract_lst, ignore_index=True)
-#     return df
-
-
-def get_terminal_date(contract: str) -> datetime:
-    """
-    Given a contract string like "Jun25", return the day before the 1st of that month.
-    Compatible with pandas datetime format.
-    """
-    month_str = contract[:3]
-    year_suffix = contract[3:]
-    
-    # Convert to numeric month and full year
-    month_number = datetime.strptime(month_str, "%b").month
-    year_full = 2000 + int(year_suffix)
-    
-    # First of the contract month
-    first_of_month = datetime(year_full, month_number, 1)
-    
-    # Return the previous day
-    return first_of_month - timedelta(days=1)
 
 def get_forward_today_OI(symbol, months, years, forwards):        
     dfs = read_dfs(symbol)
@@ -439,7 +409,7 @@ def plot_forwards_combined(symbols, forwards):
 
     st.plotly_chart(fig, use_container_width=True)
 
-
+#################################################################################################
 #################################################################################################
 def construct_prompt_mth_rolling_df(symbol):
     dfs = read_dfs(symbol)
@@ -594,7 +564,27 @@ def create_diffs_heatmap(symbols, name_map):
     heatmap_data['contract'] = prompt_contract
     heatmap_data['OI_date'] = latest_date
 
-    heatmap_data = heatmap_data[['diff', 'pct_from_avg', 'OI', '3m_avg_OI',  'symbol', 'OI_date', 'contract']]
+     # ── INSERT: initialize the new columns to empty/NaN ────────────────────
+    heatmap_data['T-5_OI']  = None
+    heatmap_data['T-10_OI'] = None
+    heatmap_data['T-30_OI'] = None
+    # ─────────────────────────────────────────────────────────────────────────
+
+    # ── LOOP OVER EACH ROW AND FILL IN HISTORICALS ───────────────────────────
+    for idx, row in heatmap_data.iterrows():
+        sym = row['symbol']
+        contract = row['contract']
+
+        # Call your helper that returns a dict of {"T-5_OI":…, "T-10_OI":…, "T-30_OI":…}
+        hist_dict = get_historicals_for_contract([sym], contract)
+
+        # Only write back the keys that exist
+        if 'T-5_OI'  in hist_dict: heatmap_data.at[idx, 'T-5_OI']  = hist_dict['T-5_OI']
+        if 'T-10_OI' in hist_dict: heatmap_data.at[idx, 'T-10_OI'] = hist_dict['T-10_OI']
+        if 'T-30_OI' in hist_dict: heatmap_data.at[idx, 'T-30_OI'] = hist_dict['T-30_OI']
+    # ─────────────────────────────────────────────────────────────────────────
+
+    heatmap_data = heatmap_data[['diff', 'pct_from_avg', 'OI', 'T-5_OI', 'T-10_OI', 'T-30_OI', '3m_avg_OI', 'symbol', 'OI_date', 'contract']]
     heatmap_data = heatmap_data.loc[heatmap_data['pct_from_avg'].abs().sort_values(ascending=False).index].reset_index(drop=True)
     heatmap_data.index = heatmap_data.index + 1
 
@@ -606,6 +596,9 @@ def create_diffs_heatmap(symbols, name_map):
     styled_df = heatmap_data.style.applymap(color_pct_from_avg, subset=["pct_from_avg"]).format({
         'OI': '{:,.0f}',
         '3m_avg_OI': '{:,.0f}',
+        'T-5_OI': '{:,.0f}', 
+        'T-10_OI': '{:,.0f}', 
+        'T-30_OI': '{:,.0f}',
         'pct_from_avg': '{:+.1f}'
     })
 
@@ -634,19 +627,49 @@ def create_main_product_heatmap(dct, product_fam_map_main):
         today_df_2['contract'] = prompt_contract
         today_df_2['OI_date'] = latest_date
 
+        # Get historical OI values
+        hist_dict = get_historicals_for_contract(symbols, prompt_contract)
+        for col in ['T-5_OI', 'T-10_OI', 'T-30_OI']:
+            today_df_2[col] = hist_dict.get(col)
+
         df_list.append(today_df_2)
 
     combined_df = pd.concat(df_list, ignore_index=True)
     combined_df['product_fam'] = combined_df['product'].map(product_fam_map_main).fillna(combined_df['product'])
-    heatmap_data = combined_df[['product', 'pct_from_avg', 'OI', '3m_avg_OI', 'constituents', 'OI_date', 'contract']]
+    heatmap_data = combined_df[['product', 'pct_from_avg', 'OI', 'T-5_OI', 'T-10_OI', 'T-30_OI', '3m_avg_OI', 'constituents', 'OI_date', 'contract']]
     heatmap_data = heatmap_data.loc[heatmap_data['pct_from_avg'].abs().sort_values(ascending=False).index].reset_index(drop=True)
     heatmap_data.index = heatmap_data.index + 1
 
     styled_df = heatmap_data.style.applymap(color_pct_from_avg, subset=["pct_from_avg"]).format({
         'OI': '{:,.0f}',
         '3m_avg_OI': '{:,.0f}',
+        'T-5_OI': '{:,.0f}', 
+        'T-10_OI': '{:,.0f}', 
+        'T-30_OI': '{:,.0f}',
         'pct_from_avg': '{:+.1f}'
     })
 
     st.dataframe(styled_df, use_container_width=True)
+
+
+def get_historicals_for_contract(symbols, contract):
+    result = {"T-5_OI": 0, "T-10_OI": 0, "T-30_OI": 0}
+    for symbol in symbols:
+        dfs = read_dfs(symbol)
+        month = contract[:3]
+        sheet = f"{symbol}_{month}"
+
+        if sheet not in dfs:
+            continue
+
+        df = dfs[sheet]
+        df_contract = df[df["contract"] == contract].copy()
+        result["T-5_OI"] += df_contract.iloc[-6]["OI"]
+        result["T-10_OI"] += df_contract.iloc[-11]["OI"]
+        result["T-30_OI"] += df_contract.iloc[-31]["OI"]
+
+    return result
+
+
+
         
