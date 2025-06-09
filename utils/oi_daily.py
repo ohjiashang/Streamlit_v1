@@ -264,7 +264,7 @@ def get_combined_n_day_OI(symbols, months, years, forwards):
     return combined_df
 
 #######################################################################################################
-
+@st.cache_data
 def get_pivot_table(df):
     month_order = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
                    "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
@@ -651,7 +651,7 @@ def create_main_product_heatmap(dct, product_fam_map_main):
 
     st.dataframe(styled_df, use_container_width=True)
 
-
+@st.cache_data
 def get_historicals_for_contract(symbols, contract):
     result = {"T-5_OI": 0, "T-10_OI": 0, "T-30_OI": 0}
     for symbol in symbols:
