@@ -80,7 +80,7 @@ FORWARD_CONTRACTS_TO_SKIP = ["Aug25", "Sep25", "Oct25", "Nov25", "Dec25"]
 
 OI_V2_SYMBOLS = ["SMT", "GDK", "STB"]
 
-OI_V2_YEARS = [20, 21, 22, 23, 24, 25, 26]
+OI_V2_YEARS = [18, 19, 20, 21, 22, 23, 24, 25, 26]
 
 OI_V2_MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
 

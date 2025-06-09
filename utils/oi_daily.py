@@ -208,7 +208,11 @@ def get_n_day_OI(symbol, months, years, forwards):
     for year in years:
         for month in months:
             contract = f"{month}{year}"
-            if contract in forwards:
+            
+            forward_25 = [c for c in forwards if c.endswith("25")]
+            forward_26 = [c for c in forwards if c.endswith("26")]
+
+            if contract in forward_26:
                 continue
             
             sheet = f"{symbol}_{month}"
@@ -224,13 +228,25 @@ def get_n_day_OI(symbol, months, years, forwards):
             df_contract["contract_month"] = month
             df_contract["year"] = 2000+year
 
-            for n_trading_day in n_trading_day_dct[month]:
+            days = n_trading_day_dct[month]  # tuple of 1 or 2 days
+            if contract in forward_25 and len(days) > 1:
+                days_to_do = days[1:2]   # only the second element
+            else:
+                days_to_do = days        # 1-element or both
+        
+            for n_trading_day in days_to_do:
                 df_nth_day = df_contract[df_contract["n_trading_day"] == n_trading_day]
                 if not df_nth_day.empty:
                     contract_lst.append(df_nth_day)
 
+            # for n_trading_day in n_trading_day_dct[month]:
+            #     df_nth_day = df_contract[df_contract["n_trading_day"] == n_trading_day]
+            #     if not df_nth_day.empty:
+            #         contract_lst.append(df_nth_day)
+
     df = pd.concat(contract_lst, ignore_index=True)
     combined_df = pd.concat([df, df_forward], ignore_index=True)
+    combined_df = combined_df.sort_values("Date", ascending=False).reset_index(drop=True)
     return combined_df
 
 def get_combined_n_day_OI(symbols, months, years, forwards):
@@ -567,7 +583,7 @@ def create_diffs_heatmap(symbols, name_map):
      # ── INSERT: initialize the new columns to empty/NaN ────────────────────
     heatmap_data['T-5_OI']  = None
     heatmap_data['T-10_OI'] = None
-    heatmap_data['T-30_OI'] = None
+    heatmap_data['T-20_OI'] = None
     # ─────────────────────────────────────────────────────────────────────────
 
     # ── LOOP OVER EACH ROW AND FILL IN HISTORICALS ───────────────────────────
@@ -575,16 +591,16 @@ def create_diffs_heatmap(symbols, name_map):
         sym = row['symbol']
         contract = row['contract']
 
-        # Call your helper that returns a dict of {"T-5_OI":…, "T-10_OI":…, "T-30_OI":…}
+        # Call your helper that returns a dict of {"T-5_OI":…, "T-10_OI":…, "T-20_OI":…}
         hist_dict = get_historicals_for_contract([sym], contract)
 
         # Only write back the keys that exist
         if 'T-5_OI'  in hist_dict: heatmap_data.at[idx, 'T-5_OI']  = hist_dict['T-5_OI']
         if 'T-10_OI' in hist_dict: heatmap_data.at[idx, 'T-10_OI'] = hist_dict['T-10_OI']
-        if 'T-30_OI' in hist_dict: heatmap_data.at[idx, 'T-30_OI'] = hist_dict['T-30_OI']
+        if 'T-20_OI' in hist_dict: heatmap_data.at[idx, 'T-20_OI'] = hist_dict['T-20_OI']
     # ─────────────────────────────────────────────────────────────────────────
 
-    heatmap_data = heatmap_data[['diff', 'pct_from_avg', 'OI', 'T-5_OI', 'T-10_OI', 'T-30_OI', '3m_avg_OI', 'symbol', 'OI_date', 'contract']]
+    heatmap_data = heatmap_data[['diff', 'pct_from_avg', 'OI', 'T-5_OI', 'T-10_OI', 'T-20_OI', '3m_avg_OI', 'symbol', 'OI_date', 'contract']]
     heatmap_data = heatmap_data.loc[heatmap_data['pct_from_avg'].abs().sort_values(ascending=False).index].reset_index(drop=True)
     heatmap_data.index = heatmap_data.index + 1
 
@@ -598,7 +614,7 @@ def create_diffs_heatmap(symbols, name_map):
         '3m_avg_OI': '{:,.0f}',
         'T-5_OI': '{:,.0f}', 
         'T-10_OI': '{:,.0f}', 
-        'T-30_OI': '{:,.0f}',
+        'T-20_OI': '{:,.0f}',
         'pct_from_avg': '{:+.1f}'
     })
 
@@ -629,14 +645,14 @@ def create_main_product_heatmap(dct, product_fam_map_main):
 
         # Get historical OI values
         hist_dict = get_historicals_for_contract(symbols, prompt_contract)
-        for col in ['T-5_OI', 'T-10_OI', 'T-30_OI']:
+        for col in ['T-5_OI', 'T-10_OI', 'T-20_OI']:
             today_df_2[col] = hist_dict.get(col)
 
         df_list.append(today_df_2)
 
     combined_df = pd.concat(df_list, ignore_index=True)
     combined_df['product_fam'] = combined_df['product'].map(product_fam_map_main).fillna(combined_df['product'])
-    heatmap_data = combined_df[['product', 'pct_from_avg', 'OI', 'T-5_OI', 'T-10_OI', 'T-30_OI', '3m_avg_OI', 'constituents', 'OI_date', 'contract']]
+    heatmap_data = combined_df[['product', 'pct_from_avg', 'OI', 'T-5_OI', 'T-10_OI', 'T-20_OI', '3m_avg_OI', 'constituents', 'OI_date', 'contract']]
     heatmap_data = heatmap_data.loc[heatmap_data['pct_from_avg'].abs().sort_values(ascending=False).index].reset_index(drop=True)
     heatmap_data.index = heatmap_data.index + 1
 
@@ -645,7 +661,7 @@ def create_main_product_heatmap(dct, product_fam_map_main):
         '3m_avg_OI': '{:,.0f}',
         'T-5_OI': '{:,.0f}', 
         'T-10_OI': '{:,.0f}', 
-        'T-30_OI': '{:,.0f}',
+        'T-20_OI': '{:,.0f}',
         'pct_from_avg': '{:+.1f}'
     })
 
@@ -653,7 +669,7 @@ def create_main_product_heatmap(dct, product_fam_map_main):
 
 @st.cache_data
 def get_historicals_for_contract(symbols, contract):
-    result = {"T-5_OI": 0, "T-10_OI": 0, "T-30_OI": 0}
+    result = {"T-5_OI": 0, "T-10_OI": 0, "T-20_OI": 0}
     for symbol in symbols:
         dfs = read_dfs(symbol)
         month = contract[:3]
@@ -666,7 +682,7 @@ def get_historicals_for_contract(symbols, contract):
         df_contract = df[df["contract"] == contract].copy()
         result["T-5_OI"] += df_contract.iloc[-6]["OI"]
         result["T-10_OI"] += df_contract.iloc[-11]["OI"]
-        result["T-30_OI"] += df_contract.iloc[-31]["OI"]
+        result["T-20_OI"] += df_contract.iloc[-21]["OI"]
 
     return result
 
