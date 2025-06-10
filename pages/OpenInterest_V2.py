@@ -41,6 +41,7 @@ if selected_symbols:
 
     ##############################################################################
     st.markdown(f"*OI Date: {latest_date.strftime('%Y-%m-%d')}*")
+    st.markdown(f"*Current Selection: {', '.join(selected_symbols)}*")
 
     col1, spacer, col2 = st.columns([1, 0.05, 1])
     with col1:
