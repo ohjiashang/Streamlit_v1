@@ -10,9 +10,9 @@ from datetime import datetime, timedelta
 from utils.oi_constants import FORWARD_CONTRACTS_TO_SKIP
 
 @st.cache_data
-def read_dfs(symbol):
+def read_dfs(symbol, suffix="OI"):
     folder = "OI"
-    filename = f"{symbol}_24m_OI.xlsx"
+    filename = f"{symbol}_24m_{suffix}.xlsx"
     encoded_filename = urllib.parse.quote(filename)
     url = f"https://firebasestorage.googleapis.com/v0/b/hotei-streamlit.firebasestorage.app/o/{folder}%2F{encoded_filename}?alt=media"
     dfs = pd.read_excel(url, sheet_name=None)
@@ -35,7 +35,6 @@ def get_terminal_date(contract: str) -> datetime:
     
     # Return the previous day
     return first_of_month - timedelta(days=1)
-
 
 def get_terminal_OI(symbol, months, years, forwards):
     dfs = read_dfs(symbol)
@@ -67,8 +66,8 @@ def get_terminal_OI(symbol, months, years, forwards):
     df = df.sort_values("Date").reset_index(drop=True)
     return df
 
-def get_forward_today_OI(symbol, months, years, forwards):        
-    dfs = read_dfs(symbol)
+def get_forward_today_OI(symbol, months, years, forwards, suffix="OI"):        
+    dfs = read_dfs(symbol, suffix)
     contract_lst = []
     for year in years:
         for month in months:
@@ -189,11 +188,11 @@ def get_all_OI(symbols, months, years, forwards):
     combined_df = pd.concat([df_terminal, df_forward], ignore_index=True)
     return combined_df
 
-def get_n_day_OI(symbol, months, years, forwards):
+def get_n_day_OI(symbol, months, years, forwards, suffix="OI"):
     """
     Combines terminal and forward OI into a single DataFrame.
     """
-    df_forward = get_forward_today_OI(symbol, months, years, forwards)
+    df_forward = get_forward_today_OI(symbol, months, years, forwards, suffix)
 
     n_trading_day_dct = (
         df_forward
@@ -202,7 +201,7 @@ def get_n_day_OI(symbol, months, years, forwards):
         .to_dict()
     )
 
-    dfs = read_dfs(symbol)
+    dfs = read_dfs(symbol, suffix)
     
     contract_lst = []
     for year in years:
@@ -238,11 +237,6 @@ def get_n_day_OI(symbol, months, years, forwards):
                 df_nth_day = df_contract[df_contract["n_trading_day"] == n_trading_day]
                 if not df_nth_day.empty:
                     contract_lst.append(df_nth_day)
-
-            # for n_trading_day in n_trading_day_dct[month]:
-            #     df_nth_day = df_contract[df_contract["n_trading_day"] == n_trading_day]
-            #     if not df_nth_day.empty:
-            #         contract_lst.append(df_nth_day)
 
     df = pd.concat(contract_lst, ignore_index=True)
     combined_df = pd.concat([df, df_forward], ignore_index=True)
@@ -281,14 +275,23 @@ def get_combined_n_day_OI(symbols, months, years, forwards):
 
 #######################################################################################################
 @st.cache_data
-def get_pivot_table(df):
+def get_pivot_table(df, suffix="OI"):
     month_order = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
                    "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
     df['contract_month'] = pd.Categorical(df['contract_month'], categories=month_order, ordered=True)
+    
+    def format_number(x):
+        if pd.isna(x):
+            return None
+        elif isinstance(x, (int, float)):
+            # If integer, return as int; otherwise, format to 2 decimal places and strip trailing zeros
+            return int(x) if x == int(x) else f"{x:.2f}".rstrip('0').rstrip('.')
+        return x  # fallback
 
-    # Custom aggregation function for formatting
     def format_oi(series):
         values = list(series)
+        values = [format_number(v) for v in values if pd.notna(v)]
+        
         if len(values) == 1:
             return values[0]
         elif len(values) >= 2:
@@ -296,11 +299,12 @@ def get_pivot_table(df):
         else:
             return None
 
+
     pivot = pd.pivot_table(
         df,
         index='contract_month',
         columns='year',
-        values='OI',
+        values=suffix,
         aggfunc=format_oi
     )
 
