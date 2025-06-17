@@ -7,6 +7,7 @@ import streamlit as st
 import plotly.graph_objects as go
 import numpy as np
 from datetime import datetime, timedelta
+from concurrent.futures import ThreadPoolExecutor
 from utils.oi_constants import FORWARD_CONTRACTS_TO_SKIP
 
 @st.cache_data
@@ -36,63 +37,142 @@ def get_terminal_date(contract: str) -> datetime:
     # Return the previous day
     return first_of_month - timedelta(days=1)
 
+# def get_terminal_OI(symbol, months, years, forwards):
+#     dfs = read_dfs(symbol)
+    
+#     contract_lst = []
+#     for year in years:
+#         for month in months:
+#             contract = f"{month}{year}"
+#             if contract in forwards:
+#                 continue
+            
+#             sheet = f"{symbol}_{month}"
+#             if sheet not in dfs:
+#                 continue
+
+#             df = dfs[sheet]
+#             df["Date"] = pd.to_datetime(df["Date"])
+#             df_contract = df[df["contract"] == contract].copy()
+            
+#             df_contract["n_trading_day"] = 0
+#             df_contract["contract_month"] = month
+#             df_contract["year"] = 2000+year
+#             df_contract_terminal = df_contract.tail(1)
+
+#             if not df_contract_terminal.empty:
+#                 contract_lst.append(df_contract_terminal)
+
+#     df = pd.concat(contract_lst, ignore_index=True)
+#     df = df.sort_values("Date").reset_index(drop=True)
+#     return df
+
 def get_terminal_OI(symbol, months, years, forwards):
     dfs = read_dfs(symbol)
-    
-    contract_lst = []
-    for year in years:
-        for month in months:
-            contract = f"{month}{year}"
-            if contract in forwards:
-                continue
-            
-            sheet = f"{symbol}_{month}"
-            if sheet not in dfs:
-                continue
 
-            df = dfs[sheet]
-            df["Date"] = pd.to_datetime(df["Date"])
-            df_contract = df[df["contract"] == contract].copy()
-            
-            df_contract["n_trading_day"] = 0
-            df_contract["contract_month"] = month
-            df_contract["year"] = 2000+year
-            df_contract_terminal = df_contract.tail(1)
+    def process_contract(month, year):
+        contract = f"{month}{year}"
+        if contract in forwards:
+            return None
+        
+        sheet = f"{symbol}_{month}"
+        if sheet not in dfs:
+            return None
+        
+        df = dfs[sheet]
+        df["Date"] = pd.to_datetime(df["Date"])
+        df_contract = df[df["contract"] == contract].copy()
+        if df_contract.empty:
+            return None
 
-            if not df_contract_terminal.empty:
-                contract_lst.append(df_contract_terminal)
+        df_contract["n_trading_day"] = 0
+        df_contract["contract_month"] = month
+        df_contract["year"] = 2000 + year
+        return df_contract.tail(1)
 
-    df = pd.concat(contract_lst, ignore_index=True)
-    df = df.sort_values("Date").reset_index(drop=True)
+    with ThreadPoolExecutor() as executor:
+        futures = [
+            executor.submit(process_contract, month, year)
+            for year in years for month in months
+        ]
+        results = [f.result() for f in futures if f.result() is not None]
+
+    if results:
+        df = pd.concat(results, ignore_index=True)
+        df = df.sort_values("Date").reset_index(drop=True)
+    else:
+        df = pd.DataFrame()
+
     return df
+
+# def get_forward_today_OI(symbol, months, years, forwards, suffix="OI"):        
+#     dfs = read_dfs(symbol, suffix)
+#     contract_lst = []
+#     for year in years:
+#         for month in months:
+#             contract = f"{month}{year}"
+#             if contract not in forwards:
+#                 continue
+                
+#             sheet = f"{symbol}_{month}"
+#             if sheet not in dfs:
+#                 continue
+
+#             terminal_date = get_terminal_date(contract)
+
+#             df = dfs[sheet]
+#             df["Date"] = pd.to_datetime(df["Date"])
+#             df_contract = df[df["contract"] == contract].copy()
+#             df_contract["contract_month"] = month
+#             df_contract["year"] = 2000+year
+#             df_contract["n_trading_day"] = df_contract["Date"].apply(
+#                 lambda d: np.busday_count(terminal_date.date(), d.date()))
+#             df_contract_terminal = df_contract.tail(1)
+#             if not df_contract_terminal.empty:
+#                 contract_lst.append(df_contract_terminal)
+
+#     df = pd.concat(contract_lst, ignore_index=True)
+#     return df
 
 def get_forward_today_OI(symbol, months, years, forwards, suffix="OI"):        
     dfs = read_dfs(symbol, suffix)
-    contract_lst = []
-    for year in years:
-        for month in months:
-            contract = f"{month}{year}"
-            if contract not in forwards:
-                continue
-                
-            sheet = f"{symbol}_{month}"
-            if sheet not in dfs:
-                continue
 
-            terminal_date = get_terminal_date(contract)
+    def process_forward(month, year):
+        contract = f"{month}{year}"
+        if contract not in forwards:
+            return None
 
-            df = dfs[sheet]
-            df["Date"] = pd.to_datetime(df["Date"])
-            df_contract = df[df["contract"] == contract].copy()
-            df_contract["contract_month"] = month
-            df_contract["year"] = 2000+year
-            df_contract["n_trading_day"] = df_contract["Date"].apply(
-                lambda d: np.busday_count(terminal_date.date(), d.date()))
-            df_contract_terminal = df_contract.tail(1)
-            if not df_contract_terminal.empty:
-                contract_lst.append(df_contract_terminal)
+        sheet = f"{symbol}_{month}"
+        if sheet not in dfs:
+            return None
 
-    df = pd.concat(contract_lst, ignore_index=True)
+        terminal_date = get_terminal_date(contract)
+        df = dfs[sheet]
+        df["Date"] = pd.to_datetime(df["Date"])
+        df_contract = df[df["contract"] == contract].copy()
+
+        if df_contract.empty:
+            return None
+
+        df_contract["contract_month"] = month
+        df_contract["year"] = 2000 + year
+        df_contract["n_trading_day"] = df_contract["Date"].apply(
+            lambda d: np.busday_count(terminal_date.date(), d.date())
+        )
+        return df_contract.tail(1)
+
+    with ThreadPoolExecutor() as executor:
+        futures = [
+            executor.submit(process_forward, month, year)
+            for year in years for month in months
+        ]
+        results = [f.result() for f in futures if f.result() is not None]
+
+    if results:
+        df = pd.concat(results, ignore_index=True)
+    else:
+        df = pd.DataFrame()
+
     return df
 
 
@@ -624,11 +704,56 @@ def create_diffs_heatmap(symbols, name_map):
 
     st.dataframe(styled_df, use_container_width=True)
 
+# @st.cache_data
+# def create_main_product_heatmap(dct, product_fam_map_main):
+#     df_list = []
+
+#     for main_product, symbols in dct.items():
+#         combined_df = calc_main_product_oi(main_product, symbols)
+#         today_df = combined_df.tail(1)
+#         latest_date = pd.to_datetime(today_df['Date'].values[0]).date()
+#         prompt_contract = today_df['contract'].values[0]
+
+#         cols = ["Date", "contract", f"{main_product}_OI", f"{main_product}_3m_avg_OI", f"{main_product}_pct_from_avg"]
+#         today_df_1 = today_df[cols].copy()
+#         today_df_2 = today_df_1.rename(columns={
+#             f'{main_product}_OI': 'OI',
+#             f'{main_product}_3m_avg_OI': '3m_avg_OI',
+#             f'{main_product}_pct_from_avg': 'pct_from_avg',
+#         })
+
+#         today_df_2['constituents'] = ", ".join(symbols)
+#         today_df_2['product'] = main_product
+#         today_df_2['contract'] = prompt_contract
+#         today_df_2['OI_date'] = latest_date
+
+#         # Get historical OI values
+#         hist_dict = get_historicals_for_contract(symbols, prompt_contract)
+#         for col in ['T-5_OI', 'T-10_OI', 'T-20_OI']:
+#             today_df_2[col] = hist_dict.get(col)
+
+#         df_list.append(today_df_2)
+
+#     combined_df = pd.concat(df_list, ignore_index=True)
+#     combined_df['product_fam'] = combined_df['product'].map(product_fam_map_main).fillna(combined_df['product'])
+#     heatmap_data = combined_df[['product', 'pct_from_avg', 'OI', 'T-5_OI', 'T-10_OI', 'T-20_OI', '3m_avg_OI', 'constituents', 'OI_date', 'contract']]
+#     heatmap_data = heatmap_data.loc[heatmap_data['pct_from_avg'].abs().sort_values(ascending=False).index].reset_index(drop=True)
+#     heatmap_data.index = heatmap_data.index + 1
+
+#     styled_df = heatmap_data.style.applymap(color_pct_from_avg, subset=["pct_from_avg"]).format({
+#         'OI': '{:,.0f}',
+#         '3m_avg_OI': '{:,.0f}',
+#         'T-5_OI': '{:,.0f}', 
+#         'T-10_OI': '{:,.0f}', 
+#         'T-20_OI': '{:,.0f}',
+#         'pct_from_avg': '{:+.1f}'
+#     })
+
+#     st.dataframe(styled_df, use_container_width=True)
+
 @st.cache_data
 def create_main_product_heatmap(dct, product_fam_map_main):
-    df_list = []
-
-    for main_product, symbols in dct.items():
+    def process_main_product(main_product, symbols):
         combined_df = calc_main_product_oi(main_product, symbols)
         today_df = combined_df.tail(1)
         latest_date = pd.to_datetime(today_df['Date'].values[0]).date()
@@ -647,15 +772,20 @@ def create_main_product_heatmap(dct, product_fam_map_main):
         today_df_2['contract'] = prompt_contract
         today_df_2['OI_date'] = latest_date
 
-        # Get historical OI values
+        # Historical OI values
         hist_dict = get_historicals_for_contract(symbols, prompt_contract)
         for col in ['T-5_OI', 'T-10_OI', 'T-20_OI']:
             today_df_2[col] = hist_dict.get(col)
 
-        df_list.append(today_df_2)
+        return today_df_2
+
+    with ThreadPoolExecutor() as executor:
+        futures = [executor.submit(process_main_product, p, s) for p, s in dct.items()]
+        df_list = [f.result() for f in futures if f.result() is not None]
 
     combined_df = pd.concat(df_list, ignore_index=True)
     combined_df['product_fam'] = combined_df['product'].map(product_fam_map_main).fillna(combined_df['product'])
+
     heatmap_data = combined_df[['product', 'pct_from_avg', 'OI', 'T-5_OI', 'T-10_OI', 'T-20_OI', '3m_avg_OI', 'constituents', 'OI_date', 'contract']]
     heatmap_data = heatmap_data.loc[heatmap_data['pct_from_avg'].abs().sort_values(ascending=False).index].reset_index(drop=True)
     heatmap_data.index = heatmap_data.index + 1
@@ -670,6 +800,7 @@ def create_main_product_heatmap(dct, product_fam_map_main):
     })
 
     st.dataframe(styled_df, use_container_width=True)
+
 
 @st.cache_data
 def get_historicals_for_contract(symbols, contract):
@@ -689,7 +820,3 @@ def get_historicals_for_contract(symbols, contract):
         result["T-20_OI"] += df_contract.iloc[-21]["OI"]
 
     return result
-
-
-
-        
