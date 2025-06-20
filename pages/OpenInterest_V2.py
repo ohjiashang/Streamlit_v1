@@ -9,7 +9,8 @@ from utils.oi_daily import (
     get_pivot_table,
     style_forward_cells,
     plot_forwards_combined, 
-    get_n_day_OI
+    get_n_day_OI,
+    get_OI_volume_table
 )
 
 st.set_page_config(layout="wide")
@@ -56,6 +57,8 @@ if selected_symbols:
             st.dataframe(styled_prices, height=460)
 
     plot_forwards_combined(selected_symbols, OI_V2_FORWARDS)
+    if len(selected_symbols) == 1:
+        get_OI_volume_table(selected_symbols[0])
 
 else:
     st.warning("Please select at least one product to display data")

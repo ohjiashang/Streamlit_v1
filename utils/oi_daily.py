@@ -18,6 +18,53 @@ def read_dfs(symbol, suffix="OI"):
     url = f"https://firebasestorage.googleapis.com/v0/b/hotei-streamlit.firebasestorage.app/o/{folder}%2F{encoded_filename}?alt=media"
     dfs = pd.read_excel(url, sheet_name=None)
     return dfs
+
+#####
+#####
+@st.cache_data
+def read_OI_volume():
+    folder = "Test"
+    filename = f"OI_volume.xlsx"
+    encoded_filename = urllib.parse.quote(filename)
+    url = f"https://firebasestorage.googleapis.com/v0/b/hotei-streamlit.firebasestorage.app/o/{folder}%2F{encoded_filename}?alt=media"
+    df = pd.read_excel(url)
+    return df
+
+def style_OI_column_groups(df):
+    # Determine the group for each column
+    group_colors = {}
+    group_index = 0
+    for col in df.columns:
+        if any(col.endswith(suffix) for suffix in ['_OI', '_OI_chg', '_vol']):
+            group_colors[col] = '#f2f2f2' if group_index % 2 == 0 else 'white'
+            if col.endswith('_vol'):
+                group_index += 1
+        else:
+            group_colors[col] = ''  # No color for fixed columns
+
+    # Apply color to each column
+    def highlight(col):
+        color = group_colors.get(col.name, '')
+        return [f'background-color: {color}'] * len(col)
+
+    return df.style.apply(highlight, axis=0)
+
+def get_OI_volume_table(symbol):
+    df = read_OI_volume()
+    df_filtered = df[df['symbol'] == symbol].copy()
+
+    if df_filtered.empty:
+        return  # Do nothing
+
+    df_filtered.reset_index(drop=True, inplace=True)
+    df_filtered.index += 1  # Make index start from 1
+    styled_df = style_OI_column_groups(df_filtered)
+    st.markdown("#### OI & Volume")
+    st.dataframe(styled_df, height=670)
+
+#####
+#####
+
 #################################################################################################
 def get_terminal_date(contract: str) -> datetime:
     """
@@ -36,36 +83,6 @@ def get_terminal_date(contract: str) -> datetime:
     
     # Return the previous day
     return first_of_month - timedelta(days=1)
-
-# def get_terminal_OI(symbol, months, years, forwards):
-#     dfs = read_dfs(symbol)
-    
-#     contract_lst = []
-#     for year in years:
-#         for month in months:
-#             contract = f"{month}{year}"
-#             if contract in forwards:
-#                 continue
-            
-#             sheet = f"{symbol}_{month}"
-#             if sheet not in dfs:
-#                 continue
-
-#             df = dfs[sheet]
-#             df["Date"] = pd.to_datetime(df["Date"])
-#             df_contract = df[df["contract"] == contract].copy()
-            
-#             df_contract["n_trading_day"] = 0
-#             df_contract["contract_month"] = month
-#             df_contract["year"] = 2000+year
-#             df_contract_terminal = df_contract.tail(1)
-
-#             if not df_contract_terminal.empty:
-#                 contract_lst.append(df_contract_terminal)
-
-#     df = pd.concat(contract_lst, ignore_index=True)
-#     df = df.sort_values("Date").reset_index(drop=True)
-#     return df
 
 def get_terminal_OI(symbol, months, years, forwards):
     dfs = read_dfs(symbol)
@@ -703,53 +720,6 @@ def create_diffs_heatmap(symbols, name_map):
     })
 
     st.dataframe(styled_df, use_container_width=True)
-
-# @st.cache_data
-# def create_main_product_heatmap(dct, product_fam_map_main):
-#     df_list = []
-
-#     for main_product, symbols in dct.items():
-#         combined_df = calc_main_product_oi(main_product, symbols)
-#         today_df = combined_df.tail(1)
-#         latest_date = pd.to_datetime(today_df['Date'].values[0]).date()
-#         prompt_contract = today_df['contract'].values[0]
-
-#         cols = ["Date", "contract", f"{main_product}_OI", f"{main_product}_3m_avg_OI", f"{main_product}_pct_from_avg"]
-#         today_df_1 = today_df[cols].copy()
-#         today_df_2 = today_df_1.rename(columns={
-#             f'{main_product}_OI': 'OI',
-#             f'{main_product}_3m_avg_OI': '3m_avg_OI',
-#             f'{main_product}_pct_from_avg': 'pct_from_avg',
-#         })
-
-#         today_df_2['constituents'] = ", ".join(symbols)
-#         today_df_2['product'] = main_product
-#         today_df_2['contract'] = prompt_contract
-#         today_df_2['OI_date'] = latest_date
-
-#         # Get historical OI values
-#         hist_dict = get_historicals_for_contract(symbols, prompt_contract)
-#         for col in ['T-5_OI', 'T-10_OI', 'T-20_OI']:
-#             today_df_2[col] = hist_dict.get(col)
-
-#         df_list.append(today_df_2)
-
-#     combined_df = pd.concat(df_list, ignore_index=True)
-#     combined_df['product_fam'] = combined_df['product'].map(product_fam_map_main).fillna(combined_df['product'])
-#     heatmap_data = combined_df[['product', 'pct_from_avg', 'OI', 'T-5_OI', 'T-10_OI', 'T-20_OI', '3m_avg_OI', 'constituents', 'OI_date', 'contract']]
-#     heatmap_data = heatmap_data.loc[heatmap_data['pct_from_avg'].abs().sort_values(ascending=False).index].reset_index(drop=True)
-#     heatmap_data.index = heatmap_data.index + 1
-
-#     styled_df = heatmap_data.style.applymap(color_pct_from_avg, subset=["pct_from_avg"]).format({
-#         'OI': '{:,.0f}',
-#         '3m_avg_OI': '{:,.0f}',
-#         'T-5_OI': '{:,.0f}', 
-#         'T-10_OI': '{:,.0f}', 
-#         'T-20_OI': '{:,.0f}',
-#         'pct_from_avg': '{:+.1f}'
-#     })
-
-#     st.dataframe(styled_df, use_container_width=True)
 
 @st.cache_data
 def create_main_product_heatmap(dct, product_fam_map_main):
