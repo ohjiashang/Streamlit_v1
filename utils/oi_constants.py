@@ -12,8 +12,6 @@ dist_dct = {
     "ICEGO": ['GAS', 'ULA', 'ULD', 'ULJ', 'BAP', 'ULM'],
     "NWE Jet": ['JCN', 'JNB', 'ULJ'],
     "HO": ['UHO', 'HOF', 'HBT', 'ULM'],  
-
-
 }
 
 name_map = {

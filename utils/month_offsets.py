@@ -11,13 +11,6 @@ month_dct = {
     "Sep": 9, "Oct": 10, "Nov": 11, "Dec": 12
 }
 
-# def get_start_end_dates(contract, num_lookback_months=5):
-#     year = 2000 + int(contract[-2:])
-#     month = month_dct[contract[:3]]
-#     start_date = pd.Timestamp(year, month, 1) - pd.DateOffset(months=num_lookback_months)
-#     end_date = pd.Timestamp(year, month, 1) - pd.DateOffset(days=1) - pd.offsets.MonthEnd(2)
-#     return start_date.strftime('%Y-%m-%d'), end_date.strftime('%Y-%m-%d')
-
 def get_start_end_dates(contract, num_lookback_months=5):
     # Step 1: Compute dynamic start and end dates
     year = 2000 + int(contract[-2:])
@@ -26,7 +19,6 @@ def get_start_end_dates(contract, num_lookback_months=5):
     end_date = pd.Timestamp(year, month, 1) - pd.DateOffset(days=1) - pd.offsets.MonthEnd(2)
 
     # Step 2: Read Dates from static file
-
     folder = "Data"
     filename = f"Dates.xlsx"
     encoded_filename = urllib.parse.quote(filename)
@@ -146,7 +138,7 @@ def calculate_diff(diff_scenario_tup, contract_m1, month_scenario_tup):
     
     return df_3
 
-@st.cache_data
+# @st.cache_data
 def get_price_series(diff_scenario, months_scenario, months_m1_lst, years):
     month1, month2 = months_scenario[0], months_scenario[1]
     sheet_name = f"m{month1-1}m{month2-1}"
@@ -160,10 +152,15 @@ def get_price_series(diff_scenario, months_scenario, months_m1_lst, years):
     last_norm = 0
 
     # Step 1: Ordered task list
+    # task_list = [(year, month_m1) 
+    #             for year in reversed(years) 
+    #             for month_m1 in reversed(months_m1_lst)
+    #             if not (year == 25 and month_m1 == 'Dec')]
+    
     task_list = [(year, month_m1) 
-                for year in reversed(years) 
-                for month_m1 in reversed(months_m1_lst)
-                if not (year == 25 and month_m1 == 'Dec')]
+            for year in reversed(years) 
+            for month_m1 in reversed(months_m1_lst)
+            ]
 
     def fetch_contract(year, month_m1):
         df_contract = process_contract(year, month_m1)
