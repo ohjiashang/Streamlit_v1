@@ -30,6 +30,3 @@ def render():
     df_2024_onwards_3 = generate_m1m2_series(df_2024_onwards_2, m1m2_col, m2m3_col)
 
     plot_prem_disc(df_2024_onwards_3, prem_col, day)
-
-
-    

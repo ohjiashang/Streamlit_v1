@@ -122,35 +122,6 @@ def get_terminal_OI(symbol, months, years, forwards):
 
     return df
 
-# def get_forward_today_OI(symbol, months, years, forwards, suffix="OI"):        
-#     dfs = read_dfs(symbol, suffix)
-#     contract_lst = []
-#     for year in years:
-#         for month in months:
-#             contract = f"{month}{year}"
-#             if contract not in forwards:
-#                 continue
-                
-#             sheet = f"{symbol}_{month}"
-#             if sheet not in dfs:
-#                 continue
-
-#             terminal_date = get_terminal_date(contract)
-
-#             df = dfs[sheet]
-#             df["Date"] = pd.to_datetime(df["Date"])
-#             df_contract = df[df["contract"] == contract].copy()
-#             df_contract["contract_month"] = month
-#             df_contract["year"] = 2000+year
-#             df_contract["n_trading_day"] = df_contract["Date"].apply(
-#                 lambda d: np.busday_count(terminal_date.date(), d.date()))
-#             df_contract_terminal = df_contract.tail(1)
-#             if not df_contract_terminal.empty:
-#                 contract_lst.append(df_contract_terminal)
-
-#     df = pd.concat(contract_lst, ignore_index=True)
-#     return df
-
 def get_forward_today_OI(symbol, months, years, forwards, suffix="OI"):        
     dfs = read_dfs(symbol, suffix)
 

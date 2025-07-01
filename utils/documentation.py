@@ -19,6 +19,7 @@ import urllib.parse
 #         unsafe_allow_html=True
 #     )
 
+@st.cache_data
 def display_doc(folder: str, filename: str, title: str = "View Document"):
     
     encoded_filename = urllib.parse.quote(filename)
