@@ -31,23 +31,31 @@ def read_OI_volume():
     return df
 
 def style_OI_column_groups(df):
-    # Determine the group for each column
-    group_colors = {}
-    group_index = 0
-    for col in df.columns:
-        if any(col.endswith(suffix) for suffix in ['_OI', '_OI_chg', '_vol']):
-            group_colors[col] = '#f2f2f2' if group_index % 2 == 0 else 'white'
-            if col.endswith('_vol'):
-                group_index += 1
-        else:
-            group_colors[col] = ''  # No color for fixed columns
+    # Define suffixes and their colors
+    suffix_color_map = {
+        '_OI': "#FFFFE0",  
+        '_OI_chg': '#e6f7ff',
+        '_vol': '#b3e6ff'
+, 
+    }
 
-    # Apply color to each column
+    # Map each column to a color based on its suffix
+    col_colors = {}
+    for col in df.columns:
+        for suffix, color in suffix_color_map.items():
+            if col.endswith(suffix):
+                col_colors[col] = color
+                break
+        else:
+            col_colors[col] = ''  # No color if it doesn't match any suffix
+
+    # Style function for each column
     def highlight(col):
-        color = group_colors.get(col.name, '')
+        color = col_colors.get(col.name, '')
         return [f'background-color: {color}'] * len(col)
 
     return df.style.apply(highlight, axis=0)
+
 
 def get_OI_volume_table(symbol):
     df = read_OI_volume()
@@ -60,7 +68,7 @@ def get_OI_volume_table(symbol):
     df_filtered.index += 1  # Make index start from 1
     styled_df = style_OI_column_groups(df_filtered)
     st.markdown("#### OI & Volume")
-    st.dataframe(styled_df, height=670)
+    st.dataframe(styled_df, height=635)
 
 #####
 #####
@@ -384,7 +392,7 @@ def highlight_forward(val, row, col):
     light_yellow = "background-color: #FFFFE0"  # very light yellow
     if col == 2026:
         return light_yellow
-    if col == 2025 and row in ["Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]:
+    if col == 2025 and row in ["Aug", "Sep", "Oct", "Nov", "Dec"]:
         return light_yellow
     return ""
 

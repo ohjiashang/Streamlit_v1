@@ -24,4 +24,3 @@ with tab4:
     folder = "Test"
     display_doc(folder, f"Mean Reversion Model_Documentation_20250630_A.htm", "A) Methodology")
     display_doc(folder, f"Mean Reversion Model_Documentation_20250630_B.htm", "B) Shortlisting of Top Mean-Reverting Differentials")
-
