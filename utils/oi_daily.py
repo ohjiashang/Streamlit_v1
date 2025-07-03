@@ -34,7 +34,7 @@ def style_OI_column_groups(df):
     # Define suffixes and their colors
     suffix_color_map = {
         '_OI': "#FFFFE0",  
-        '_OI_chg': '#e6f7ff',
+        '_OI_chg': '#FFD480',  # Mellow, warm, and coherent with #FFFFE0
         '_vol': '#b3e6ff'
 , 
     }
