@@ -2,7 +2,7 @@ import streamlit as st
 import warnings
 warnings.filterwarnings("ignore")
 
-from utils.oi_constants import OI_V2_SYMBOLS, OI_V2_FORWARDS, OI_V2_MONTHS, OI_V2_YEARS
+from utils.oi_constants import OI_V2_SYMBOLS, OI_V2_FORWARDS, OI_V2_MONTHS, OI_V2_YEARS, OI_V2_SPREAD_SYMBOLS
 from utils.oi_daily import (
     get_combined_n_day_OI,
     get_all_OI,
@@ -36,8 +36,10 @@ if selected_symbols:
     latest_date = df_terminal["Date"].max()
 
     if len(selected_symbols) == 1:
-        df_prices = get_n_day_OI(selected_symbols[0], OI_V2_MONTHS, OI_V2_YEARS, OI_V2_FORWARDS, "price")
-        pivot_prices = get_pivot_table(df_prices, "price")
+        s = selected_symbols[0]
+        suffix = "price"
+        df_prices = get_n_day_OI(s, OI_V2_MONTHS, OI_V2_YEARS, OI_V2_FORWARDS, suffix)
+        pivot_prices = get_pivot_table(df_prices, suffix)
         styled_prices = style_forward_cells(pivot_prices)
 
     ##############################################################################

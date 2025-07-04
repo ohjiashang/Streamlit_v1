@@ -8,12 +8,15 @@ import plotly.graph_objects as go
 import numpy as np
 from datetime import datetime, timedelta
 from concurrent.futures import ThreadPoolExecutor
-from utils.oi_constants import FORWARD_CONTRACTS_TO_SKIP
+from utils.oi_constants import FORWARD_CONTRACTS_TO_SKIP, OI_V2_SPREAD_SYMBOLS
 
 @st.cache_data
 def read_dfs(symbol, suffix="OI"):
     folder = "OI"
-    filename = f"{symbol}_24m_{suffix}.xlsx"
+    if suffix == 'price' and symbol in OI_V2_SPREAD_SYMBOLS:
+        filename = f"{symbol}_24m_{suffix}_spr.xlsx"
+    else:
+        filename = f"{symbol}_24m_{suffix}.xlsx"
     encoded_filename = urllib.parse.quote(filename)
     url = f"https://firebasestorage.googleapis.com/v0/b/hotei-streamlit.firebasestorage.app/o/{folder}%2F{encoded_filename}?alt=media"
     dfs = pd.read_excel(url, sheet_name=None)
@@ -35,8 +38,7 @@ def style_OI_column_groups(df):
     suffix_color_map = {
         '_OI': "#FFFFE0",  
         '_OI_chg': '#FFD480',  # Mellow, warm, and coherent with #FFFFE0
-        '_vol': '#b3e6ff'
-, 
+        '_vol': '#b3e6ff',
     }
 
     # Map each column to a color based on its suffix
@@ -130,7 +132,7 @@ def get_terminal_OI(symbol, months, years, forwards):
 
     return df
 
-def get_forward_today_OI(symbol, months, years, forwards, suffix="OI"):        
+def get_forward_today_OI(symbol, months, years, forwards, suffix="OI"):
     dfs = read_dfs(symbol, suffix)
 
     def process_forward(month, year):
@@ -315,6 +317,7 @@ def get_n_day_OI(symbol, months, years, forwards, suffix="OI"):
                     contract_lst.append(df_nth_day)
 
     df = pd.concat(contract_lst, ignore_index=True)
+
     combined_df = pd.concat([df, df_forward], ignore_index=True)
     combined_df = combined_df.sort_values("Date", ascending=False).reset_index(drop=True)
     return combined_df
@@ -349,7 +352,7 @@ def get_combined_n_day_OI(symbols, months, years, forwards):
 
     return combined_df
 
-#######################################################################################################
+######################################################################################################
 @st.cache_data
 def get_pivot_table(df, suffix="OI"):
     month_order = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
