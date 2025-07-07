@@ -47,12 +47,12 @@ DIFF_NAMES = [
 CONTRACT_TYPES = [
     'Box',
     'Outright',
-    # 'Leg1 M0 - Leg2 M1',
-    # 'Leg1 M0 - Leg2 M2',
-    # 'Leg1 M0 - Leg2 M3',
-    # 'Leg1 M1 - Leg2 M0',
-    # 'Leg1 M2 - Leg2 M0',
-    # 'Leg1 M3 - Leg2 M0',
+    'Leg1 M0 - Leg2 M1',
+    'Leg1 M0 - Leg2 M2',
+    'Leg1 M0 - Leg2 M3',
+    'Leg1 M1 - Leg2 M0',
+    'Leg1 M2 - Leg2 M0',
+    'Leg1 M3 - Leg2 M0',
 ]
 
 MONTHS_SCENARIO_MAP = {
