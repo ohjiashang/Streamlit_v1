@@ -97,18 +97,45 @@ def get_terminal_date(contract: str) -> datetime:
 def get_terminal_OI(symbol, months, years, forwards):
     dfs = read_dfs(symbol)
 
+    # def process_contract(month, year):
+    #     contract = f"{month}{year}"
+    #     if contract in forwards:
+    #         return None
+        
+    #     sheet = f"{symbol}_{month}"
+    #     if sheet not in dfs:
+    #         return None
+        
+    #     df = dfs[sheet]
+    #     df["Date"] = pd.to_datetime(df["Date"])
+    #     df_contract = df[df["contract"] == contract].copy()
+    #     if df_contract.empty:
+    #         return None
+
+    #     df_contract["n_trading_day"] = 0
+    #     df_contract["contract_month"] = month
+    #     df_contract["year"] = 2000 + year
+    #     return df_contract.tail(1)
+    
     def process_contract(month, year):
         contract = f"{month}{year}"
         if contract in forwards:
             return None
-        
+
         sheet = f"{symbol}_{month}"
         if sheet not in dfs:
             return None
-        
+
         df = dfs[sheet]
         df["Date"] = pd.to_datetime(df["Date"])
         df_contract = df[df["contract"] == contract].copy()
+        if df_contract.empty:
+            return None
+
+        # Step: Apply cutoff date filter
+        month_num = datetime.strptime(month, "%b").month  # e.g., 'Jul' -> 7
+        cutoff_date = datetime(2000 + year, month_num, 1) - timedelta(days=1)
+        df_contract = df_contract[df_contract["Date"] <= cutoff_date]
         if df_contract.empty:
             return None
 
@@ -116,6 +143,7 @@ def get_terminal_OI(symbol, months, years, forwards):
         df_contract["contract_month"] = month
         df_contract["year"] = 2000 + year
         return df_contract.tail(1)
+
 
     with ThreadPoolExecutor() as executor:
         futures = [
