@@ -66,9 +66,7 @@ def render():
 
     with col_right:
         try:
-
-            
-            (
+            generate_sd_entry_sd_exit_signals_with_rolling(
                 df, 
                 diff, 
                 selected_contract,
