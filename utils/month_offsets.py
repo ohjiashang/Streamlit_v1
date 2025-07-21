@@ -11,7 +11,8 @@ month_dct = {
     "Sep": 9, "Oct": 10, "Nov": 11, "Dec": 12
 }
 
-def get_start_end_dates(contract, num_lookback_months=5):
+# def get_start_end_dates(contract, num_lookback_months=5):
+def get_start_end_dates(contract, num_lookback_months=3):
     # Step 1: Compute dynamic start and end dates
     year = 2000 + int(contract[-2:])
     month = month_dct[contract[:3]]
@@ -43,7 +44,6 @@ def get_start_end_dates(contract, num_lookback_months=5):
     # Step 6: Extract adjusted dates
     adj_start_date = static_df.loc[start_idx, 'Date']
     adj_end_date = static_df.loc[end_idx, 'Date']
-
     return adj_start_date.strftime('%Y-%m-%d'), adj_end_date.strftime('%Y-%m-%d')
 
 @st.cache_data
@@ -152,15 +152,15 @@ def get_price_series(diff_scenario, months_scenario, months_m1_lst, years):
     last_norm = 0
 
     # Step 1: Ordered task list
-    # task_list = [(year, month_m1) 
-    #             for year in reversed(years) 
-    #             for month_m1 in reversed(months_m1_lst)
-    #             if not (year == 25 and month_m1 == 'Dec')]
-    
     task_list = [(year, month_m1) 
-            for year in reversed(years) 
-            for month_m1 in reversed(months_m1_lst)
-            ]
+                for year in reversed(years) 
+                for month_m1 in reversed(months_m1_lst)
+                if not (year == 25 and month_m1 in ['Nov', 'Dec'])]
+
+    # task_list = [(year, month_m1) 
+    #         for year in reversed(years) 
+    #         for month_m1 in reversed(months_m1_lst)
+    #         ]
 
     def fetch_contract(year, month_m1):
         df_contract = process_contract(year, month_m1)

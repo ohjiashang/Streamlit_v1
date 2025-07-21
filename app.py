@@ -12,10 +12,10 @@ st.title("Mean Reversion")
 tab1, tab2, tab3, tab4 = st.tabs(["Top Diffs (Boxes)", "Top Diffs (Outrights)", "Backtest by Diff", "Documentation"])
 
 with tab1:
-    MR_top_diffs_tab.get_table(DIFFS_TO_TRACK_MAP, "scenarios_Boxes_50")
+    MR_top_diffs_tab.get_table(DIFFS_TO_TRACK_MAP, "scenarios_Boxes_50_new")
 
 with tab2:
-    MR_top_diffs_tab.get_table(DIFFS_TO_TRACK_MAP_OR, "scenarios_Outrights")
+    MR_top_diffs_tab.get_table(DIFFS_TO_TRACK_MAP_OR, "scenarios_Outrights_50_new")
 
 with tab3:
     MR_live_tab.render()

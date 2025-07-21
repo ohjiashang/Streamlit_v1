@@ -52,7 +52,8 @@ def render():
             )
 
         # --- Load and Plot Data ---
-        months_m1_lst = ["Mar", "Jun", "Sep", "Dec"]
+        # months_m1_lst = ["Mar", "Jun", "Sep", "Dec"]
+        months_m1_lst=["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
         years = [16, 17, 18, 19, 20, 21, 22, 23, 24, 25]
 
         df = get_price_series(diff_scenario, months_scenario, months_m1_lst, years)
@@ -66,7 +67,8 @@ def render():
     with col_right:
         try:
 
-            generate_sd_entry_sd_exit_signals_with_rolling(
+            
+            (
                 df, 
                 diff, 
                 selected_contract,

@@ -48,6 +48,7 @@ def generate_sd_entry_sd_exit_signals_with_rolling(df, diff, selected_contract, 
     last_entry_date = None
 
     rolled_once = False
+    skip_next_entry = False
 
     trade_prices = []
     trade_contracts = []
@@ -67,6 +68,7 @@ def generate_sd_entry_sd_exit_signals_with_rolling(df, diff, selected_contract, 
             exit_contract = exit_contract[:5]
 
         current_date = row['Date']
+        exit_due_to_time = last_entry_date is not None and (current_date - last_entry_date).days >= 90
         
         is_last_day_of_contract = (
             i == len(df) - 1 or df.at[i + 1, 'exit_contract_month'] != exit_contract_month
@@ -89,6 +91,10 @@ def generate_sd_entry_sd_exit_signals_with_rolling(df, diff, selected_contract, 
 
         # ENTRY
         if not in_trade:
+            if skip_next_entry:
+                skip_next_entry = False
+                continue
+
             # LONG
             if (is_long_trade == 1 or is_long_trade == 2) and entry_price <= lower_bound:
                 df.at[i, entry_signal_col] = 1
@@ -117,7 +123,10 @@ def generate_sd_entry_sd_exit_signals_with_rolling(df, diff, selected_contract, 
                 trade_high = max(trade_high, exit_price)
 
             # LONG
-            if is_long_trade and ((exit_price >= mid) or is_last_day_of_data):
+            if is_long_trade and ((exit_price >= mid) or is_last_day_of_data or exit_due_to_time):
+                if exit_due_to_time:
+                    skip_next_entry = True
+
                 df.at[i, exit_signal_col] = 1
                 trade_returns += exit_price - last_entry_price
                 trade_max_loss += trade_low - last_entry_price
@@ -144,9 +153,13 @@ def generate_sd_entry_sd_exit_signals_with_rolling(df, diff, selected_contract, 
                 trade_low = float('inf')
                 trade_high = float('-inf')
                 rolled_once = False
+                
 
             # SHORT
-            elif (not is_long_trade) and ((exit_price <= mid) or is_last_day_of_data):
+            elif (not is_long_trade) and ((exit_price <= mid) or is_last_day_of_data or exit_due_to_time):
+                if exit_due_to_time:
+                    skip_next_entry = True
+
                 df.at[i, exit_signal_col] = -1
                 trade_returns += last_entry_price - exit_price
                 trade_max_loss += last_entry_price - trade_high
@@ -175,9 +188,9 @@ def generate_sd_entry_sd_exit_signals_with_rolling(df, diff, selected_contract, 
                 rolled_once = False
 
             if is_last_day_of_contract and in_trade:
-                if not rolled_once:
-                    # Roll once: transfer trade to next contract
-                    rolled_once = True
+                # if not rolled_once:
+                #     # Roll once: transfer trade to next contract
+                #     rolled_once = True
                     trade_prices.append((round(last_entry, 2), round(exit, 2)))
                     trade_contracts.append(exit_contract)
                     trade_returns += (exit_price - last_entry_price) if is_long_trade else (last_entry_price - exit_price)
@@ -191,34 +204,34 @@ def generate_sd_entry_sd_exit_signals_with_rolling(df, diff, selected_contract, 
                     else:
                         trade_high = entry_price
             
-                else:
-                    # If already rolled once, force exit
-                    df.at[i, exit_signal_col] = 1 if is_long_trade else -1
-                    trade_returns += (exit_price - last_entry_price) if is_long_trade else (last_entry_price - exit_price)
-                    trade_max_loss += (trade_low - last_entry_price) if is_long_trade else (last_entry_price - trade_high)
-                    df.at[i, return_col] = trade_returns
-                    df.at[i, max_loss_col] = trade_max_loss
-                    trade_prices.append((round(last_entry, 2), round(exit, 2)))
-                    trade_contracts.append(exit_contract)
-                    df.at[i, entry_price_col] = trade_prices
-                    df.at[i, contracts_col] = trade_contracts
-                    df.at[i, entry_date_col] = last_entry_date
-                    df.at[i, exit_date_col] = current_date
-                    df.at[i, is_long_trade_col] = is_long_trade
+                # else:
+                #     # If already rolled once, force exit
+                #     df.at[i, exit_signal_col] = 1 if is_long_trade else -1
+                #     trade_returns += (exit_price - last_entry_price) if is_long_trade else (last_entry_price - exit_price)
+                #     trade_max_loss += (trade_low - last_entry_price) if is_long_trade else (last_entry_price - trade_high)
+                #     df.at[i, return_col] = trade_returns
+                #     df.at[i, max_loss_col] = trade_max_loss
+                #     trade_prices.append((round(last_entry, 2), round(exit, 2)))
+                #     trade_contracts.append(exit_contract)
+                #     df.at[i, entry_price_col] = trade_prices
+                #     df.at[i, contracts_col] = trade_contracts
+                #     df.at[i, entry_date_col] = last_entry_date
+                #     df.at[i, exit_date_col] = current_date
+                #     df.at[i, is_long_trade_col] = is_long_trade
             
-                    # Reset trade variables
-                    in_trade = False
-                    last_entry_price = None
-                    last_entry = None
-                    is_long_trade = None
-                    trade_returns = 0.0
-                    trade_max_loss = 0.0
-                    last_entry_date = None
-                    trade_prices = []
-                    trade_contracts = []
-                    trade_low = float('inf')
-                    trade_high = float('-inf')
-                    rolled_once = False
+                #     # Reset trade variables
+                #     in_trade = False
+                #     last_entry_price = None
+                #     last_entry = None
+                #     is_long_trade = None
+                #     trade_returns = 0.0
+                #     trade_max_loss = 0.0
+                #     last_entry_date = None
+                #     trade_prices = []
+                #     trade_contracts = []
+                #     trade_low = float('inf')
+                #     trade_high = float('-inf')
+                #     rolled_once = False
 
     trade_columns = [
         f'entry_date_{scenario}',
