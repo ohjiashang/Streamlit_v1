@@ -61,7 +61,54 @@ def get_m1_to_m4_contracts(contract_m1):
         contracts.append(f"{new_month_name}{new_year}")
     return contracts
 
-def calculate_outright(diff, contract_m1, month_scenario):
+# def calculate_outright(diff, contract_m1, month_scenario):
+#     contracts_m1_to_m4 = get_m1_to_m4_contracts(contract_m1)
+#     start_date, end_date = get_start_end_dates(contract_m1)
+#     contract = contracts_m1_to_m4[month_scenario - 1]
+#     target_month = contract[:3]
+
+#     tokens = re.split(r'(\+|-)', diff)
+#     operators = [t for t in tokens if t in ['+', '-']]
+#     products = [t.strip() for t in tokens if t not in ['+', '-']]
+
+#     # Collect all product data in one DataFrame
+#     all_dfs = []
+#     for i, product in enumerate(products):
+#         folder = "Symbols"
+#         filename = f"{product}_18m.xlsx"
+#         encoded_filename = urllib.parse.quote(filename)
+#         url = f"https://firebasestorage.googleapis.com/v0/b/hotei-streamlit.firebasestorage.app/o/{folder}%2F{encoded_filename}?alt=media"
+#         df = read_excel_cached(url, f"{product}_{target_month}")
+#         df = df[df['contract'] == contract][['Date', 'price']].rename(columns={'price': f'price_{i+1}'})
+#         all_dfs.append(df)
+
+#     # Merge all DataFrames on Date
+#     if not all_dfs:
+#         return pd.DataFrame(columns=["Date", "price", "diff", "contract"])
+    
+#     final_df = all_dfs[0]
+#     for df in all_dfs[1:]:
+#         final_df = final_df.merge(df, on='Date', how='inner')
+
+#     final_df = final_df[(final_df['Date'] >= start_date) & (final_df['Date'] <= end_date)]
+#     if final_df.empty:
+#         return pd.DataFrame(columns=["Date", "price", "diff", "contract"])
+
+#     # Apply diff formula
+#     final_price = final_df['price_1']
+#     for i, op in enumerate(operators):
+#         if op == '+':
+#             final_price += final_df[f'price_{i+2}']
+#         else:
+#             final_price -= final_df[f'price_{i+2}']
+
+#     final_df['price'] = final_price
+#     final_df['diff'] = diff
+#     final_df['contract'] = contract
+#     return final_df[['Date', 'price', 'diff', 'contract']]
+
+
+def calculate_outright(diff, contract_m1, month_scenario, df_cache=None):
     contracts_m1_to_m4 = get_m1_to_m4_contracts(contract_m1)
     start_date, end_date = get_start_end_dates(contract_m1)
     contract = contracts_m1_to_m4[month_scenario - 1]
@@ -71,18 +118,23 @@ def calculate_outright(diff, contract_m1, month_scenario):
     operators = [t for t in tokens if t in ['+', '-']]
     products = [t.strip() for t in tokens if t not in ['+', '-']]
 
-    # Collect all product data in one DataFrame
     all_dfs = []
     for i, product in enumerate(products):
-        folder = "Symbols"
-        filename = f"{product}_18m.xlsx"
-        encoded_filename = urllib.parse.quote(filename)
-        url = f"https://firebasestorage.googleapis.com/v0/b/hotei-streamlit.firebasestorage.app/o/{folder}%2F{encoded_filename}?alt=media"
-        df = read_excel_cached(url, f"{product}_{target_month}")
+        key = (product, target_month)
+        if df_cache and key in df_cache:
+            df = df_cache[key]
+        else:
+            folder = "Symbols"
+            filename = f"{product}_18m.xlsx"
+            encoded_filename = urllib.parse.quote(filename)
+            url = f"https://firebasestorage.googleapis.com/v0/b/hotei-streamlit.firebasestorage.app/o/{folder}%2F{encoded_filename}?alt=media"
+            df = read_excel_cached(url, f"{product}_{target_month}")
+            if df_cache is not None:
+                df_cache[key] = df
+
         df = df[df['contract'] == contract][['Date', 'price']].rename(columns={'price': f'price_{i+1}'})
         all_dfs.append(df)
 
-    # Merge all DataFrames on Date
     if not all_dfs:
         return pd.DataFrame(columns=["Date", "price", "diff", "contract"])
     
@@ -94,7 +146,6 @@ def calculate_outright(diff, contract_m1, month_scenario):
     if final_df.empty:
         return pd.DataFrame(columns=["Date", "price", "diff", "contract"])
 
-    # Apply diff formula
     final_price = final_df['price_1']
     for i, op in enumerate(operators):
         if op == '+':
@@ -107,27 +158,47 @@ def calculate_outright(diff, contract_m1, month_scenario):
     final_df['contract'] = contract
     return final_df[['Date', 'price', 'diff', 'contract']]
 
-def calculate_diff(diff_scenario_tup, contract_m1, month_scenario_tup):
-    diff_1, diff_2 = diff_scenario_tup[0], diff_scenario_tup[1]
-    month_scenario_1, month_scenario_2 = month_scenario_tup[0], month_scenario_tup[1]
 
-    # First leg
-    df_1 = calculate_outright(diff_1, contract_m1, month_scenario_1)
-    df_1 = df_1.rename(columns={
-        "Date": "Date",
-        "price": "price_1",
-        "diff": "diff_1",
-        "contract": "contract_1"
-    })
+# def calculate_diff(diff_scenario_tup, contract_m1, month_scenario_tup):
+#     diff_1, diff_2 = diff_scenario_tup[0], diff_scenario_tup[1]
+#     month_scenario_1, month_scenario_2 = month_scenario_tup[0], month_scenario_tup[1]
 
-    # Second leg
-    df_2 = calculate_outright(diff_2, contract_m1, month_scenario_2)
-    df_2 = df_2.rename(columns={
-        "Date": "Date",
-        "price": "price_2",
-        "diff": "diff_2",
-        "contract": "contract_2"
-    })
+#     # First leg
+#     df_1 = calculate_outright(diff_1, contract_m1, month_scenario_1)
+#     df_1 = df_1.rename(columns={
+#         "Date": "Date",
+#         "price": "price_1",
+#         "diff": "diff_1",
+#         "contract": "contract_1"
+#     })
+
+#     # Second leg
+#     df_2 = calculate_outright(diff_2, contract_m1, month_scenario_2)
+#     df_2 = df_2.rename(columns={
+#         "Date": "Date",
+#         "price": "price_2",
+#         "diff": "diff_2",
+#         "contract": "contract_2"
+#     })
+
+#     df_3 = df_1.merge(df_2, how='inner', on=['Date'])
+#     df_3['m1_contract'] = contract_m1
+#     df_3['m1'] = contract_m1[:3]
+#     df_3['diffs_scenario'] = [diff_scenario_tup] * len(df_3)
+#     df_3['mths_scenario'] = [month_scenario_tup] * len(df_3)
+#     df_3['price'] = df_3['price_1'] - df_3['price_2']
+    
+#     return df_3
+
+def calculate_diff(diff_scenario_tup, contract_m1, month_scenario_tup, df_cache=None):
+    diff_1, diff_2 = diff_scenario_tup
+    month_scenario_1, month_scenario_2 = month_scenario_tup
+
+    df_1 = calculate_outright(diff_1, contract_m1, month_scenario_1, df_cache=df_cache)
+    df_1 = df_1.rename(columns={"Date": "Date", "price": "price_1", "diff": "diff_1", "contract": "contract_1"})
+
+    df_2 = calculate_outright(diff_2, contract_m1, month_scenario_2, df_cache=df_cache)
+    df_2 = df_2.rename(columns={"Date": "Date", "price": "price_2", "diff": "diff_2", "contract": "contract_2"})
 
     df_3 = df_1.merge(df_2, how='inner', on=['Date'])
     df_3['m1_contract'] = contract_m1
@@ -135,17 +206,18 @@ def calculate_diff(diff_scenario_tup, contract_m1, month_scenario_tup):
     df_3['diffs_scenario'] = [diff_scenario_tup] * len(df_3)
     df_3['mths_scenario'] = [month_scenario_tup] * len(df_3)
     df_3['price'] = df_3['price_1'] - df_3['price_2']
-    
     return df_3
 
-# @st.cache_data
 def get_price_series(diff_scenario, months_scenario, months_m1_lst, years):
-    month1, month2 = months_scenario[0], months_scenario[1]
-    sheet_name = f"m{month1-1}m{month2-1}"
+    df_cache = {}  # <-- shared cache
 
+    # def process_contract(year, month_m1):
+    #     contract_m1 = month_m1 + str(year)
+    #     return calculate_diff(diff_scenario, contract_m1, months_scenario)
+    
     def process_contract(year, month_m1):
         contract_m1 = month_m1 + str(year)
-        return calculate_diff(diff_scenario, contract_m1, months_scenario)
+        return calculate_diff(diff_scenario, contract_m1, months_scenario, df_cache=df_cache)
 
     dfs = []
     last_price = None
@@ -156,11 +228,6 @@ def get_price_series(diff_scenario, months_scenario, months_m1_lst, years):
                 for year in reversed(years) 
                 for month_m1 in reversed(months_m1_lst)
                 if not (year == 25 and month_m1 in ['Nov', 'Dec'])]
-
-    # task_list = [(year, month_m1) 
-    #         for year in reversed(years) 
-    #         for month_m1 in reversed(months_m1_lst)
-    #         ]
 
     def fetch_contract(year, month_m1):
         df_contract = process_contract(year, month_m1)
