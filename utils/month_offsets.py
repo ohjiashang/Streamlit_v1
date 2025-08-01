@@ -145,7 +145,7 @@ def get_price_series(diff_scenario, months_scenario, months_m1_lst, years):
     task_list = [(year, month_m1) 
                 for year in reversed(years) 
                 for month_m1 in reversed(months_m1_lst)
-                if not (year == 25 and month_m1 in ['Nov', 'Dec'])]
+                if not (year == 25 and month_m1 in ['Dec'])]
 
     def fetch_contract(year, month_m1):
         df_contract = process_contract(year, month_m1)
