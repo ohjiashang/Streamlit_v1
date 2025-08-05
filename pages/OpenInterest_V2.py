@@ -2,7 +2,7 @@ import streamlit as st
 import warnings
 warnings.filterwarnings("ignore")
 
-from utils.oi_constants import OI_V2_SYMBOLS, OI_V2_FORWARDS, OI_V2_MONTHS, OI_V2_YEARS, OI_V2_SPREAD_SYMBOLS
+from utils.oi_constants import OI_V2_SYMBOLS, OI_V2_FORWARDS, OI_V2_MONTHS, OI_V2_YEARS, OI_V2_FORWARDS_MOD
 from utils.oi_daily import (
     get_combined_n_day_OI,
     get_all_OI,
@@ -30,7 +30,7 @@ if selected_symbols:
     pivot_n_day = get_pivot_table(df_n_day)
     styled_n_day = style_forward_cells(pivot_n_day)
 
-    df_terminal = get_all_OI(selected_symbols, OI_V2_MONTHS, OI_V2_YEARS, OI_V2_FORWARDS)
+    df_terminal = get_all_OI(selected_symbols, OI_V2_MONTHS, OI_V2_YEARS, OI_V2_FORWARDS_MOD)
     pivot_terminal = get_pivot_table(df_terminal)
     styled_terminal = style_forward_cells(pivot_terminal)
     latest_date = df_terminal["Date"].max()
