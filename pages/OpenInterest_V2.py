@@ -74,12 +74,6 @@ for symbol, desc in symbol_desc_list:
     if checked:
         selected_symbols.append(symbol)
 
-# # st.sidebar.markdown("### Select Product Code(s):")
-# for i, (symbol, desc) in enumerate(symbol_desc_list):
-#     default = (i == 0)  # First one pre-checked
-#     if st.sidebar.checkbox(desc, value=default, key=f"chk_{symbol}"):
-#         selected_symbols.append(symbol)
-
 # ── Main content ────────────────────────────────────────────────────────────────
 if selected_symbols:
     try:

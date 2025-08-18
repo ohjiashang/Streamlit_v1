@@ -264,6 +264,7 @@ def get_aggregated_forward_today_OI(symbols, months, years, forwards):
 def get_all_OI(symbols, months, years, forwards):
     """
     Combines terminal and forward OI into a single DataFrame.
+    Keeps None/NaN values, but ensures numbers are stored as integers.
     """
     df_terminal = get_aggregated_terminal_OI(symbols, months, years, forwards)
     df_forward = get_aggregated_forward_today_OI(symbols, months, years, forwards)
@@ -272,6 +273,12 @@ def get_all_OI(symbols, months, years, forwards):
         return pd.DataFrame()
 
     combined_df = pd.concat([df_terminal, df_forward], ignore_index=True)
+
+    # Convert numeric columns to nullable Int64 (keeps None/NaN)
+    for col in combined_df.columns:
+        if pd.api.types.is_numeric_dtype(combined_df[col]):
+            combined_df[col] = combined_df[col].astype("Int64")
+
     return combined_df
 
 def get_n_day_OI(symbol, months, years, forwards, suffix="OI"):
