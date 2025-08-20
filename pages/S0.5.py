@@ -1,21 +1,84 @@
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
-import pandas as pd
 import streamlit as st
+import pandas as pd
 import urllib.parse
 
 
-# def get_start_end_dates(contract, num_lookback_months=5):
-def read_df(folder, filename):
+def read_df_from_firebase(folder, filename, sheet_name="Sheet1"):
+    """
+    Helper: Read Excel sheet from Firebase storage.
+    """
     filename = f"{filename}.xlsx"
     encoded_filename = urllib.parse.quote(filename)
-    url = f"https://firebasestorage.googleapis.com/v0/b/hotei-streamlit.firebasestorage.app/o/{folder}%2F{encoded_filename}?alt=media"
-    static_df = pd.read_excel(url)
-    static_df['Date'] = pd.to_datetime(static_df['Date'])
-    return static_df
+    url = (
+        f"https://firebasestorage.googleapis.com/v0/b/hotei-streamlit.firebasestorage.app/o/"
+        f"{folder}%2F{encoded_filename}?alt=media"
+    )
+    df = pd.read_excel(url, sheet_name=sheet_name, engine="openpyxl")
+    if "Date" in df.columns:
+        df["Date"] = pd.to_datetime(df["Date"])
+    return df
+
+
+def process_excel(
+    folder,
+    filename,
+    sheet_main="Sheet1",
+    sheet_new="Sheet3",
+    target_col="0.5 Cash/M1",
+    compare_col="0.5 M1/M2",
+    spread_col="Ex-Wharf-Cargo",
+    rolling_days=[87],
+    date_col="Date",
+    shift_months=1
+):
+    def map_shifted_monthly_avg(df, target_col, date_col, shift_months):
+        new_df = df.copy()
+        new_df[date_col] = pd.to_datetime(new_df[date_col])
+        new_df["Year"] = new_df[date_col].dt.year
+        new_df["Month"] = new_df[date_col].dt.month
+
+        # Step 1: Calculate monthly average
+        monthly_avg = (
+            new_df.groupby(["Year", "Month"])[target_col]
+            .mean()
+            .reset_index()
+            .rename(columns={target_col: f"{compare_col}_exit"})
+        )
+
+        # Step 2: Shift monthly averages
+        monthly_avg[f"{compare_col}_exit"] = monthly_avg[f"{compare_col}_exit"].shift(-shift_months)
+
+        # Step 3: Merge back to daily dataframe
+        new_df = new_df.merge(monthly_avg, on=["Year", "Month"], how="left")
+        return new_df
+
+    def add_rolling_stats(df, col, days_lst):
+        for days in days_lst:
+            df[f"{col}_mean_{days}d"] = df[col].rolling(window=days, min_periods=days).mean()
+            df[f"{col}_std_{days}d"] = df[col].rolling(window=days, min_periods=days).std()
+            df[f"{col}_2sd_{days}d"] = df[f"{col}_mean_{days}d"] + 2 * df[f"{col}_std_{days}d"]
+        return df
+
+    # --- Step 1: Load data from Firebase ---
+    df = read_df_from_firebase(folder, filename, sheet_main).dropna(how="any")
+    df_new = read_df_from_firebase(folder, filename, sheet_new).dropna(subset=[target_col, compare_col])
+
+    # --- Step 2: Monthly avg + shift ---
+    df_new = map_shifted_monthly_avg(df_new, target_col=target_col, date_col=date_col, shift_months=shift_months)
+
+    # --- Step 3: Merge ---
+    df_main = df.merge(df_new, on=date_col, how="inner")
+
+    # --- Step 4: Rolling stats ---
+    df_final = add_rolling_stats(df_main, spread_col, rolling_days)
+
+    return df_final
+
 
 @st.cache_data
-def plot_dual_axis_streamlit(df, selected_rolling_window=87, selected_sd=2):
+def plot_dual_axis_streamlit(df, seleced_rolling_window=87, selected_sd=2):
     # filter last 6 months
     df = df.sort_values("Date")
     last_date = df["Date"].max()
@@ -103,13 +166,19 @@ def plot_dual_axis_streamlit(df, selected_rolling_window=87, selected_sd=2):
     st.plotly_chart(fig, use_container_width=True)
 
 
-
+###############################################################################################
 st.set_page_config(layout="wide")
 st.title("S0.5 Ex-Wharf - Cargo")
 
-df = read_df("Test", "S0.5_87d_data")
-latest_date = df["Date"].max()
 
+df = process_excel(
+    folder="Test",
+    filename="0.5PhyDiffHistoricals_js",
+    sheet_main="Sheet1",
+    sheet_new="Sheet3"
+)
+
+latest_date = df["Date"].max()
 st.markdown(f"*Date: {latest_date.strftime('%Y-%m-%d')}*")
 
 # Create 2 columns
