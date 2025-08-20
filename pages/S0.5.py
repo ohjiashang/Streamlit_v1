@@ -74,7 +74,9 @@ def process_excel(
     # --- Step 4: Rolling stats ---
     df_final = add_rolling_stats(df_main, spread_col, rolling_days)
 
-    return df_final
+    df_final_1 = add_rolling_stats(df_main, "Delivered-Cargo", [22])
+
+    return df_final_1
 
 
 def plot_dual_axis_streamlit(df, selected_sd=2):
@@ -164,10 +166,158 @@ def plot_dual_axis_streamlit(df, selected_sd=2):
     st.plotly_chart(fig, use_container_width=True)
 
 
+def plot_three_axis_streamlit(df, selected_sd=2):
+    # --- Ensure Date is datetime ---
+    df['Date'] = pd.to_datetime(df['Date'])
+
+    # --- Slider Defaults ---
+    latest_date = df['Date'].max()
+    cutoff_date = latest_date - pd.DateOffset(months=6)
+    min_date = df['Date'].min().date()
+    max_date = df['Date'].max().date()
+    default_start = cutoff_date.date()
+    default_end = max_date
+
+    if "date_range_s05" not in st.session_state:
+        st.session_state.date_range_s05 = (default_start, default_end)
+
+    if st.button("Reset Date Range"):
+        st.session_state.date_range_s05 = (default_start, default_end)
+
+    date_range = st.slider(
+        "Select Date Range:",
+        min_value=min_date,
+        max_value=max_date,
+        format="YYYY-MM-DD",
+        key="date_range_s05"
+    )
+
+    # --- Filter ---
+    start_date = pd.to_datetime(date_range[0])
+    end_date = pd.to_datetime(date_range[1])
+    df = df[(df['Date'] > start_date) & (df['Date'] <= end_date)]
+    df = df.sort_values("Date")
+
+    if df.empty:
+        st.warning("No data in selected range.")
+        return
+
+    # --- Last row values ---
+    last_row = df.iloc[-1]
+
+    # --- Create subplot layout 2:2:1 ---
+    fig = make_subplots(
+        rows=3, cols=1, shared_xaxes=True,
+        row_heights=[0.4, 0.4, 0.2],
+        vertical_spacing=0.07
+    )
+
+    # ========== PLOT 1: Ex-Wharf-Cargo ==========
+    fig.add_trace(go.Scatter(
+        x=df["Date"], y=df["Ex-Wharf-Cargo"], mode="lines",
+        line=dict(color="black"), name="Ex-Wharf-Cargo",
+        legendgroup="exwharf", showlegend=True
+    ), row=1, col=1)
+
+    fig.add_trace(go.Scatter(
+        x=df["Date"], y=df["Ex-Wharf-Cargo_mean_87d"], mode="lines",
+        line=dict(color="grey", dash="dot", width=1), name="4m Avg",
+        legendgroup="exwharf", showlegend=True
+    ), row=1, col=1)
+
+    fig.add_trace(go.Scatter(
+        x=df["Date"], y=df["Ex-Wharf-Cargo_2sd_87d"], mode="lines",
+        line=dict(color="#065DDF", dash="dot", width=1), name=f"+{selected_sd}σ",
+        legendgroup="exwharf", showlegend=True
+    ), row=1, col=1)
+
+    # --- Annotations Ex-Wharf ---
+    fig.add_annotation(x=last_row["Date"], y=last_row["Ex-Wharf-Cargo_mean_87d"],
+                       text=f'4m Avg ({last_row["Ex-Wharf-Cargo_mean_87d"]:.2f})',
+                       showarrow=False, xshift=55, font=dict(size=13, color="grey"),
+                       xref="x1", yref="y1")
+
+    fig.add_annotation(x=last_row["Date"], y=last_row["Ex-Wharf-Cargo_2sd_87d"],
+                       text=f'+{selected_sd}σ ({last_row["Ex-Wharf-Cargo_2sd_87d"]:.2f})',
+                       showarrow=False, xshift=55, font=dict(size=13, color="#065DDF"),
+                       xref="x1", yref="y1")
+
+    fig.add_annotation(x=last_row["Date"], y=last_row["Ex-Wharf-Cargo"],
+                       text=f'{last_row["Ex-Wharf-Cargo"]:.2f}',
+                       showarrow=False, xshift=18, font=dict(size=13, color="black"),
+                       xref="x1", yref="y1")
+
+    # ========== PLOT 2: Delivered-Cargo ==========
+    fig.add_trace(go.Scatter(
+        x=df["Date"], y=df["Delivered-Cargo"], mode="lines",
+        line=dict(color="darkred"), name="Delivered-Cargo",
+        legendgroup="delivered", showlegend=True
+    ), row=2, col=1)
+
+    fig.add_trace(go.Scatter(
+        x=df["Date"], y=df["Delivered-Cargo_mean_22d"], mode="lines",
+        line=dict(color="grey", dash="dot", width=1), name="1m Avg",
+        legendgroup="delivered", showlegend=True
+    ), row=2, col=1)
+
+    fig.add_trace(go.Scatter(
+        x=df["Date"], y=df["Delivered-Cargo_2sd_22d"], mode="lines",
+        line=dict(color="#FF5733", dash="dot", width=1), name=f"+{selected_sd}σ",
+        legendgroup="delivered", showlegend=True
+    ), row=2, col=1)
+
+    # --- Annotations Delivered ---
+    fig.add_annotation(x=last_row["Date"], y=last_row["Delivered-Cargo_mean_22d"],
+                       text=f'1m Avg ({last_row["Delivered-Cargo_mean_22d"]:.2f})',
+                       showarrow=False, xshift=55, font=dict(size=13, color="grey"),
+                       xref="x2", yref="y2")
+
+    fig.add_annotation(x=last_row["Date"], y=last_row["Delivered-Cargo_2sd_22d"],
+                       text=f'+{selected_sd}σ ({last_row["Delivered-Cargo_2sd_22d"]:.2f})',
+                       showarrow=False, xshift=55, font=dict(size=13, color="#FF5733"),
+                       xref="x2", yref="y2")
+
+    fig.add_annotation(x=last_row["Date"], y=last_row["Delivered-Cargo"],
+                       text=f'{last_row["Delivered-Cargo"]:.2f}',
+                       showarrow=False, xshift=18, font=dict(size=13, color="darkred"),
+                       xref="x2", yref="y2")
+
+    # ========== PLOT 3: 0.5 M1/M2 ==========
+    fig.add_trace(go.Scatter(
+        x=df["Date"], y=df["0.5 M1/M2"], mode="lines",
+        line=dict(color="green"), name="0.5 M1/M2",
+        legendgroup="m1m2", showlegend=True
+    ), row=3, col=1)
+
+    fig.add_annotation(x=last_row["Date"], y=last_row["0.5 M1/M2"],
+                       text=f'{last_row["0.5 M1/M2"]:.2f}',
+                       showarrow=False, xshift=15, font=dict(size=13, color="green"),
+                       xref="x3", yref="y3")
+
+    # --- Layout ---
+    fig.update_layout(
+    height=800, width=950, showlegend=True,
+    margin=dict(l=40, r=40, t=40, b=40),
+    legend=dict(
+        yanchor="top",   # or "middle" / "bottom"
+        y=1,             # top = 1, middle ~0.5, bottom = 0
+        xanchor="left",
+        x=1.02           # just outside right edge
+    ),
+    legend_tracegroupgap=50)
+
+
+    fig.update_xaxes(title_text="Date", row=3, col=1)
+    fig.update_yaxes(title_text="Ex-Wharf-Cargo", row=1, col=1)
+    fig.update_yaxes(title_text="Delivered-Cargo", row=2, col=1)
+    fig.update_yaxes(title_text="0.5 M1/M2", row=3, col=1)
+
+    st.plotly_chart(fig, use_container_width=True)
+
+
 ###############################################################################################
 st.set_page_config(layout="wide")
-st.title("S0.5 Ex-Wharf - Cargo")
-
+st.title("S0.5 Spreads")
 
 df = process_excel(
     folder="Test",
@@ -182,12 +332,13 @@ st.markdown(f"*Date: {latest_date.strftime('%Y-%m-%d')}*")
 col1, spacer, col2 = st.columns([1, 0.05, 1])
 
 with col1:
-    plot_dual_axis_streamlit(df)
+    plot_three_axis_streamlit(df)
 
 with col2:
     df_display_cols = [
         'Date', 'Cargo', 'Ex-Wharf', 'Ex-Wharf-Cargo','0.5 M1/M2', 
-        'Ex-Wharf-Cargo_mean_87d', 'Ex-Wharf-Cargo_std_87d', 'Ex-Wharf-Cargo_2sd_87d'
+        'Ex-Wharf-Cargo_mean_87d', 'Ex-Wharf-Cargo_std_87d', 'Ex-Wharf-Cargo_2sd_87d',
+        'Delivered-Cargo_mean_22d', 'Delivered-Cargo_std_22d', 'Delivered-Cargo_2sd_22d'
     ]
 
     df_display = df[df_display_cols].copy()
