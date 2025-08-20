@@ -90,26 +90,26 @@ def plot_dual_axis_streamlit(df, selected_sd=2):
     default_end = max_date
 
     # --- Initialize session state ---
-    if "date_range" not in st.session_state:
-        st.session_state["date_range"] = (default_start, default_end)
+    if "date_range_s05" not in st.session_state:
+        st.session_state["date_range_s05"] = (default_start, default_end)
 
     # --- Reset button ---
     if st.button("Reset Date Range"):
-        st.session_state["date_range"] = (default_start, default_end)
+        st.session_state["date_range_s05"] = (default_start, default_end)
 
     # --- Date range slider ---
     st.slider(
         "Select Date Range:",
         min_value=min_date,
         max_value=max_date,
-        value=st.session_state["date_range"],
+        value=st.session_state["date_range_s05"],
         format="YYYY-MM-DD",
-        key="date_range"
+        key="date_range_s05"
     )
 
     # --- Get selected range ---
-    start_date = pd.to_datetime(st.session_state["date_range"][0])
-    end_date = pd.to_datetime(st.session_state["date_range"][1])
+    start_date = pd.to_datetime(st.session_state["date_range_s05"][0])
+    end_date = pd.to_datetime(st.session_state["date_range_s05"][1])
 
     # --- Filter data by slider range ---
     df = df[(df['Date'] > start_date) & (df['Date'] <= end_date)]
