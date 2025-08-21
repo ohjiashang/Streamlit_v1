@@ -30,7 +30,8 @@ symbol_col = 'Symbol'
 symbol_desc_col = 'Symbol Description'
 price_unit_col = 'Price Unit'
 oi_unit_col = 'OI Unit'
-df = df[[product_col, symbol_col, symbol_desc_col, price_unit_col, oi_unit_col]].dropna()
+conversion_factor_col = 'conversion_factor'
+df = df[[product_col, symbol_col, symbol_desc_col, price_unit_col, oi_unit_col, conversion_factor_col]].dropna()
 
 # Build product_code_map: product -> list of (symbol, description)
 product_code_map = defaultdict(list)
@@ -79,15 +80,17 @@ for symbol, desc in symbol_desc_list:
 
 price_unit_map = dict(zip(df[symbol_col], df[price_unit_col]))
 oi_unit_map = dict(zip(df[symbol_col], df[oi_unit_col]))
+conv_factor_map = dict(zip(df[symbol_col], df[conversion_factor_col]))
+# st.write(conv_factor_map)
 
 # ── Main content ────────────────────────────────────────────────────────────────
 if selected_symbols:
     try:
-        df_n_day = get_combined_n_day_OI(selected_symbols, OI_V2_MONTHS, OI_V2_YEARS, OI_V2_FORWARDS)
+        df_n_day = get_combined_n_day_OI(selected_symbols, OI_V2_MONTHS, OI_V2_YEARS, OI_V2_FORWARDS, conv_factor_map)
         pivot_n_day = get_pivot_table(df_n_day)
         styled_n_day = style_forward_cells(pivot_n_day)
 
-        df_terminal = get_all_OI(selected_symbols, OI_V2_MONTHS, OI_V2_YEARS, OI_V2_FORWARDS_MOD)
+        df_terminal = get_all_OI(selected_symbols, OI_V2_MONTHS, OI_V2_YEARS, OI_V2_FORWARDS_MOD, conv_factor_map)
         pivot_terminal = get_pivot_table(df_terminal)
         styled_terminal = style_forward_cells(pivot_terminal)
         latest_date = df_terminal["Date"].max()
@@ -95,11 +98,14 @@ if selected_symbols:
         if len(selected_symbols) == 1:
             s = selected_symbols[0]
             suffix = "price"
-            df_prices = get_n_day_OI(s, OI_V2_MONTHS, OI_V2_YEARS, OI_V2_FORWARDS, suffix)
+            df_prices = get_n_day_OI(s, OI_V2_MONTHS, OI_V2_YEARS, OI_V2_FORWARDS, conv_factor_map, suffix)
             pivot_prices = get_pivot_table(df_prices, suffix)
             styled_prices = style_forward_cells(pivot_prices)
             price_unit_label = price_unit_map.get(s, "")
             oi_unit_label = oi_unit_map.get(s, "")
+
+        else:
+            oi_unit_label = "BBL"
 
         ##############################################################################
         st.markdown(f"*OI Date: {latest_date.strftime('%Y-%m-%d')}*")
@@ -122,8 +128,8 @@ if selected_symbols:
             get_OI_volume_table(selected_symbols[0])
 
     except Exception as e:
-        # st.warning(f"An error occurred while loading data: {e}")
-        st.warning(f"No data available")
+        st.warning(f"Error: {e}")
+        # st.warning(f"No data available")
 
 else:
     st.warning("Please select at least one product to display data")

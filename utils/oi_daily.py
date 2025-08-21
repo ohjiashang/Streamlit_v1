@@ -142,7 +142,6 @@ def get_terminal_OI(symbol, months, years, forwards):
 
 def get_forward_today_OI(symbol, months, years, forwards, suffix="OI"):
     dfs = read_dfs(symbol, suffix)
-
     def process_forward(month, year):
         contract = f"{month}{year}"
         if contract not in forwards:
@@ -182,7 +181,7 @@ def get_forward_today_OI(symbol, months, years, forwards, suffix="OI"):
     return df
 
 
-def get_aggregated_terminal_OI(symbols, months, years, forwards):
+def get_aggregated_terminal_OI(symbols, months, years, forwards, conv_factor_map):
     """
     Aggregates terminal OI for multiple symbols.
     - OI is summed
@@ -191,9 +190,17 @@ def get_aggregated_terminal_OI(symbols, months, years, forwards):
     """
     all_dfs = []
 
-    for symbol in symbols:
+    if len(symbols) == 1:
+        symbol = symbols[0]
         df = get_terminal_OI(symbol, months, years, forwards)
         all_dfs.append(df)
+
+    else:
+        for symbol in symbols:
+            cf = conv_factor_map[symbol]
+            df = get_terminal_OI(symbol, months, years, forwards)
+            df['OI'] = (df['OI'].astype(float) * cf).round().astype('Int64')
+            all_dfs.append(df)
 
     # Base merge keys
     base_df = all_dfs[0][["contract", "Date", "contract_month", "year"]].copy()
@@ -222,7 +229,7 @@ def get_aggregated_terminal_OI(symbols, months, years, forwards):
 
     return base_df
 
-def get_aggregated_forward_today_OI(symbols, months, years, forwards):
+def get_aggregated_forward_today_OI(symbols, months, years, forwards, conv_factor_map):
     """
     Aggregates forward OI for multiple symbols.
     - OI is summed
@@ -231,9 +238,17 @@ def get_aggregated_forward_today_OI(symbols, months, years, forwards):
     """
     all_dfs = []
 
-    for symbol in symbols:
+    if len(symbols) == 1:
+        symbol = symbols[0]
         df = get_forward_today_OI(symbol, months, years, forwards)
         all_dfs.append(df)
+
+    else:
+        for symbol in symbols:
+            cf = conv_factor_map[symbol]
+            df = get_forward_today_OI(symbol, months, years, forwards)
+            df['OI'] = (df['OI'].astype(float) * cf).round().astype('Int64')
+            all_dfs.append(df)
 
     # Start with base keys
     base_df = all_dfs[0][["contract", "Date", "contract_month", "year"]].copy()
@@ -261,13 +276,13 @@ def get_aggregated_forward_today_OI(symbols, months, years, forwards):
 
     return base_df
 
-def get_all_OI(symbols, months, years, forwards):
+def get_all_OI(symbols, months, years, forwards, conv_factor_map):
     """
     Combines terminal and forward OI into a single DataFrame.
     Keeps None/NaN values, but ensures numbers are stored as integers.
     """
-    df_terminal = get_aggregated_terminal_OI(symbols, months, years, forwards)
-    df_forward = get_aggregated_forward_today_OI(symbols, months, years, forwards)
+    df_terminal = get_aggregated_terminal_OI(symbols, months, years, forwards, conv_factor_map)
+    df_forward = get_aggregated_forward_today_OI(symbols, months, years, forwards, conv_factor_map)
 
     if df_terminal.empty and df_forward.empty:
         return pd.DataFrame()
@@ -281,7 +296,7 @@ def get_all_OI(symbols, months, years, forwards):
 
     return combined_df
 
-def get_n_day_OI(symbol, months, years, forwards, suffix="OI"):
+def get_n_day_OI(symbol, months, years, forwards, cf, suffix="OI"):
     """
     Combines terminal and forward OI into a single DataFrame.
     """
@@ -335,18 +350,30 @@ def get_n_day_OI(symbol, months, years, forwards, suffix="OI"):
 
     combined_df = pd.concat([df, df_forward], ignore_index=True)
     combined_df = combined_df.sort_values("Date", ascending=False).reset_index(drop=True)
+    if suffix == 'OI':
+        combined_df['OI'] = (combined_df['OI'].astype(float) * cf).round().astype('Int64')
+        # combined_df['OI'] = combined_df['OI'] * cf
     return combined_df
 
-def get_combined_n_day_OI(symbols, months, years, forwards):
+def get_combined_n_day_OI(symbols, months, years, forwards, conv_factor_map):
     from functools import reduce
 
     df_list = []
 
-    for symbol in symbols:
-        df = get_n_day_OI(symbol, months, years, forwards)
+    if len(symbols) == 1:
+        symbol = symbols[0]
+        df = get_n_day_OI(symbol, months, years, forwards, 1)
         df = df.drop(columns=["Date", "symbol"])
         df = df.rename(columns={"OI": f"OI_{symbol}"})  # Rename OI per symbol
         df_list.append(df)
+
+    else:
+        for symbol in symbols:
+            cf = conv_factor_map[symbol]
+            df = get_n_day_OI(symbol, months, years, forwards, cf)
+            df = df.drop(columns=["Date", "symbol"])
+            df = df.rename(columns={"OI": f"OI_{symbol}"})  # Rename OI per symbol
+            df_list.append(df)
 
     join_cols = ["contract", "n_trading_day", "contract_month", "year"]
 
