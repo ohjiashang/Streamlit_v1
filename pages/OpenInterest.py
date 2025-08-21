@@ -21,13 +21,15 @@ st.title("Open Interest")
 # ── Sidebar: scrollable checklist ──────────────────────────────────
 # Read the Excel file from the data folder
 file_path = "data/OI_product_map.xlsx"  # change to your actual filename
-df = pd.read_excel(file_path)
+sheet = 'Data'
+df = pd.read_excel(file_path, sheet_name='Data')
 
 # Ensure only needed columns
 product_col = 'Label'
 symbol_col = 'Symbol'
 symbol_desc_col = 'Symbol Description'
-df = df[[product_col, symbol_col, symbol_desc_col]].dropna()
+price_unit_col = 'Price Unit'
+df = df[[product_col, symbol_col, symbol_desc_col, price_unit_col]].dropna()
 
 # Build product_code_map: product -> list of (symbol, description)
 product_code_map = defaultdict(list)
@@ -74,6 +76,8 @@ for symbol, desc in symbol_desc_list:
     if checked:
         selected_symbols.append(symbol)
 
+price_unit_map = dict(zip(df[symbol_col], df[price_unit_col]))
+
 # ── Main content ────────────────────────────────────────────────────────────────
 if selected_symbols:
     try:
@@ -92,6 +96,7 @@ if selected_symbols:
             df_prices = get_n_day_OI(s, OI_V2_MONTHS, OI_V2_YEARS, OI_V2_FORWARDS, suffix)
             pivot_prices = get_pivot_table(df_prices, suffix)
             styled_prices = style_forward_cells(pivot_prices)
+            unit_label = price_unit_map.get(s, "")
 
         ##############################################################################
         st.markdown(f"*OI Date: {latest_date.strftime('%Y-%m-%d')}*")
@@ -106,7 +111,7 @@ if selected_symbols:
 
         with col2:
             if len(selected_symbols) == 1:
-                st.markdown("#### Historical Nth-Day Prices ($/BBL)")
+                st.markdown(f"#### Historical Nth-Day Prices ({unit_label})")
                 st.dataframe(styled_prices, height=460)
 
         plot_forwards_combined(selected_symbols, OI_V2_FORWARDS)
