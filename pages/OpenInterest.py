@@ -29,7 +29,8 @@ product_col = 'Label'
 symbol_col = 'Symbol'
 symbol_desc_col = 'Symbol Description'
 price_unit_col = 'Price Unit'
-df = df[[product_col, symbol_col, symbol_desc_col, price_unit_col]].dropna()
+oi_unit_col = 'OI Unit'
+df = df[[product_col, symbol_col, symbol_desc_col, price_unit_col, oi_unit_col]].dropna()
 
 # Build product_code_map: product -> list of (symbol, description)
 product_code_map = defaultdict(list)
@@ -77,6 +78,7 @@ for symbol, desc in symbol_desc_list:
         selected_symbols.append(symbol)
 
 price_unit_map = dict(zip(df[symbol_col], df[price_unit_col]))
+oi_unit_map = dict(zip(df[symbol_col], df[oi_unit_col]))
 
 # ── Main content ────────────────────────────────────────────────────────────────
 if selected_symbols:
@@ -96,7 +98,8 @@ if selected_symbols:
             df_prices = get_n_day_OI(s, OI_V2_MONTHS, OI_V2_YEARS, OI_V2_FORWARDS, suffix)
             pivot_prices = get_pivot_table(df_prices, suffix)
             styled_prices = style_forward_cells(pivot_prices)
-            unit_label = price_unit_map.get(s, "")
+            price_unit_label = price_unit_map.get(s, "")
+            oi_unit_label = oi_unit_map.get(s, "")
 
         ##############################################################################
         st.markdown(f"*OI Date: {latest_date.strftime('%Y-%m-%d')}*")
@@ -104,14 +107,14 @@ if selected_symbols:
 
         col1, spacer, col2 = st.columns([1, 0.05, 1])
         with col1:
-            st.markdown("#### Historical Nth-Day OI")
+            st.markdown(f"#### Historical Nth-Day OI ({oi_unit_label}s)")
             st.dataframe(styled_n_day, height=460)
-            st.markdown("#### Historical Terminal OI")
+            st.markdown(f"#### Historical Terminal OI ({oi_unit_label}s)")
             st.dataframe(styled_terminal, height=460)
 
         with col2:
             if len(selected_symbols) == 1:
-                st.markdown(f"#### Historical Nth-Day Prices ({unit_label})")
+                st.markdown(f"#### Historical Nth-Day Prices ({price_unit_label})")
                 st.dataframe(styled_prices, height=460)
 
         plot_forwards_combined(selected_symbols, OI_V2_FORWARDS)
