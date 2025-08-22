@@ -448,53 +448,53 @@ def style_forward_cells(pivot_df):
     ], axis=1)
 
 
-def plot_forwards(symbol, forwards):
-    dfs = read_dfs(symbol)
-    contract_dfs = {}
+# def plot_forwards(symbol, forwards):
+#     dfs = read_dfs(symbol)
+#     contract_dfs = {}
 
-    for contract in forwards:
-        month = contract[:3]
-        sheet = f"{symbol}_{month}"
-        if sheet not in dfs:
-            continue
+#     for contract in forwards:
+#         month = contract[:3]
+#         sheet = f"{symbol}_{month}"
+#         if sheet not in dfs:
+#             continue
 
-        df = dfs[sheet]
-        df["Date"] = pd.to_datetime(df["Date"])
-        df_contract = df[df["contract"] == contract].copy()
+#         df = dfs[sheet]
+#         df["Date"] = pd.to_datetime(df["Date"])
+#         df_contract = df[df["contract"] == contract].copy()
 
-        if not df_contract.empty:
-            latest_date = df_contract["Date"].max()
-            one_year_ago = latest_date - pd.DateOffset(years=1)
-            df_contract = df_contract[df_contract["Date"] >= one_year_ago]
-            contract_dfs[contract] = df_contract
+#         if not df_contract.empty:
+#             latest_date = df_contract["Date"].max()
+#             one_year_ago = latest_date - pd.DateOffset(years=1)
+#             df_contract = df_contract[df_contract["Date"] >= one_year_ago]
+#             contract_dfs[contract] = df_contract
 
-    # Create Plotly figure
-    fig = go.Figure()
-    for contract, df_contract in contract_dfs.items():
-        fig.add_trace(go.Scatter(
-            x=df_contract["Date"],
-            y=df_contract["OI"],
-            mode='lines',
-            name=contract
-        ))
+#     # Create Plotly figure
+#     fig = go.Figure()
+#     for contract, df_contract in contract_dfs.items():
+#         fig.add_trace(go.Scatter(
+#             x=df_contract["Date"],
+#             y=df_contract["OI"],
+#             mode='lines',
+#             name=contract
+#         ))
 
-    fig.update_layout(
-        title=f"{symbol} Forward Contracts OI",
-        xaxis_title="Date",
-        yaxis_title="Open Interest (OI)",
-        legend_title="Contracts",
-        height=600,
-        width=1000
-    )
+#     fig.update_layout(
+#         title=f"{symbol} Forward Contracts OI",
+#         xaxis_title="Date",
+#         yaxis_title="Open Interest (OI)",
+#         legend_title="Contracts",
+#         height=600,
+#         width=1000
+#     )
 
-    st.plotly_chart(fig, use_container_width=True)
+#     st.plotly_chart(fig, use_container_width=True)
 
-def plot_forwards_combined(symbols, forwards):
+def plot_forwards_combined(symbols, forwards, conv_factor_map):
     all_contract_data = {}
 
     for symbol in symbols:
         dfs = read_dfs(symbol)
-        
+
         for contract in forwards:
             month = contract[:3]
             sheet = f"{symbol}_{month}"
@@ -509,6 +509,10 @@ def plot_forwards_combined(symbols, forwards):
                 latest_date = df_contract["Date"].max()
                 one_year_ago = latest_date - pd.DateOffset(years=1)
                 df_contract = df_contract[df_contract["Date"] >= one_year_ago]
+
+                if len(symbols) > 1:
+                    cf = conv_factor_map[symbol]
+                    df_contract['OI'] = (df_contract['OI'].astype(float) * cf).round().astype('Int64')
 
                 # Aggregate into all_contract_data
                 if contract not in all_contract_data:

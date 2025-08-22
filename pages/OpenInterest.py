@@ -123,7 +123,7 @@ if selected_symbols:
                 st.markdown(f"#### Historical Nth-Day Prices ({price_unit_label})")
                 st.dataframe(styled_prices, height=460)
 
-        plot_forwards_combined(selected_symbols, OI_V2_FORWARDS)
+        plot_forwards_combined(selected_symbols, OI_V2_FORWARDS, conv_factor_map)
         if len(selected_symbols) == 1:
             get_OI_volume_table(selected_symbols[0])
 
