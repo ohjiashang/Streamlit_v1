@@ -2,7 +2,6 @@ import streamlit as st
 import pandas as pd
 import warnings
 warnings.filterwarnings("ignore")
-from st_aggrid import AgGrid, GridOptionsBuilder
 
 import matplotlib.colors as mcolors
 
