@@ -97,6 +97,11 @@ styled_top = (
     )
 )
 
+st.write("*T-2 OI: Sep25*")
+st.write("*3m OI: AVG(Jun25, Jul25, Aug25)*")
+st.write("*1y OI: Sep24*")
+st.write("*5y OI: AVG(Sep20, Sep21, Sep22, Sep23, Sep24)*")
+
 st.markdown("### Futures")
 st.dataframe(styled_top, height=35*(len(df_top)+1) + 2, use_container_width=True)
 
