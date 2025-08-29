@@ -161,7 +161,7 @@ for fam in fam_order:
         )
         
         st.markdown(f"### Swaps - {fam}")
-        st.markdown(f"**Main Products OI**")
+        st.markdown(f"**Main Products OI (in 1,000 BBLs)**")
         st.dataframe(styled_agg, height=35*(len(subset_agg)+1) + 2, use_container_width=True)
-        st.markdown(f"**Product Codes OI**")
+        st.markdown(f"**Product Codes OI (original units)**")
         st.dataframe(styled_subset, height=35*(len(subset)+1) + 2, use_container_width=True)
