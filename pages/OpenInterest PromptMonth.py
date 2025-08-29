@@ -67,7 +67,7 @@ new_order = [
 ]
 
 # Define the custom order for product_fam
-fam_order = ["Light", "Middle", "Heavy"]
+fam_order = ["Light", "Middle", "Heavy", "Crude"]
 fam_order_map = {fam: i for i, fam in enumerate(fam_order)}
 
 oi_cols = [c for c in df.columns if c.startswith("OI_")]
@@ -85,11 +85,11 @@ df_sorted = (
 )
 
 # Then split into top/bottom
-df_top = df_sorted[df_sorted["symbol"].isin(["UHO", "UHU", "GAS"])].reset_index(drop=True)
+df_top = df_sorted[df_sorted["symbol"].isin(["UHO", "UHU", "GAS", "BRN"])].reset_index(drop=True)
 df_top.index = df_top.index + 1
 df_top = df_top[new_order]
 
-df_bottom = df_sorted[~df_sorted["symbol"].isin(["UHO", "UHU", "GAS"])]
+df_bottom = df_sorted[~df_sorted["symbol"].isin(["UHO", "UHU", "GAS", "BRN"])]
 
 # Style top
 styled_top = (
@@ -109,7 +109,7 @@ st.write("*3m OI: AVG(Jun25, Jul25, Aug25)*")
 st.write("*1y OI: Sep24*")
 st.write("*5y OI: AVG(Sep20, Sep21, Sep22, Sep23, Sep24)*")
 
-st.markdown("### Futures")
+st.markdown("### ICE Futures")
 st.dataframe(styled_top, height=35*(len(df_top)+1) + 2, use_container_width=True)
 
 # Show bottom tables by fam_order
