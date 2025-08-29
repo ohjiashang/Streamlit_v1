@@ -28,18 +28,17 @@ def color_pct_from_avg(val):
 
 
 def format_conversion(x):
-    # If it's an integer, no decimals
+    # Round to 10 decimals to avoid float precision issues
+    x = round(x, 10)
+    
     if x == int(x):
         return str(int(x))
-    # If it has 1 decimal place
-    elif (x * 10).is_integer():
+    elif round(x*10) == x*10:
         return f"{x:.1f}"
-    # If it has 2 decimal places
-    elif (x * 100).is_integer():
+    elif round(x*100) == x*100:
         return f"{x:.2f}"
-    # Otherwise, default to 2 decimals (or more if you want)
     else:
-        return f"{x:.2f}"
+        return str(x)
 
 
 st.set_page_config(layout="wide")
