@@ -437,7 +437,7 @@ def highlight_forward(val, row, col):
     light_yellow = "background-color: #FFFFE0"  # very light yellow
     if col == 2026:
         return light_yellow
-    if col == 2025 and row in ["Aug", "Sep", "Oct", "Nov", "Dec"]:
+    if col == 2025 and row in ["Sep", "Oct", "Nov", "Dec"]:
         return light_yellow
     return ""
 
