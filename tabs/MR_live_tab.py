@@ -59,7 +59,7 @@ def render():
         # --- Load and Plot Data ---
         # months_m1_lst = ["Mar", "Jun", "Sep", "Dec"]
         months_m1_lst=["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
-        years = [16, 17, 18, 19, 20, 21, 22, 23, 24, 25]
+        years = [16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26]
 
         # Step 1: Load big data, cached
         df_raw = load_price_data(diff_scenario, months_scenario, months_m1_lst, years)

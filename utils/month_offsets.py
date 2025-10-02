@@ -142,9 +142,13 @@ def get_price_series(diff_scenario, months_scenario, months_m1_lst, years):
     last_norm = 0
 
     # Step 1: Ordered task list
-    task_list = [(year, month_m1) 
-                for year in reversed(years) 
-                for month_m1 in reversed(months_m1_lst)]
+    task_list = [
+        (year, month_m1)
+        for year in reversed(years)
+        for month_m1 in (
+            reversed(months_m1_lst) if year != 26 else ["Jan"]
+        )
+    ]
 
     def fetch_contract(year, month_m1):
         df_contract = process_contract(year, month_m1)
