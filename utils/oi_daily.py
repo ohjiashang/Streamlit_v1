@@ -70,7 +70,7 @@ def get_OI_volume_table(symbol):
     df_filtered.index += 1  # Make index start from 1
     styled_df = style_OI_column_groups(df_filtered)
     st.markdown("#### OI & Volume")
-    st.dataframe(styled_df, height=600)
+    st.dataframe(styled_df, height=565)
 
 #####
 #####
