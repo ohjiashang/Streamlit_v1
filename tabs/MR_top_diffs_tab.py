@@ -9,7 +9,7 @@ import matplotlib.colors as mcolors
 def get_table(diffs_to_track_map, sheet_name):
     # months_m1_lst = ["Mar", "Jun", "Sep", "Dec"]
     months_m1_lst=["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
-    years = [24, 25]
+    years = [24, 25, 26]
 
     rows = []  # Step 1: initialize a list to store row dicts
     
