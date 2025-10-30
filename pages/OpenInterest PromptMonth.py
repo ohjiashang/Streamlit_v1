@@ -104,6 +104,8 @@ styled_top = (
     )
 )
 
+oi_date = pd.Timestamp.today().normalize() - pd.offsets.BDay(2)
+st.markdown(f"*OI Date: {oi_date.strftime('%Y-%m-%d')}*")
 st.write("*T-2 OI: Nov25*")
 st.write("*3m OI: AVG(Aug25, Sep25, Oct25)*")
 st.write("*1y OI: Nov24*")
