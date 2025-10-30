@@ -44,8 +44,8 @@ def format_conversion(x):
 st.set_page_config(layout="wide")
 st.title("Open Interest")
 
-file_path = "data/OI_T-2_vs_type_disagg_20250827_v3.xlsx"  # change to your actual filename
-file_agg = "data/OI_T-2_vs_type_agg_20250828_v1.xlsx"
+file_path = "data/OI_T-2_vs_type_disagg_20251030.xlsx"  # change to your actual filename
+file_agg = "data/OI_T-2_vs_type_agg_20251030.xlsx"
 
 df = pd.read_excel(file_path)
 df_agg = pd.read_excel(file_agg)
@@ -104,10 +104,10 @@ styled_top = (
     )
 )
 
-st.write("*T-2 OI: Sep25*")
-st.write("*3m OI: AVG(Jun25, Jul25, Aug25)*")
-st.write("*1y OI: Sep24*")
-st.write("*5y OI: AVG(Sep20, Sep21, Sep22, Sep23, Sep24)*")
+st.write("*T-2 OI: Nov25*")
+st.write("*3m OI: AVG(Aug25, Sep25, Oct25)*")
+st.write("*1y OI: Nov24*")
+st.write("*5y OI: AVG(Nov20, Nov21, Nov22, Nov23, Nov24)*")
 
 st.markdown("### ICE Futures")
 st.dataframe(styled_top, height=35*(len(df_top)+1) + 2, use_container_width=True)
