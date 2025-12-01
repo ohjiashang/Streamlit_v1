@@ -146,7 +146,7 @@ def get_price_series(diff_scenario, months_scenario, months_m1_lst, years):
         (year, month_m1)
         for year in reversed(years)
         for month_m1 in (
-            reversed(months_m1_lst) if year != 26 else ["Feb", "Jan"]
+            reversed(months_m1_lst) if year != 26 else ["Mar", "Feb", "Jan"]
         )
     ]
 
