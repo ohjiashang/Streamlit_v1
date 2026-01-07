@@ -86,7 +86,7 @@ FORWARD_CONTRACTS_TO_SKIP = [
     # "Sep25", 
     # "Oct25", 
     # "Nov25", 
-    "Dec25"
+    # "Dec25"
 ]
 
 OI_V2_FORWARDS = [
@@ -94,7 +94,7 @@ OI_V2_FORWARDS = [
     # "Sep25", 
     # "Oct25", 
     # "Nov25", 
-    "Dec25",
+    # "Dec25",
     "Jan26", "Feb26", "Mar26", "Apr26", "May26", "Jun26", "Jul26", "Aug26", "Sep26", "Oct26", "Nov26", "Dec26"
 ]
 
@@ -103,7 +103,8 @@ OI_V2_FORWARDS_MOD = [
     # "Oct25", 
     # "Nov25", 
     # "Dec25",
-    "Jan26", "Feb26", "Mar26", "Apr26", "May26", "Jun26", "Jul26", "Aug26", "Sep26", "Oct26", "Nov26", "Dec26"
+    # "Jan26", 
+    "Feb26", "Mar26", "Apr26", "May26", "Jun26", "Jul26", "Aug26", "Sep26", "Oct26", "Nov26", "Dec26"
 ]
 
 OI_V2_SPREAD_SYMBOLS = [
