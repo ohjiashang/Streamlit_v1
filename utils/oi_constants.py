@@ -76,35 +76,27 @@ product_fam_map_main = {
 
 OI_V2_SYMBOLS = ["SMT", "GDK", "STB"]
 
-OI_V2_YEARS = [18, 19, 20, 21, 22, 23, 24, 25, 26]
+OI_V2_YEARS = [18, 19, 20, 21, 22, 23, 24, 25, 26, 27]
 
 OI_V2_MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
 
 FORWARD_CONTRACTS_TO_SKIP = [
-    # "Jul25", 
-    # "Aug25", 
-    # "Sep25", 
-    # "Oct25", 
-    # "Nov25", 
-    # "Dec25"
+    "Jul27", 
+    "Aug27", 
+    "Sep27", 
+    "Oct27", 
+    "Nov27", 
+    "Dec27"
 ]
 
 OI_V2_FORWARDS = [
-    # "Aug25", 
-    # "Sep25", 
-    # "Oct25", 
-    # "Nov25", 
-    # "Dec25",
-    "Jan26", "Feb26", "Mar26", "Apr26", "May26", "Jun26", "Jul26", "Aug26", "Sep26", "Oct26", "Nov26", "Dec26"
+    "Jan26", "Feb26", "Mar26", "Apr26", "May26", "Jun26", "Jul26", "Aug26", "Sep26", "Oct26", "Nov26", "Dec26",
+    "Jan27", "Feb27", "Mar27", "Apr27", "May27", "Jun27",
 ]
 
 OI_V2_FORWARDS_MOD = [
-    # "Sep25", 
-    # "Oct25", 
-    # "Nov25", 
-    # "Dec25",
-    # "Jan26", 
-    "Feb26", "Mar26", "Apr26", "May26", "Jun26", "Jul26", "Aug26", "Sep26", "Oct26", "Nov26", "Dec26"
+    "Feb26", "Mar26", "Apr26", "May26", "Jun26", "Jul26", "Aug26", "Sep26", "Oct26", "Nov26", "Dec26",
+    "Jan27", "Feb27", "Mar27", "Apr27", "May27", "Jun27",
 ]
 
 OI_V2_SPREAD_SYMBOLS = [

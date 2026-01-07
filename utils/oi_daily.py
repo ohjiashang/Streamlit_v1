@@ -70,7 +70,7 @@ def get_OI_volume_table(symbol):
     df_filtered.index += 1  # Make index start from 1
     styled_df = style_OI_column_groups(df_filtered)
     st.markdown("#### OI & Volume")
-    st.dataframe(styled_df, height=460)
+    st.dataframe(styled_df, height=670)
 
 #####
 #####
@@ -316,10 +316,10 @@ def get_n_day_OI(symbol, months, years, forwards, cf, suffix="OI"):
         for month in months:
             contract = f"{month}{year}"
             
-            forward_25 = [c for c in forwards if c.endswith("25")]
             forward_26 = [c for c in forwards if c.endswith("26")]
+            forward_27 = [c for c in forwards if c.endswith("27")]
 
-            if contract in forward_26:
+            if contract in forward_27:
                 continue
             
             sheet = f"{symbol}_{month}"
@@ -336,7 +336,7 @@ def get_n_day_OI(symbol, months, years, forwards, cf, suffix="OI"):
             df_contract["year"] = 2000+year
 
             days = n_trading_day_dct[month]  # tuple of 1 or 2 days
-            if contract in forward_25 and len(days) > 1:
+            if contract in forward_26 and len(days) > 1:
                 days_to_do = days[1:2]   # only the second element
             else:
                 days_to_do = days        # 1-element or both
@@ -350,9 +350,9 @@ def get_n_day_OI(symbol, months, years, forwards, cf, suffix="OI"):
 
     combined_df = pd.concat([df, df_forward], ignore_index=True)
     combined_df = combined_df.sort_values("Date", ascending=False).reset_index(drop=True)
+    combined_df = combined_df.drop_duplicates()
     if suffix == 'OI':
         combined_df['OI'] = (combined_df['OI'].astype(float) * cf).round().astype('Int64')
-        # combined_df['OI'] = combined_df['OI'] * cf
     return combined_df
 
 def get_combined_n_day_OI(symbols, months, years, forwards, conv_factor_map):
@@ -436,6 +436,9 @@ def highlight_forward(val, row, col):
     """Returns light yellow background if the cell is a forward contract."""
     light_yellow = "background-color: #FFFFE0"  # very light yellow
     if col == 2026:
+        return light_yellow
+    
+    if col == 2027:
         return light_yellow
     return ""
 
@@ -688,11 +691,6 @@ def create_diffs_heatmap(symbols, name_map):
     heatmap_data = heatmap_data[['diff', 'pct_from_avg', 'OI', 'T-5_OI', 'T-10_OI', 'T-20_OI', '3m_avg_OI', 'symbol', 'OI_date', 'contract']]
     heatmap_data = heatmap_data.loc[heatmap_data['pct_from_avg'].abs().sort_values(ascending=False).index].reset_index(drop=True)
     heatmap_data.index = heatmap_data.index + 1
-
-    # num_rows = heatmap_data.shape[0]
-    # row_height = 35
-    # base_height = 50
-    # dynamic_height = base_height + num_rows * row_height
 
     styled_df = heatmap_data.style.applymap(color_pct_from_avg, subset=["pct_from_avg"]).format({
         'OI': '{:,.0f}',
