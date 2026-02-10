@@ -90,12 +90,14 @@ FORWARD_CONTRACTS_TO_SKIP = [
 ]
 
 OI_V2_FORWARDS = [
-    "Jan26", "Feb26", "Mar26", "Apr26", "May26", "Jun26", "Jul26", "Aug26", "Sep26", "Oct26", "Nov26", "Dec26",
+    # "Jan26", 
+    "Feb26", "Mar26", "Apr26", "May26", "Jun26", "Jul26", "Aug26", "Sep26", "Oct26", "Nov26", "Dec26",
     "Jan27", "Feb27", "Mar27", "Apr27", "May27", "Jun27",
 ]
 
 OI_V2_FORWARDS_MOD = [
-    "Feb26", "Mar26", "Apr26", "May26", "Jun26", "Jul26", "Aug26", "Sep26", "Oct26", "Nov26", "Dec26",
+    # "Feb26", 
+    "Mar26", "Apr26", "May26", "Jun26", "Jul26", "Aug26", "Sep26", "Oct26", "Nov26", "Dec26",
     "Jan27", "Feb27", "Mar27", "Apr27", "May27", "Jun27",
 ]
 

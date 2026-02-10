@@ -70,7 +70,7 @@ def get_OI_volume_table(symbol):
     df_filtered.index += 1  # Make index start from 1
     styled_df = style_OI_column_groups(df_filtered)
     st.markdown("#### OI & Volume")
-    st.dataframe(styled_df, height=670)
+    st.dataframe(styled_df, height=635)
 
 #####
 #####
@@ -436,7 +436,9 @@ def highlight_forward(val, row, col):
     """Returns light yellow background if the cell is a forward contract."""
     light_yellow = "background-color: #FFFFE0"  # very light yellow
     if col == 2026:
-        return light_yellow
+        if row not in ["Jan"]:
+            return light_yellow
+        return""
     
     if col == 2027:
         return light_yellow
