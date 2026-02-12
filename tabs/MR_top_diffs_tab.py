@@ -4,12 +4,14 @@ from utils.plot_live import add_rolling_cols
 import pandas as pd
 import streamlit as st
 import matplotlib.colors as mcolors
+from datetime import datetime
 
 @st.cache_data
 def get_table(diffs_to_track_map, sheet_name):
     # months_m1_lst = ["Mar", "Jun", "Sep", "Dec"]
     months_m1_lst=["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
-    years = [25, 26]
+    _current_year_2d = datetime.now().year % 100
+    years = [_current_year_2d - 1, _current_year_2d]
 
     rows = []  # Step 1: initialize a list to store row dicts
     

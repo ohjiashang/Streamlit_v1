@@ -1,5 +1,6 @@
 import streamlit as st
 import pandas as pd
+from datetime import datetime
 from utils.plot_live import add_rolling_cols, plot_live_contract_roll_plotly
 from utils.backtest import generate_sd_entry_sd_exit_signals_with_rolling
 from utils.constants import DIFF_NAMES, CONTRACT_TYPES, MONTHS_SCENARIO_MAP, DIFFS_MAP
@@ -59,7 +60,8 @@ def render():
         # --- Load and Plot Data ---
         # months_m1_lst = ["Mar", "Jun", "Sep", "Dec"]
         months_m1_lst=["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
-        years = [16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26]
+        _current_year_2d = datetime.now().year % 100
+        years = list(range(16, _current_year_2d + 1))
 
         # Step 1: Load big data, cached
         df_raw = load_price_data(diff_scenario, months_scenario, months_m1_lst, years)

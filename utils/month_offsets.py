@@ -1,8 +1,14 @@
 import pandas as pd
+import numpy as np
 import re
 import urllib.parse
 from concurrent.futures import ThreadPoolExecutor
-import streamlit as st
+
+def get_t1_date():
+    """Returns the date 1 business day before today."""
+    today = np.datetime64('today')
+    t1 = np.busday_offset(today, -1)
+    return pd.Timestamp(t1)
 
 # Global month dictionary
 month_dct = {
@@ -46,7 +52,9 @@ def get_start_end_dates(contract, num_lookback_months=3):
     adj_end_date = static_df.loc[end_idx, 'Date']
     return adj_start_date.strftime('%Y-%m-%d'), adj_end_date.strftime('%Y-%m-%d')
 
-@st.cache_data
+from functools import lru_cache
+
+@lru_cache(maxsize=None)
 def read_excel_cached(url, sheet_name):
     return pd.read_excel(url, sheet_name=sheet_name)
 
@@ -142,11 +150,17 @@ def get_price_series(diff_scenario, months_scenario, months_m1_lst, years):
     last_norm = 0
 
     # Step 1: Ordered task list
+    _t1 = get_t1_date()
+    _current_year_2d = _t1.year % 100
+    _max_month_idx = min(_t1.month + 3, 12)
+    _month_names = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]
+    _current_year_months = list(reversed(_month_names[:_max_month_idx]))
+
     task_list = [
         (year, month_m1)
         for year in reversed(years)
         for month_m1 in (
-            reversed(months_m1_lst) if year != 26 else ["May", "Apr", "Mar", "Feb", "Jan"]
+            reversed(months_m1_lst) if year != _current_year_2d else _current_year_months
         )
     ]
 

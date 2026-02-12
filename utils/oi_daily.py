@@ -1,7 +1,7 @@
 import pandas as pd
 from datetime import datetime
 import calendar
-from functools import reduce
+from functools import reduce, lru_cache
 import urllib.parse
 import streamlit as st
 import plotly.graph_objects as go
@@ -10,7 +10,7 @@ from datetime import datetime, timedelta
 from concurrent.futures import ThreadPoolExecutor
 from utils.oi_constants import OI_V2_SPREAD_SYMBOLS
 
-@st.cache_data
+@lru_cache(maxsize=None)
 def read_dfs(symbol, suffix="OI"):
     folder = "OI"
     if suffix == 'price' and symbol in OI_V2_SPREAD_SYMBOLS:
