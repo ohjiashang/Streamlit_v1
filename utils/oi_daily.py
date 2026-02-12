@@ -125,7 +125,7 @@ def get_terminal_OI(symbol, months, years, forwards):
         return df_contract.tail(1)
 
 
-    with ThreadPoolExecutor() as executor:
+    with ThreadPoolExecutor(max_workers=8) as executor:
         futures = [
             executor.submit(process_contract, month, year)
             for year in years for month in months
@@ -166,7 +166,7 @@ def get_forward_today_OI(symbol, months, years, forwards, suffix="OI"):
         )
         return df_contract.tail(1)
 
-    with ThreadPoolExecutor() as executor:
+    with ThreadPoolExecutor(max_workers=8) as executor:
         futures = [
             executor.submit(process_forward, month, year)
             for year in years for month in months
@@ -518,6 +518,7 @@ def plot_forwards_combined(symbols, forwards, conv_factor_map):
 
 #################################################################################################
 #################################################################################################
+@lru_cache(maxsize=None)
 def construct_prompt_mth_rolling_df(symbol):
     dfs = read_dfs(symbol)
     months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
@@ -556,21 +557,14 @@ def construct_prompt_mth_rolling_df(symbol):
     # Group by contract and compute average OI
     df_grouped = df.groupby("contract", as_index=False)["OI"].mean().rename(columns={"OI": "avg_OI"})
     month_map = {month: index for index, month in enumerate(calendar.month_abbr) if month}
-    
-    # Function to convert 'Jan24' to datetime (e.g., 2024-01-01)
-    def contract_to_date(contract):
-        try:
-            month_str = contract[:3]
-            year_str = contract[3:]
-            month = month_map[month_str]
-            year = int("20" + year_str)  # Assumes 2000s
-            return datetime(year, month, 1)
-        except:
-            return pd.NaT
-    
-    # Create a sort key column
-    df_grouped["contract_date"] = df_grouped["contract"].apply(contract_to_date)
-    
+
+    # Vectorized contract-to-date conversion (e.g., 'Jan24' → 2024-01-01)
+    contract_months = df_grouped["contract"].str[:3].map(month_map)
+    contract_years = df_grouped["contract"].str[3:].astype(int) + 2000
+    df_grouped["contract_date"] = pd.to_datetime(
+        contract_years * 10000 + contract_months * 100 + 1, format="%Y%m%d", errors="coerce"
+    )
+
     # Sort by contract_date
     df_grouped = df_grouped.sort_values("contract_date").drop(columns=["contract_date"]).reset_index(drop=True)
         
@@ -584,11 +578,8 @@ def construct_prompt_mth_rolling_df(symbol):
     ).round(1)
     return df_1
 
-import concurrent.futures
 def combined_oi_dfs(symbols):
-    with concurrent.futures.ThreadPoolExecutor() as executor:
-        # Map symbols to construct_prompt_mth_rolling_df in parallel
-        dfs = list(executor.map(construct_prompt_mth_rolling_df, symbols))
+    dfs = [construct_prompt_mth_rolling_df(symbol) for symbol in symbols]
     
     df_list = []
     for df_oi, symbol in zip(dfs, symbols):
@@ -732,7 +723,7 @@ def create_main_product_heatmap(dct, product_fam_map_main):
 
         return today_df_2
 
-    with ThreadPoolExecutor() as executor:
+    with ThreadPoolExecutor(max_workers=8) as executor:
         futures = [executor.submit(process_main_product, p, s) for p, s in dct.items()]
         df_list = [f.result() for f in futures if f.result() is not None]
 

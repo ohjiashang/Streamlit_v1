@@ -25,32 +25,10 @@ def get_start_end_dates(contract, num_lookback_months=3):
     start_date = pd.Timestamp(year, month, 1) - pd.DateOffset(months=num_lookback_months)
     end_date = pd.Timestamp(year, month, 1) - pd.DateOffset(days=1) - pd.offsets.MonthEnd(2)
 
-    # Step 2: Read Dates from static file
-    folder = "Data"
-    filename = f"Dates.xlsx"
-    encoded_filename = urllib.parse.quote(filename)
-    url = f"https://firebasestorage.googleapis.com/v0/b/hotei-streamlit.firebasestorage.app/o/{folder}%2F{encoded_filename}?alt=media"
-    static_df = pd.read_excel(url)
-    static_df['Date'] = pd.to_datetime(static_df['Date'])
-    static_df = static_df.sort_values('Date').reset_index(drop=True)
-
-    # Step 3: Find matching indices
-    start_idx = static_df[static_df['Date'] >= start_date].index.min()
-    end_idx = static_df[static_df['Date'] <= end_date].index.max()
-
-    # Step 4: Handle edge cases
-    if pd.isna(start_idx) or pd.isna(end_idx):
-        return None, None
-
-    # Step 5: Adjust indices
-    start_idx = max(0, start_idx - 2)
-    if end_idx < len(static_df) - 1:
-        end_idx = max(0, end_idx - 1)
-
-    # Step 6: Extract adjusted dates
-    adj_start_date = static_df.loc[start_idx, 'Date']
-    adj_end_date = static_df.loc[end_idx, 'Date']
-    return adj_start_date.strftime('%Y-%m-%d'), adj_end_date.strftime('%Y-%m-%d')
+    # Step 2: Adjust to business days (no static file needed)
+    adj_start = np.busday_offset(start_date.date(), -2, roll='forward')
+    adj_end = np.busday_offset(end_date.date(), -1, roll='backward')
+    return str(adj_start), str(adj_end)
 
 from functools import lru_cache
 
@@ -169,7 +147,7 @@ def get_price_series(diff_scenario, months_scenario, months_m1_lst, years):
         return (year, month_m1, df_contract)
 
     # Step 2: Parallel fetch (maintains task order)
-    with ThreadPoolExecutor() as executor:
+    with ThreadPoolExecutor(max_workers=8) as executor:
         results = list(executor.map(lambda args: fetch_contract(*args), task_list))
 
     # Step 3: Sequential normalization
