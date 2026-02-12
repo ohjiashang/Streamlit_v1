@@ -8,7 +8,7 @@ import plotly.graph_objects as go
 import numpy as np
 from datetime import datetime, timedelta
 from concurrent.futures import ThreadPoolExecutor
-from utils.oi_constants import FORWARD_CONTRACTS_TO_SKIP, OI_V2_SPREAD_SYMBOLS
+from utils.oi_constants import OI_V2_SPREAD_SYMBOLS
 
 @st.cache_data
 def read_dfs(symbol, suffix="OI"):
@@ -70,7 +70,7 @@ def get_OI_volume_table(symbol):
     df_filtered.index += 1  # Make index start from 1
     styled_df = style_OI_column_groups(df_filtered)
     st.markdown("#### OI & Volume")
-    st.dataframe(styled_df, height=635)
+    st.dataframe(styled_df, height=35 * len(df_filtered) + 40)
 
 #####
 #####
@@ -432,21 +432,22 @@ def get_pivot_table(df, suffix="OI"):
     pivot = pivot.sort_index()
     return pivot
 
-def highlight_forward(val, row, col):
-    """Returns light yellow background if the cell is a forward contract."""
+_MONTH_TO_NUM = {"Jan":1, "Feb":2, "Mar":3, "Apr":4, "May":5, "Jun":6,
+                 "Jul":7, "Aug":8, "Sep":9, "Oct":10, "Nov":11, "Dec":12}
+
+def highlight_forward(val, row, col, t2_date):
+    """Returns light yellow background if the cell is a current or future forward contract."""
     light_yellow = "background-color: #FFFFE0"  # very light yellow
-    if col == 2026:
-        if row not in ["Jan"]:
-            return light_yellow
-        return""
-    
-    if col == 2027:
+    cell_month = _MONTH_TO_NUM.get(row, 0)
+    if (col, cell_month) >= (t2_date.year, t2_date.month):
         return light_yellow
     return ""
 
 def style_forward_cells(pivot_df):
+    from utils.oi_constants import get_t2_date
+    t2_date = get_t2_date()
     return pivot_df.style.apply(lambda row: [
-        highlight_forward(row[col], row.name, col) if not pd.isna(row[col]) else ""
+        highlight_forward(row[col], row.name, col, t2_date) if not pd.isna(row[col]) else ""
         for col in pivot_df.columns
     ], axis=1)
 
@@ -527,8 +528,6 @@ def construct_prompt_mth_rolling_df(symbol):
     for year in years:
         for month in months:
             contract = f"{month}{year}"
-            if contract in FORWARD_CONTRACTS_TO_SKIP:
-                continue
             sheet = f"{symbol}_{month}"
             if sheet not in dfs:
                 continue
