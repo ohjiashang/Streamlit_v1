@@ -17,11 +17,24 @@ FILENAME = "resid_oi_latest.xlsx"
 
 LOCAL_FILE = r"c:\Users\Jia Shang\OneDrive - Hotei Capital\Desktop\ResidOI\resid_oi_latest.xlsx"
 
-FAMILY_ORDER = ["Light", "Middle"]
+# ── Contract ordering ─────────────────────────────────────────────
+
+MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+
+def contract_sort_key(contract):
+    """Convert 'Apr26' to (26, 3) for sorting."""
+    month_str = contract[:3]
+    yr = int(contract[3:])
+    m_idx = MONTH_NAMES.index(month_str) if month_str in MONTH_NAMES else 0
+    return (yr, m_idx)
+
+FAMILY_ORDER = ["Light", "Middle", "Heavy", "Crude"]
 
 PRODUCT_ORDER = {
     "Light": ["S92", "Ebob", "Rbob", "MOPJ Naph", "NWE Naph"],
     "Middle": ["SGO", "SKO", "ICEGO", "NWE Jet", "HO"],
+    "Heavy": ["S0.5", "Rdm0.5", "S380", "Rdm3.5"],
+    "Crude": ["Brent", "WTI"],
 }
 
 # ── Styling ───────────────────────────────────────────────────────
@@ -193,7 +206,10 @@ def combine_resid_pct(pivot_resid, pivot_pct):
     """Merge resid OI and % chg into combined string cells: '5,000 (+10.5%)'."""
     mask = pivot_resid.notna().any(axis=1)
     pivot_resid = pivot_resid[mask].copy()
-    pivot_pct = pivot_pct.reindex(pivot_resid.index)
+    # Sort contracts chronologically
+    sorted_idx = sorted(pivot_resid.index, key=contract_sort_key)
+    pivot_resid = pivot_resid.reindex(sorted_idx)
+    pivot_pct = pivot_pct.reindex(sorted_idx)
 
     # Build combined display DataFrame (strings)
     combined = pd.DataFrame(index=pivot_resid.index, columns=pivot_resid.columns)
