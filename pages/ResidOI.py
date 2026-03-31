@@ -67,21 +67,21 @@ def highlight_oi(val):
 @st.cache_data(ttl=300)
 def load_resid_oi():
     import os
+    def _read(source):
+        return {
+            'symbol_data': pd.read_excel(source, sheet_name='symbol_data'),
+            'meta': pd.read_excel(source, sheet_name='meta'),
+            'info': pd.read_excel(source, sheet_name='info'),
+        }
     if os.path.exists(LOCAL_FILE):
         try:
-            return {
-                'symbol_data': pd.read_excel(LOCAL_FILE, sheet_name='symbol_data'),
-                'meta': pd.read_excel(LOCAL_FILE, sheet_name='meta'),
-            }
+            return _read(LOCAL_FILE)
         except Exception:
             pass
     encoded = urllib.parse.quote(FILENAME)
     url = f"https://firebasestorage.googleapis.com/v0/b/{FIREBASE_BUCKET}/o/{FIREBASE_FOLDER}%2F{encoded}?alt=media"
     try:
-        return {
-            'symbol_data': pd.read_excel(url, sheet_name='symbol_data'),
-            'meta': pd.read_excel(url, sheet_name='meta'),
-        }
+        return _read(url)
     except Exception:
         return None
 
@@ -92,7 +92,15 @@ if data is None:
     st.stop()
 
 df_sym = data['symbol_data']
+df_sym = df_sym[df_sym['contract'] != 'Mar26']  # exclude expired prompt month
 df_meta = data['meta']
+
+# Extract the resid OI date for display
+df_info = data.get('info', pd.DataFrame())
+if not df_info.empty and 't2_date' in df_info.columns:
+    resid_date_str = str(df_info['t2_date'].iloc[0])
+else:
+    resid_date_str = "N/A"
 
 # Build lookups from meta
 conv_map = dict(zip(df_meta['symbol'], df_meta['conversion_factor']))
@@ -261,7 +269,7 @@ def render_section(title, products):
     pivot_resid, pivot_pct = build_product_table(prods_in_selection)
     if not pivot_resid.empty:
         st.markdown("**Main Products Resid OI (1,000 BBLs)**")
-        st.markdown("*Resid OI (% chg vs 27 Feb)*")
+        st.markdown(f"*Resid OI (% chg vs 27 Feb) — OI Date: {resid_date_str}*")
         styled, n = style_pivot(pivot_resid, pivot_pct)
         st.dataframe(styled, height=35 * (min(n, 15) + 1) + 2, use_container_width=True)
 
@@ -273,7 +281,7 @@ def render_section(title, products):
         pivot_sym_display = pivot_sym.rename(columns=col_names)
         pivot_sym_pct_display = pivot_sym_pct.rename(columns=col_names)
         st.markdown("**Product Codes Resid OI (original units)**")
-        st.markdown("*Resid OI (% chg vs 27 Feb)*")
+        st.markdown(f"*Resid OI (% chg vs 27 Feb) — OI Date: {resid_date_str}*")
         styled_sym, n_sym = style_pivot(pivot_sym_display, pivot_sym_pct_display)
         st.dataframe(styled_sym, height=35 * (min(n_sym, 15) + 1) + 2, use_container_width=True)
 
@@ -288,7 +296,7 @@ if show_futures:
     fut_resid, fut_pct = build_futures_table()
     if not fut_resid.empty:
         st.markdown("### ICE Futures")
-        st.markdown("*Resid OI (% chg vs 27 Feb)*")
+        st.markdown(f"*Resid OI (% chg vs 27 Feb) — OI Date: {resid_date_str}*")
         # Rename columns to include description
         col_names = {s: f"{s} ({desc_map.get(s, '')})" for s in fut_resid.columns}
         fut_display = fut_resid.rename(columns=col_names)
