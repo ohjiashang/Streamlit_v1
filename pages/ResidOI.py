@@ -7,7 +7,6 @@ warnings.filterwarnings("ignore")
 import matplotlib.colors as mcolors
 
 st.set_page_config(layout="wide")
-st.title("Residual OI")
 
 # ── Config ────────────────────────────────────────────────────────
 
@@ -101,6 +100,8 @@ if not df_info.empty and 'run_date' in df_info.columns:
     resid_date_str = str(df_info['run_date'].iloc[0])
 else:
     resid_date_str = "N/A"
+
+st.title(f"Residual OI — {resid_date_str}")
 
 # Build lookups from meta
 conv_map = dict(zip(df_meta['symbol'], df_meta['conversion_factor']))
