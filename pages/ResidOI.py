@@ -334,14 +334,14 @@ def render_section(title, products):
         if not pivot_resid.empty:
             st.markdown(f"*{resid_date_str} Resid OI (% chg vs 27 Feb) — totals in BBLs, codes in original units*")
             styled, n = style_pivot(pivot_resid, pivot_pct)
-            st.dataframe(styled, height=35 * (min(n, 15) + 1) + 2, use_container_width=True)
+            st.dataframe(styled, height=35 * (n + 1) + 2, use_container_width=True)
     else:
         pivot_resid, pivot_pct = build_product_table(prods_in_selection)
         if not pivot_resid.empty:
             st.markdown("**Main Products Resid OI (1,000 BBLs)**")
             st.markdown(f"*{resid_date_str} Resid OI (% chg vs 27 Feb)*")
             styled, n = style_pivot(pivot_resid, pivot_pct)
-            st.dataframe(styled, height=35 * (min(n, 15) + 1) + 2, use_container_width=True)
+            st.dataframe(styled, height=35 * (n + 1) + 2, use_container_width=True)
 
 # ── Display ───────────────────────────────────────────────────────
 
