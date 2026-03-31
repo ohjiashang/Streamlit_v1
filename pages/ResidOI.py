@@ -359,7 +359,7 @@ if show_futures:
         fut_display = fut_resid.rename(columns=col_names)
         fut_pct_display = fut_pct.rename(columns=col_names)
         styled_fut, n_fut = style_pivot(fut_display, fut_pct_display)
-        st.dataframe(styled_fut, height=35 * (min(n_fut, 15) + 1) + 2, use_container_width=True)
+        st.dataframe(styled_fut, height=35 * (n_fut + 1) + 2, use_container_width=True)
 
 # Swaps by family
 if family_choice == "All":
