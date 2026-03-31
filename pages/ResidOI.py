@@ -97,8 +97,8 @@ df_meta = data['meta']
 
 # Extract the resid OI date for display
 df_info = data.get('info', pd.DataFrame())
-if not df_info.empty and 't2_date' in df_info.columns:
-    resid_date_str = str(df_info['t2_date'].iloc[0])
+if not df_info.empty and 'run_date' in df_info.columns:
+    resid_date_str = str(df_info['run_date'].iloc[0])
 else:
     resid_date_str = "N/A"
 
