@@ -236,7 +236,7 @@ def combine_resid_pct(pivot_resid, pivot_pct):
                 pct_numeric.at[idx, col] = None
             elif pd.notna(pct_val):
                 sign = '+' if pct_val >= 0 else ''
-                combined.at[idx, col] = f"{resid_val:,.0f} ({sign}{pct_val:.1f}%)"
+                combined.at[idx, col] = f"{resid_val:,.0f} ({sign}{pct_val:.0f}%)"
                 pct_numeric.at[idx, col] = pct_val
             else:
                 combined.at[idx, col] = f"{resid_val:,.0f}"
