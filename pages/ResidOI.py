@@ -55,7 +55,9 @@ def color_pct(val):
         color = lighten_color("red", lighten_amt)
     else:
         color = lighten_color("#065DDF", lighten_amt)
-    return f"background-color: {color}"
+    # White text when background is dark (lighten_amt < 0.5 means dark)
+    text_color = "white" if lighten_amt < 0.5 else "black"
+    return f"background-color: {color}; color: {text_color}"
 
 def highlight_oi(val):
     return 'background-color: #FFFFE0'
