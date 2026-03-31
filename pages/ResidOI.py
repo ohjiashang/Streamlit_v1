@@ -269,7 +269,7 @@ def render_section(title, products):
     pivot_resid, pivot_pct = build_product_table(prods_in_selection)
     if not pivot_resid.empty:
         st.markdown("**Main Products Resid OI (1,000 BBLs)**")
-        st.markdown(f"*Resid OI (% chg vs 27 Feb) — OI Date: {resid_date_str}*")
+        st.markdown(f"*{resid_date_str} Resid OI (% chg vs 27 Feb)*")
         styled, n = style_pivot(pivot_resid, pivot_pct)
         st.dataframe(styled, height=35 * (min(n, 15) + 1) + 2, use_container_width=True)
 
@@ -281,7 +281,7 @@ def render_section(title, products):
         pivot_sym_display = pivot_sym.rename(columns=col_names)
         pivot_sym_pct_display = pivot_sym_pct.rename(columns=col_names)
         st.markdown("**Product Codes Resid OI (original units)**")
-        st.markdown(f"*Resid OI (% chg vs 27 Feb) — OI Date: {resid_date_str}*")
+        st.markdown(f"*{resid_date_str} Resid OI (% chg vs 27 Feb)*")
         styled_sym, n_sym = style_pivot(pivot_sym_display, pivot_sym_pct_display)
         st.dataframe(styled_sym, height=35 * (min(n_sym, 15) + 1) + 2, use_container_width=True)
 
@@ -296,7 +296,7 @@ if show_futures:
     fut_resid, fut_pct = build_futures_table()
     if not fut_resid.empty:
         st.markdown("### ICE Futures")
-        st.markdown(f"*Resid OI (% chg vs 27 Feb) — OI Date: {resid_date_str}*")
+        st.markdown(f"*{resid_date_str} Resid OI (% chg vs 27 Feb)*")
         # Rename columns to include description
         col_names = {s: f"{s} ({desc_map.get(s, '')})" for s in fut_resid.columns}
         fut_display = fut_resid.rename(columns=col_names)
