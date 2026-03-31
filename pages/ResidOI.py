@@ -27,7 +27,7 @@ def contract_sort_key(contract):
     m_idx = MONTH_NAMES.index(month_str) if month_str in MONTH_NAMES else 0
     return (yr, m_idx)
 
-FAMILY_ORDER = ["Light", "Middle", "Heavy", "Crude"]
+FAMILY_ORDER = ["Light", "Middle", "Heavy"]
 
 PRODUCT_ORDER = {
     "Light": ["S92", "Ebob", "Rbob", "MOPJ Naph", "NWE Naph"],
@@ -118,6 +118,8 @@ for _, row in df_meta.iterrows():
 
 # ── Sidebar ───────────────────────────────────────────────────────
 
+show_futures = st.sidebar.checkbox("Show ICE Futures", value=True)
+
 family_choice = st.sidebar.radio("Family", ["All"] + FAMILY_ORDER)
 
 if family_choice == "All":
@@ -132,8 +134,6 @@ selected_products = st.sidebar.multiselect(
     options=all_products,
     default=all_products,
 )
-
-show_futures = st.sidebar.checkbox("Show ICE Futures", value=True)
 
 st.sidebar.markdown("---")
 st.sidebar.markdown("*Resid OI = T-2 OI − 2d Vol*")
@@ -214,7 +214,7 @@ def build_futures_table():
     return pivot_resid, pivot_pct
 
 def combine_resid_pct(pivot_resid, pivot_pct):
-    """Merge resid OI and % chg into combined string cells: '5,000 (+10.5%)'."""
+    """Merge resid OI and % chg into combined string cells: '5,000 (+10%)'."""
     mask = pivot_resid.notna().any(axis=1)
     pivot_resid = pivot_resid[mask].copy()
     # Sort contracts chronologically
@@ -226,12 +226,22 @@ def combine_resid_pct(pivot_resid, pivot_pct):
     combined = pd.DataFrame(index=pivot_resid.index, columns=pivot_resid.columns)
     # Keep numeric pct for color coding
     pct_numeric = pd.DataFrame(index=pivot_resid.index, columns=pivot_resid.columns)
+    # Track which columns are "Total" for highlighting
+    is_total = pd.Series(False, index=pivot_resid.columns)
 
     for col in pivot_resid.columns:
+        # Check if this is a Total column (MultiIndex or string)
+        if isinstance(col, tuple):
+            is_total[col] = (col[1] == 'TOTAL')
         for idx in pivot_resid.index:
             resid_val = pivot_resid.at[idx, col]
             pct_val = pivot_pct.at[idx, col] if col in pivot_pct.columns else None
-            if pd.isna(resid_val):
+            # Separator columns stay blank
+            is_sep = isinstance(col, tuple) and col[1].strip() == ''
+            if is_sep:
+                combined.at[idx, col] = ''
+                pct_numeric.at[idx, col] = None
+            elif pd.isna(resid_val):
                 combined.at[idx, col] = '0'
                 pct_numeric.at[idx, col] = None
             elif pd.notna(pct_val):
@@ -242,49 +252,96 @@ def combine_resid_pct(pivot_resid, pivot_pct):
                 combined.at[idx, col] = f"{resid_val:,.0f}"
                 pct_numeric.at[idx, col] = None
 
-    return combined, pct_numeric
+    return combined, pct_numeric, is_total
 
 def style_pivot(pivot_resid, pivot_pct):
     """Style: combined 'resid (% chg)' cells with color coding."""
-    combined, pct_numeric = combine_resid_pct(pivot_resid, pivot_pct)
+    combined, pct_numeric, is_total = combine_resid_pct(pivot_resid, pivot_pct)
     if combined.empty:
         return combined.style, 0
 
     def apply_color(col):
-        if col.name in pct_numeric.columns:
-            return [color_pct(v) if pd.notna(v) else '' for v in pct_numeric[col.name]]
-        return [''] * len(col)
+        styles = []
+        is_total_col = is_total.get(col.name, False)
+        for i, idx in enumerate(combined.index):
+            pct_val = pct_numeric.at[idx, col.name] if col.name in pct_numeric.columns else None
+            base_style = color_pct(pct_val) if pd.notna(pct_val) else ''
+            if is_total_col:
+                base_style += '; font-weight: bold' if base_style else 'font-weight: bold'
+            styles.append(base_style)
+        return styles
 
     styled = combined.style.apply(apply_color, axis=0)
     return styled, len(combined)
 
+def build_interleaved_table(products):
+    """Build interleaved pivot with MultiIndex columns: (Product, Total/symbol)."""
+    resid_series = {}
+    pct_series = {}
+
+    for prod in products:
+        syms = prod_sym_map.get(prod, [])
+        swap_syms = [s for s in syms if s not in futures_set]
+
+        # Product total (converted to BBL)
+        prod_data = df_sym[df_sym['symbol'].isin(syms)].copy()
+        prod_data['resid_bbl'] = prod_data.apply(
+            lambda r: r['resid_oi'] * conv_map.get(r['symbol'], 1.0), axis=1
+        )
+        prod_data['ref_bbl'] = prod_data.apply(
+            lambda r: r['ref_oi'] * conv_map.get(r['symbol'], 1.0), axis=1
+        )
+        agg = prod_data.groupby('contract').agg(
+            resid_bbl=('resid_bbl', 'sum'),
+            ref_bbl=('ref_bbl', 'sum'),
+        )
+        agg['pct'] = agg.apply(
+            lambda r: round((r['resid_bbl'] / r['ref_bbl'] - 1) * 100, 1) if r['ref_bbl'] else None, axis=1
+        )
+        col_key = (prod, 'TOTAL')
+        resid_series[col_key] = agg['resid_bbl']
+        pct_series[col_key] = agg['pct']
+
+        # Constituent symbols
+        for s in swap_syms:
+            s_data = df_sym[df_sym['symbol'] == s].set_index('contract')
+            desc = desc_map.get(s, s)
+            col_key = (prod, f"{desc} ({s})")
+            resid_series[col_key] = s_data['resid_oi']
+            pct_series[col_key] = s_data['pct_chg']
+
+        # Separator column after each product
+        sep_key = (prod, ' ')
+        resid_series[sep_key] = pd.Series(dtype='float64')
+        pct_series[sep_key] = pd.Series(dtype='float64')
+
+    pivot_resid = pd.DataFrame(resid_series)
+    pivot_pct = pd.DataFrame(pct_series)
+    pivot_resid.columns = pd.MultiIndex.from_tuples(pivot_resid.columns)
+    pivot_pct.columns = pd.MultiIndex.from_tuples(pivot_pct.columns)
+    return pivot_resid, pivot_pct
+
 def render_section(title, products):
-    """Render a family section with main products + product codes."""
+    """Render a family section with interleaved product + constituent columns."""
     prods_in_selection = [p for p in products if p in selected_products]
     if not prods_in_selection:
         return
 
-    st.markdown(f"### Swaps — {title}")
+    show_constituents = st.checkbox("Show constituents", value=False, key=f"const_{title}")
 
-    # Main Products OI (in 1,000 BBLs)
-    pivot_resid, pivot_pct = build_product_table(prods_in_selection)
-    if not pivot_resid.empty:
-        st.markdown("**Main Products Resid OI (1,000 BBLs)**")
-        st.markdown(f"*{resid_date_str} Resid OI (% chg vs 27 Feb)*")
-        styled, n = style_pivot(pivot_resid, pivot_pct)
-        st.dataframe(styled, height=35 * (min(n, 15) + 1) + 2, use_container_width=True)
-
-    # Product Codes OI (original units)
-    pivot_sym, pivot_sym_pct = build_symbol_table(prods_in_selection)
-    if not pivot_sym.empty:
-        # Rename columns to include description
-        col_names = {s: f"{s} ({desc_map.get(s, '')})" for s in pivot_sym.columns}
-        pivot_sym_display = pivot_sym.rename(columns=col_names)
-        pivot_sym_pct_display = pivot_sym_pct.rename(columns=col_names)
-        st.markdown("**Product Codes Resid OI (original units)**")
-        st.markdown(f"*{resid_date_str} Resid OI (% chg vs 27 Feb)*")
-        styled_sym, n_sym = style_pivot(pivot_sym_display, pivot_sym_pct_display)
-        st.dataframe(styled_sym, height=35 * (min(n_sym, 15) + 1) + 2, use_container_width=True)
+    if show_constituents:
+        pivot_resid, pivot_pct = build_interleaved_table(prods_in_selection)
+        if not pivot_resid.empty:
+            st.markdown(f"*{resid_date_str} Resid OI (% chg vs 27 Feb) — totals in BBLs, codes in original units*")
+            styled, n = style_pivot(pivot_resid, pivot_pct)
+            st.dataframe(styled, height=35 * (min(n, 15) + 1) + 2, use_container_width=True)
+    else:
+        pivot_resid, pivot_pct = build_product_table(prods_in_selection)
+        if not pivot_resid.empty:
+            st.markdown("**Main Products Resid OI (1,000 BBLs)**")
+            st.markdown(f"*{resid_date_str} Resid OI (% chg vs 27 Feb)*")
+            styled, n = style_pivot(pivot_resid, pivot_pct)
+            st.dataframe(styled, height=35 * (min(n, 15) + 1) + 2, use_container_width=True)
 
 # ── Display ───────────────────────────────────────────────────────
 
@@ -298,8 +355,7 @@ if show_futures:
     if not fut_resid.empty:
         st.markdown("### ICE Futures")
         st.markdown(f"*{resid_date_str} Resid OI (% chg vs 27 Feb)*")
-        # Rename columns to include description
-        col_names = {s: f"{s} ({desc_map.get(s, '')})" for s in fut_resid.columns}
+        col_names = {s: f"{desc_map.get(s, s)} ({s})" for s in fut_resid.columns}
         fut_display = fut_resid.rename(columns=col_names)
         fut_pct_display = fut_pct.rename(columns=col_names)
         styled_fut, n_fut = style_pivot(fut_display, fut_pct_display)
@@ -308,6 +364,8 @@ if show_futures:
 # Swaps by family
 if family_choice == "All":
     for fam in FAMILY_ORDER:
+        st.markdown(f"### Swaps — {fam}")
         render_section(fam, PRODUCT_ORDER[fam])
 else:
+    st.markdown(f"### Swaps — {family_choice}")
     render_section(family_choice, PRODUCT_ORDER[family_choice])
