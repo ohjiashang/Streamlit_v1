@@ -232,7 +232,7 @@ def combine_resid_pct(pivot_resid, pivot_pct):
             resid_val = pivot_resid.at[idx, col]
             pct_val = pivot_pct.at[idx, col] if col in pivot_pct.columns else None
             if pd.isna(resid_val):
-                combined.at[idx, col] = ''
+                combined.at[idx, col] = '0'
                 pct_numeric.at[idx, col] = None
             elif pd.notna(pct_val):
                 sign = '+' if pct_val >= 0 else ''
