@@ -137,15 +137,22 @@ selected_products = st.sidebar.multiselect(
 
 st.sidebar.markdown("---")
 
-# Check if Y-1 data is available
-has_y1 = 'pct_chg_y1' in df_sym.columns
+# Check which comparison metrics are available
+metric_options = ["vs 27 Feb"]
+if 'pct_chg_y1' in df_sym.columns:
+    metric_options.append("vs Y-1")
+if 'pct_chg_5y' in df_sym.columns:
+    metric_options.append("vs 5Y Avg")
 
-if has_y1:
-    global_metric = st.sidebar.radio("Compare % chg", ["vs 27 Feb", "vs Y-1"], horizontal=True)
+if len(metric_options) > 1:
+    global_metric = st.sidebar.radio("Compare % chg", metric_options, horizontal=True)
 else:
-    global_metric = "vs 27 Feb"
+    global_metric = metric_options[0]
 
-global_pct_col = 'pct_chg_y1' if global_metric == "vs Y-1" else 'pct_chg'
+_pct_col_map = {"vs 27 Feb": "pct_chg", "vs Y-1": "pct_chg_y1", "vs 5Y Avg": "pct_chg_5y"}
+_ref_col_map = {"vs 27 Feb": "ref_oi", "vs Y-1": "ref_oi_y1", "vs 5Y Avg": "ref_oi_5y"}
+global_pct_col = _pct_col_map[global_metric]
+global_ref_col = _ref_col_map[global_metric]
 metric_label = f"{resid_date_str} Resid OI (% chg {global_metric})"
 
 st.sidebar.markdown("---")
@@ -155,7 +162,7 @@ st.sidebar.markdown("*Resid OI = T-2 OI − 2d Vol*")
 
 def build_product_table(products, pct_col='pct_chg'):
     """Pivot: rows=contracts, columns=products, values=resid OI in 1,000 BBL."""
-    ref_col = 'ref_oi' if pct_col == 'pct_chg' else 'ref_oi_y1'
+    ref_col = _ref_col_map.get(global_metric, 'ref_oi')
     all_rows = []
     for prod in products:
         syms = prod_sym_map.get(prod, [])
@@ -287,7 +294,7 @@ def style_pivot(pivot_resid, pivot_pct):
 
 def build_interleaved_table(products, pct_col='pct_chg'):
     """Build interleaved pivot with MultiIndex columns: (Product, Total/symbol)."""
-    ref_col = 'ref_oi' if pct_col == 'pct_chg' else 'ref_oi_y1'
+    ref_col = _ref_col_map.get(global_metric, 'ref_oi')
     resid_series = {}
     pct_series = {}
 
