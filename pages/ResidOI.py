@@ -136,18 +136,20 @@ selected_products = st.sidebar.multiselect(
 )
 
 st.sidebar.markdown("---")
-st.sidebar.markdown("*Resid OI = T-2 OI − 2d Vol*")
 
 # Check if Y-1 data is available
 has_y1 = 'pct_chg_y1' in df_sym.columns
 
-METRIC_OPTIONS = ["vs 27 Feb", "vs Y-1"] if has_y1 else ["vs 27 Feb"]
+if has_y1:
+    global_metric = st.sidebar.radio("Compare % chg", ["vs 27 Feb", "vs Y-1"], horizontal=True)
+else:
+    global_metric = "vs 27 Feb"
 
-def get_pct_col(metric):
-    return 'pct_chg_y1' if metric == "vs Y-1" else 'pct_chg'
+global_pct_col = 'pct_chg_y1' if global_metric == "vs Y-1" else 'pct_chg'
+metric_label = f"{resid_date_str} Resid OI (% chg {global_metric})"
 
-def get_metric_label(metric):
-    return f"{resid_date_str} Resid OI (% chg {metric})"
+st.sidebar.markdown("---")
+st.sidebar.markdown("*Resid OI = T-2 OI − 2d Vol*")
 
 # ── Helper: build product summary table (converted to 1,000 BBL) ──
 
@@ -337,28 +339,19 @@ def render_section(title, products):
     if not prods_in_selection:
         return
 
-    col1, col2 = st.columns([1, 1])
-    with col1:
-        show_constituents = st.checkbox("Show constituents", value=False, key=f"const_{title}")
-    with col2:
-        if len(METRIC_OPTIONS) > 1:
-            metric = st.radio("Compare", METRIC_OPTIONS, horizontal=True, key=f"metric_{title}", label_visibility="collapsed")
-        else:
-            metric = METRIC_OPTIONS[0]
-
-    pct_col = get_pct_col(metric)
+    show_constituents = st.checkbox("Show constituents", value=False, key=f"const_{title}")
 
     if show_constituents:
-        pivot_resid, pivot_pct = build_interleaved_table(prods_in_selection, pct_col)
+        pivot_resid, pivot_pct = build_interleaved_table(prods_in_selection, global_pct_col)
         if not pivot_resid.empty:
-            st.markdown(f"*{get_metric_label(metric)} — totals in BBLs, codes in original units*")
+            st.markdown(f"*{metric_label} — totals in BBLs, codes in original units*")
             styled, n = style_pivot(pivot_resid, pivot_pct)
             st.dataframe(styled, height=35 * (n + 1) + 2, use_container_width=True)
     else:
-        pivot_resid, pivot_pct = build_product_table(prods_in_selection, pct_col)
+        pivot_resid, pivot_pct = build_product_table(prods_in_selection, global_pct_col)
         if not pivot_resid.empty:
             st.markdown("**Main Products Resid OI (1,000 BBLs)**")
-            st.markdown(f"*{get_metric_label(metric)}*")
+            st.markdown(f"*{metric_label}*")
             styled, n = style_pivot(pivot_resid, pivot_pct)
             st.dataframe(styled, height=35 * (n + 1) + 2, use_container_width=True)
 
@@ -371,15 +364,9 @@ if not selected_products:
 # ICE Futures
 if show_futures:
     st.markdown("### ICE Futures")
-    if len(METRIC_OPTIONS) > 1:
-        fut_metric = st.radio("Compare", METRIC_OPTIONS, horizontal=True, key="metric_futures", label_visibility="collapsed")
-    else:
-        fut_metric = METRIC_OPTIONS[0]
-
-    fut_pct_col = get_pct_col(fut_metric)
-    fut_resid, fut_pct = build_futures_table(fut_pct_col)
+    fut_resid, fut_pct = build_futures_table(global_pct_col)
     if not fut_resid.empty:
-        st.markdown(f"*{get_metric_label(fut_metric)}*")
+        st.markdown(f"*{metric_label}*")
         col_names = {s: f"{desc_map.get(s, s)} ({s})" for s in fut_resid.columns}
         fut_display = fut_resid.rename(columns=col_names)
         fut_pct_display = fut_pct.rename(columns=col_names)
