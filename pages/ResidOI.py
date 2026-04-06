@@ -137,12 +137,23 @@ selected_products = st.sidebar.multiselect(
 
 st.sidebar.markdown("---")
 st.sidebar.markdown("*Resid OI = T-2 OI − 2d Vol*")
-st.sidebar.markdown("*% chg = vs 27 Feb baseline*")
+
+# Check if Y-1 data is available
+has_y1 = 'pct_chg_y1' in df_sym.columns
+
+METRIC_OPTIONS = ["vs 27 Feb", "vs Y-1"] if has_y1 else ["vs 27 Feb"]
+
+def get_pct_col(metric):
+    return 'pct_chg_y1' if metric == "vs Y-1" else 'pct_chg'
+
+def get_metric_label(metric):
+    return f"{resid_date_str} Resid OI (% chg {metric})"
 
 # ── Helper: build product summary table (converted to 1,000 BBL) ──
 
-def build_product_table(products):
+def build_product_table(products, pct_col='pct_chg'):
     """Pivot: rows=contracts, columns=products, values=resid OI in 1,000 BBL."""
+    ref_col = 'ref_oi' if pct_col == 'pct_chg' else 'ref_oi_y1'
     all_rows = []
     for prod in products:
         syms = prod_sym_map.get(prod, [])
@@ -151,7 +162,7 @@ def build_product_table(products):
             lambda r: r['resid_oi'] * conv_map.get(r['symbol'], 1.0), axis=1
         )
         prod_data['ref_bbl'] = prod_data.apply(
-            lambda r: r['ref_oi'] * conv_map.get(r['symbol'], 1.0), axis=1
+            lambda r: r.get(ref_col, 0) * conv_map.get(r['symbol'], 1.0), axis=1
         )
         agg = prod_data.groupby('contract').agg(
             resid_bbl=('resid_bbl', 'sum'),
@@ -168,11 +179,9 @@ def build_product_table(products):
         lambda r: round((r['resid_bbl'] / r['ref_bbl'] - 1) * 100, 1) if r['ref_bbl'] else None, axis=1
     )
 
-    # Pivot for resid OI
     pivot_resid = df_all.pivot(index='contract', columns='product', values='resid_bbl')
     pivot_resid = pivot_resid.reindex(columns=products)
 
-    # Pivot for pct chg
     pivot_pct = df_all.pivot(index='contract', columns='product', values='pct_chg')
     pivot_pct = pivot_pct.reindex(columns=products)
 
@@ -198,7 +207,7 @@ def build_symbol_table(products):
 
     return pivot_resid, pivot_pct
 
-def build_futures_table():
+def build_futures_table(pct_col='pct_chg'):
     """Pivot: rows=contracts, columns=futures symbols, values=resid OI."""
     fut_syms = sorted(futures_set)
     fut_data = df_sym[df_sym['symbol'].isin(fut_syms)]
@@ -208,7 +217,7 @@ def build_futures_table():
     pivot_resid = fut_data.pivot(index='contract', columns='symbol', values='resid_oi')
     pivot_resid = pivot_resid.reindex(columns=fut_syms)
 
-    pivot_pct = fut_data.pivot(index='contract', columns='symbol', values='pct_chg')
+    pivot_pct = fut_data.pivot(index='contract', columns='symbol', values=pct_col)
     pivot_pct = pivot_pct.reindex(columns=fut_syms)
 
     return pivot_resid, pivot_pct
@@ -274,8 +283,9 @@ def style_pivot(pivot_resid, pivot_pct):
     styled = combined.style.apply(apply_color, axis=0)
     return styled, len(combined)
 
-def build_interleaved_table(products):
+def build_interleaved_table(products, pct_col='pct_chg'):
     """Build interleaved pivot with MultiIndex columns: (Product, Total/symbol)."""
+    ref_col = 'ref_oi' if pct_col == 'pct_chg' else 'ref_oi_y1'
     resid_series = {}
     pct_series = {}
 
@@ -289,7 +299,7 @@ def build_interleaved_table(products):
             lambda r: r['resid_oi'] * conv_map.get(r['symbol'], 1.0), axis=1
         )
         prod_data['ref_bbl'] = prod_data.apply(
-            lambda r: r['ref_oi'] * conv_map.get(r['symbol'], 1.0), axis=1
+            lambda r: r.get(ref_col, 0) * conv_map.get(r['symbol'], 1.0), axis=1
         )
         agg = prod_data.groupby('contract').agg(
             resid_bbl=('resid_bbl', 'sum'),
@@ -308,7 +318,7 @@ def build_interleaved_table(products):
             desc = desc_map.get(s, s)
             col_key = (prod, f"{desc} ({s})")
             resid_series[col_key] = s_data['resid_oi']
-            pct_series[col_key] = s_data['pct_chg']
+            pct_series[col_key] = s_data[pct_col]
 
         # Separator column after each product
         sep_key = (prod, ' ')
@@ -327,19 +337,28 @@ def render_section(title, products):
     if not prods_in_selection:
         return
 
-    show_constituents = st.checkbox("Show constituents", value=False, key=f"const_{title}")
+    col1, col2 = st.columns([1, 1])
+    with col1:
+        show_constituents = st.checkbox("Show constituents", value=False, key=f"const_{title}")
+    with col2:
+        if len(METRIC_OPTIONS) > 1:
+            metric = st.radio("Compare", METRIC_OPTIONS, horizontal=True, key=f"metric_{title}", label_visibility="collapsed")
+        else:
+            metric = METRIC_OPTIONS[0]
+
+    pct_col = get_pct_col(metric)
 
     if show_constituents:
-        pivot_resid, pivot_pct = build_interleaved_table(prods_in_selection)
+        pivot_resid, pivot_pct = build_interleaved_table(prods_in_selection, pct_col)
         if not pivot_resid.empty:
-            st.markdown(f"*{resid_date_str} Resid OI (% chg vs 27 Feb) — totals in BBLs, codes in original units*")
+            st.markdown(f"*{get_metric_label(metric)} — totals in BBLs, codes in original units*")
             styled, n = style_pivot(pivot_resid, pivot_pct)
             st.dataframe(styled, height=35 * (n + 1) + 2, use_container_width=True)
     else:
-        pivot_resid, pivot_pct = build_product_table(prods_in_selection)
+        pivot_resid, pivot_pct = build_product_table(prods_in_selection, pct_col)
         if not pivot_resid.empty:
             st.markdown("**Main Products Resid OI (1,000 BBLs)**")
-            st.markdown(f"*{resid_date_str} Resid OI (% chg vs 27 Feb)*")
+            st.markdown(f"*{get_metric_label(metric)}*")
             styled, n = style_pivot(pivot_resid, pivot_pct)
             st.dataframe(styled, height=35 * (n + 1) + 2, use_container_width=True)
 
@@ -351,10 +370,16 @@ if not selected_products:
 
 # ICE Futures
 if show_futures:
-    fut_resid, fut_pct = build_futures_table()
+    st.markdown("### ICE Futures")
+    if len(METRIC_OPTIONS) > 1:
+        fut_metric = st.radio("Compare", METRIC_OPTIONS, horizontal=True, key="metric_futures", label_visibility="collapsed")
+    else:
+        fut_metric = METRIC_OPTIONS[0]
+
+    fut_pct_col = get_pct_col(fut_metric)
+    fut_resid, fut_pct = build_futures_table(fut_pct_col)
     if not fut_resid.empty:
-        st.markdown("### ICE Futures")
-        st.markdown(f"*{resid_date_str} Resid OI (% chg vs 27 Feb)*")
+        st.markdown(f"*{get_metric_label(fut_metric)}*")
         col_names = {s: f"{desc_map.get(s, s)} ({s})" for s in fut_resid.columns}
         fut_display = fut_resid.rename(columns=col_names)
         fut_pct_display = fut_pct.rename(columns=col_names)
