@@ -345,6 +345,11 @@ def get_n_day_OI(symbol, months, years, forwards, cf, suffix="OI"):
 
             for n_trading_day in days_to_do:
                 df_nth_day = df_contract[df_contract["n_trading_day"] == n_trading_day]
+                if df_nth_day.empty and not df_contract.empty:
+                    # Nearest match (within 5 days) to handle holiday calendar differences between years
+                    diffs = (df_contract["n_trading_day"] - n_trading_day).abs()
+                    if diffs.min() <= 5:
+                        df_nth_day = df_contract.iloc[diffs.argsort()[:1]]
                 if not df_nth_day.empty:
                     contract_lst.append(df_nth_day)
 
