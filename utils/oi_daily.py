@@ -321,7 +321,7 @@ def get_n_day_OI(symbol, months, years, forwards, cf, suffix="OI"):
 
             if contract in forward_27:
                 continue
-            
+
             sheet = f"{symbol}_{month}"
             if sheet not in dfs:
                 continue
@@ -340,7 +340,7 @@ def get_n_day_OI(symbol, months, years, forwards, cf, suffix="OI"):
                 days_to_do = days[1:2]   # only the second element
             else:
                 days_to_do = days        # 1-element or both
-        
+
             for n_trading_day in days_to_do:
                 df_nth_day = df_contract[df_contract["n_trading_day"] == n_trading_day]
                 if not df_nth_day.empty:
@@ -439,7 +439,7 @@ def highlight_forward(val, row, col, t2_date):
     """Returns light yellow background if the cell is a current or future forward contract."""
     light_yellow = "background-color: #FFFFE0"  # very light yellow
     cell_month = _MONTH_TO_NUM.get(row, 0)
-    if (col, cell_month) >= (t2_date.year, t2_date.month):
+    if (col, cell_month) > (t2_date.year, t2_date.month):
         return light_yellow
     return ""
 

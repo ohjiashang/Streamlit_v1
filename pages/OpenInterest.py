@@ -4,7 +4,7 @@ import pandas as pd
 import warnings
 warnings.filterwarnings("ignore")
 
-from utils.oi_constants import OI_V2_SYMBOLS, OI_V2_FORWARDS, OI_V2_MONTHS, OI_V2_YEARS, OI_V2_FORWARDS_MOD
+from utils.oi_constants import OI_V2_SYMBOLS, OI_V2_MONTHS, OI_V2_YEARS, OI_V2_FORWARDS_MOD
 from utils.oi_daily import (
     get_combined_n_day_OI,
     get_all_OI,
@@ -86,7 +86,7 @@ conv_factor_map = dict(zip(df[symbol_col], df[conversion_factor_col]))
 # ── Main content ────────────────────────────────────────────────────────────────
 if selected_symbols:
     try:
-        df_n_day = get_combined_n_day_OI(selected_symbols, OI_V2_MONTHS, OI_V2_YEARS, OI_V2_FORWARDS, conv_factor_map)
+        df_n_day = get_combined_n_day_OI(selected_symbols, OI_V2_MONTHS, OI_V2_YEARS, OI_V2_FORWARDS_MOD, conv_factor_map)
         pivot_n_day = get_pivot_table(df_n_day)
         styled_n_day = style_forward_cells(pivot_n_day)
 
@@ -98,7 +98,7 @@ if selected_symbols:
         if len(selected_symbols) == 1:
             s = selected_symbols[0]
             suffix = "price"
-            df_prices = get_n_day_OI(s, OI_V2_MONTHS, OI_V2_YEARS, OI_V2_FORWARDS, conv_factor_map, suffix)
+            df_prices = get_n_day_OI(s, OI_V2_MONTHS, OI_V2_YEARS, OI_V2_FORWARDS_MOD, conv_factor_map, suffix)
             pivot_prices = get_pivot_table(df_prices, suffix)
             styled_prices = style_forward_cells(pivot_prices)
             price_unit_label = price_unit_map.get(s, "")
@@ -123,7 +123,7 @@ if selected_symbols:
                 st.markdown(f"#### Historical Nth-Day Prices ({price_unit_label})")
                 st.dataframe(styled_prices, height=460)
 
-        plot_forwards_combined(selected_symbols, OI_V2_FORWARDS, conv_factor_map)
+        plot_forwards_combined(selected_symbols, OI_V2_FORWARDS_MOD, conv_factor_map)
         if len(selected_symbols) == 1:
             get_OI_volume_table(selected_symbols[0])
 
