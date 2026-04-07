@@ -97,9 +97,11 @@ def get_terminal_date(contract: str) -> datetime:
 def get_terminal_OI(symbol, months, years, forwards):
     dfs = read_dfs(symbol)
     
+    forward_27 = [c for c in forwards if c.endswith("27")]
+
     def process_contract(month, year):
         contract = f"{month}{year}"
-        if contract in forwards:
+        if contract in forward_27:
             return None
 
         sheet = f"{symbol}_{month}"
@@ -403,7 +405,7 @@ def get_pivot_table(df, suffix="OI"):
     
     def format_number(x):
         if pd.isna(x):
-            return None
+            return np.nan
         elif isinstance(x, (int, float)):
             # If integer, return as int; otherwise, format to 2 decimal places and strip trailing zeros
             return int(x) if x == int(x) else f"{x:.2f}".rstrip('0').rstrip('.')
@@ -412,13 +414,13 @@ def get_pivot_table(df, suffix="OI"):
     def format_oi(series):
         values = list(series)
         values = [format_number(v) for v in values if pd.notna(v)]
-        
+
         if len(values) == 1:
             return values[0]
         elif len(values) >= 2:
             return f"{values[0]} ({values[1]})"
         else:
-            return None
+            return np.nan
 
 
     pivot = pd.pivot_table(
