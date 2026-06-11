@@ -309,13 +309,18 @@ def derive_status_row(pick: dict) -> dict:
             dist_sig = max(se_val - abs(z), 0.0)
             dist_dollar = abs(float(ew) - float(target))
             if in_pause:
-                status_str = (f"FLAT (paused — wait {pause_wait} median) · "
-                              f"would be {sig} @ {target:.3f}")
+                # Pause clears when spread reverts back to (and past) the median:
+                # "wait_above" for long-stop → resumes when spread ≥ median
+                # "wait_below" for short-stop → resumes when spread ≤ median
+                pause_side = "long" if pause_wait == "above" else "short"
+                comparator = "≥" if pause_wait == "above" else "≤"
+                status_str = (f"FLAT (cooldown after stop) · {pause_side} entry "
+                              f"suppressed until spread {comparator} {float(med):.3f}")
             else:
                 status_str = (f"FLAT · {dist_sig:.2f}σ (${dist_dollar:.2f}) "
                               f"to {sig} @ {target:.3f}")
         else:
-            status_str = "FLAT (paused)" if in_pause else "FLAT"
+            status_str = "FLAT (cooldown after stop)" if in_pause else "FLAT"
         entry_date_str = ""
         signal_alert = ""
         if not trades.empty:
