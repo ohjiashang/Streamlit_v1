@@ -275,7 +275,7 @@ if leg_cols:
     last_row = df.iloc[-1]
     leg_table = []
     for c in leg_cols:
-        contract_col = c.split("[")[0] + "_contract" if "[" in c else c + "_contract"
+        contract_col = f"{c}_contract"
         ctc = last_row.get(contract_col, "?") if contract_col in df.columns else "?"
         leg_table.append({"leg": c, "contract": ctc,
                           "signed_price": round(float(last_row[c]), 4)})
