@@ -1,0 +1,439 @@
+"""Helpers for the MPT-7 v2 monitoring page.
+
+Reads the per-pick state files produced by
+`BloombergCOT/analytics/_monitor_refresh_mpt7.py`. All file I/O is cached at the
+Streamlit level — the refresh button clears the cache and reruns.
+
+Live trade log lives at `BloombergCOT/analytics/live_trade_log.csv` and is
+read/written through `load_trade_log()` / `save_trade_log_row()` /
+`update_trade_log_row()`.
+"""
+from __future__ import annotations
+
+import json
+import subprocess
+import uuid
+from datetime import datetime
+from pathlib import Path
+
+import numpy as np
+import pandas as pd
+import streamlit as st
+
+BLOOMBERG_COT = Path(
+    r"c:\Users\Jia Shang\OneDrive - Hotei Capital\Desktop\BloombergCOT"
+)
+STATE_DIR = BLOOMBERG_COT / "analytics" / "monitor_state" / "mpt7_v2"
+TRADE_LOG_FP = BLOOMBERG_COT / "analytics" / "live_trade_log.csv"
+REFRESH_SCRIPT = BLOOMBERG_COT / "analytics" / "_monitor_refresh_mpt7.py"
+DATA_REFRESH_SCRIPT = BLOOMBERG_COT / "analytics" / "refresh_18m.py"
+
+YEAR = 2026
+
+TRADE_LOG_COLS = [
+    "trade_id", "fname", "cell", "diff", "shape", "weight",
+    "side",
+    "entry_date", "entry_signal_price", "entry_fill_price", "entry_slippage_per_leg",
+    "exit_date", "exit_signal_price", "exit_fill_price", "exit_slippage_per_leg",
+    "n_lots", "notes", "closed", "pnl_realized",
+    "created_at", "updated_at",
+]
+
+
+@st.cache_data(ttl=900)
+def load_state() -> dict:
+    fp = STATE_DIR / "state.json"
+    if not fp.exists():
+        return {"error": "state.json missing — run refresh first", "picks": []}
+    with open(fp, encoding="utf-8") as f:
+        return json.load(f)
+
+
+@st.cache_data(ttl=900)
+def load_pick_df(fname: str) -> pd.DataFrame:
+    fp = STATE_DIR / fname / "df.parquet"
+    if not fp.exists():
+        return pd.DataFrame()
+    df = pd.read_parquet(fp)
+    df["Date"] = pd.to_datetime(df["Date"])
+    return df
+
+
+@st.cache_data(ttl=900)
+def load_pick_trades(fname: str) -> pd.DataFrame:
+    fp = STATE_DIR / fname / "trades_closed.parquet"
+    if not fp.exists():
+        return pd.DataFrame()
+    t = pd.read_parquet(fp)
+    if not t.empty:
+        t["entry_date"] = pd.to_datetime(t["entry_date"])
+        t["exit_date"] = pd.to_datetime(t["exit_date"])
+    return t
+
+
+def load_pick_open_trade(fname: str) -> dict | None:
+    fp = STATE_DIR / fname / "open_trade.json"
+    if not fp.exists():
+        return None
+    with open(fp, encoding="utf-8") as f:
+        d = json.load(f)
+    d["entry_date"] = pd.Timestamp(d["entry_date"])
+    return d
+
+
+def compute_daily_pnl(trades_closed: pd.DataFrame, ew: pd.Series,
+                      year: int, open_trade: dict | None = None) -> pd.Series:
+    """Daily MTM in raw spread units for one cell over `year`.
+
+    Same convention as BloombergCOT/analytics/_backtest_portfolio_daily.py but
+    extended to handle an OPEN trade (not yet closed at last bar).
+
+    For an open trade, daily MTM accrues from max(entry_date, year_start) to the
+    last available bar, using close-to-close deltas; entry day uses entry_price.
+    """
+    if ew.index.tz is not None:
+        ew = ew.copy()
+        ew.index = ew.index.tz_localize(None)
+
+    y_start = pd.Timestamp(year, 1, 1)
+    y_end = pd.Timestamp(year, 12, 31)
+    days = ew.index[(ew.index >= y_start) & (ew.index <= y_end)]
+    if len(days) == 0:
+        return pd.Series(dtype=float)
+    daily = pd.Series(0.0, index=days)
+
+    closed_iter = []
+    if trades_closed is not None and not trades_closed.empty:
+        t = trades_closed.copy()
+        t["entry_date"] = pd.to_datetime(t["entry_date"])
+        t["exit_date"] = pd.to_datetime(t["exit_date"])
+        t = t[(t["entry_date"] <= y_end) & (t["exit_date"] >= y_start)]
+        for _, tr in t.iterrows():
+            closed_iter.append({
+                "side": str(tr["side"]).lower(),
+                "entry_date": tr["entry_date"], "exit_date": tr["exit_date"],
+                "entry": float(tr["entry"]), "exit": float(tr["exit"]),
+                "is_open": False,
+            })
+    if open_trade is not None:
+        ed = pd.Timestamp(open_trade["entry_date"])
+        if ed <= y_end:
+            closed_iter.append({
+                "side": str(open_trade["side"]).lower(),
+                "entry_date": ed, "exit_date": days[-1],
+                "entry": float(open_trade["entry_price"]),
+                "exit": float(open_trade["current_price"]),
+                "is_open": True,
+            })
+
+    for tr in closed_iter:
+        direction = 1.0 if tr["side"] == "long" else -1.0
+        seg_start = max(tr["entry_date"], y_start)
+        seg_end = min(tr["exit_date"], y_end)
+        seg = ew.index[(ew.index >= seg_start) & (ew.index <= seg_end)]
+        if len(seg) == 0:
+            continue
+        for d in seg:
+            if d == tr["entry_date"]:
+                pnl_d = direction * (ew.loc[d] - tr["entry"])
+            elif d == tr["exit_date"] and not tr["is_open"]:
+                prev = ew.index[ew.index < d]
+                if len(prev) == 0:
+                    pnl_d = 0.0
+                else:
+                    pnl_d = direction * (tr["exit"] - ew.loc[prev[-1]])
+            else:
+                prev = ew.index[ew.index < d]
+                if len(prev) == 0:
+                    pnl_d = 0.0
+                else:
+                    pnl_d = direction * (ew.loc[d] - ew.loc[prev[-1]])
+            daily.loc[d] += pnl_d
+    return daily
+
+
+@st.cache_data(ttl=900)
+def build_portfolio_daily_pnl(year: int = YEAR) -> pd.DataFrame:
+    """Weighted daily P&L across all 7 picks for `year`.
+    Returns DataFrame with Date index and columns = pick fnames + portfolio + cum."""
+    state = load_state()
+    if "error" in state:
+        return pd.DataFrame()
+    picks = state["picks"]
+
+    pieces = {}
+    for p in picks:
+        fname = p["fname"]
+        df = load_pick_df(fname)
+        trades = load_pick_trades(fname)
+        open_trade = load_pick_open_trade(fname)
+        ew = df.set_index("Date")["EW_adj"]
+        raw = compute_daily_pnl(trades, ew, year, open_trade)
+        pieces[fname] = raw * p["weight"]
+
+    portfolio = pd.concat(pieces, axis=1).fillna(0.0)
+    portfolio["portfolio_daily_pnl"] = portfolio.sum(axis=1)
+    portfolio["cumulative_pnl"] = portfolio["portfolio_daily_pnl"].cumsum()
+    return portfolio
+
+
+@st.cache_data(ttl=900)
+def spread_return_correlation(window_months: int = 12) -> pd.DataFrame:
+    """Pearson correlation of daily EW_adj returns (diff) across picks over the
+    trailing `window_months`. Independent of trade state — reflects underlying
+    market co-movement of the spreads."""
+    state = load_state()
+    if "error" in state:
+        return pd.DataFrame()
+    picks = state["picks"]
+    last_bar = pd.Timestamp(state["portfolio_last_bar"])
+    start = last_bar - pd.DateOffset(months=window_months)
+    returns = {}
+    for p in picks:
+        df = load_pick_df(p["fname"])
+        ew = df.set_index("Date")["EW_adj"]
+        ret = ew.diff().dropna()
+        ret = ret[(ret.index >= start) & (ret.index <= last_bar)]
+        returns[p["fname"]] = ret
+    if not returns:
+        return pd.DataFrame()
+    return pd.concat(returns, axis=1).corr()
+
+
+@st.cache_data(ttl=900)
+def load_backtest_baseline_daily_pnl(year: int = YEAR) -> pd.Series:
+    """The backtest's own daily_pnl sheet, sliced to `year`."""
+    fp = BLOOMBERG_COT / "analytics" / "portfolio_MPT_meanvar_universe_v2.xlsx"
+    try:
+        s = pd.read_excel(fp, sheet_name="daily_pnl")
+    except Exception:
+        return pd.Series(dtype=float)
+    s["Date"] = pd.to_datetime(s["Date"])
+    s = s.set_index("Date")
+    return s.loc[s.index.year == year, "portfolio_daily_pnl"]
+
+
+def derive_status_row(pick: dict) -> dict:
+    """Build one row for the Section B status grid."""
+    fname = pick["fname"]
+    weight = pick["weight"]
+    ew = pick["last_ew_adj"]
+    med = pick["last_median"]
+    std = pick["last_std"]
+    upper = pick["last_upper"]
+    lower = pick["last_lower"]
+    z = (ew - med) / std if (med is not None and std and std > 0) else np.nan
+
+    open_trade = load_pick_open_trade(fname)
+    df = load_pick_df(fname)
+    trades = load_pick_trades(fname)
+    current_contract = str(df.iloc[-1]["contract"]) if not df.empty else ""
+
+    # Daily P&L (t-2 close → t-1 close), weighted
+    ew_series = df.set_index("Date")["EW_adj"]
+    daily = compute_daily_pnl(trades, ew_series, YEAR, open_trade)
+    daily_raw = float(daily.iloc[-1]) if len(daily) > 0 else 0.0
+
+    # In-year convention: count only the YEAR portion of each trade's P&L.
+    # Cross-year trades (entered in Y-1, closed in Y) contribute only the
+    # post-Jan-1 portion; pre-year MTM is excluded.
+    realised_daily = compute_daily_pnl(trades, ew_series, YEAR, open_trade=None)
+    ytd_realised_raw = float(realised_daily.sum()) if len(realised_daily) > 0 else 0.0
+
+    # Open trade in-year MTM (entered before Y-start → counts from Jan 1 only)
+    if open_trade is not None:
+        open_only_daily = compute_daily_pnl(pd.DataFrame(), ew_series, YEAR, open_trade)
+        open_pnl_raw = float(open_only_daily.sum()) if len(open_only_daily) > 0 else 0.0
+    else:
+        open_pnl_raw = 0.0
+
+    if open_trade is not None:
+        entry_date_str = (f"{pd.Timestamp(open_trade['entry_date']).date().isoformat()} "
+                          f"({open_trade['days_held']}d)")
+        # Distance to median (take-profit) exit, in σ and $
+        if not pd.isna(z) and med is not None:
+            dist_to_med_sigma = abs(float(z))
+            dist_to_med_dollar = abs(float(ew) - float(med))
+            exit_str = (f" · {dist_to_med_sigma:.2f}σ (${dist_to_med_dollar:.2f}) "
+                        f"to exit @ {float(med):.3f}")
+        else:
+            exit_str = ""
+        status_str = (f"{open_trade['side'].upper()} @ {open_trade['entry_price']}{exit_str}")
+        signal_alert = ""
+        if pd.Timestamp(open_trade["entry_date"]).date() == pd.Timestamp(pick["last_bar_date"]).date():
+            signal_alert = f"FRESH {open_trade['side'].upper()} ENTRY today"
+    else:
+        se_val = float(pick.get("SE", 1.0))
+        # Detect pause-after-stop: if last closed trade was a stop AND price
+        # hasn't yet reverted to median, the strategy can't fire a new entry.
+        in_pause = False
+        pause_wait = None
+        if not trades.empty:
+            last_closed = trades.sort_values("exit_date").iloc[-1]
+            if str(last_closed.get("exit_reason", "")).lower() == "stop":
+                stop_side = str(last_closed["side"]).lower()
+                if stop_side == "long" and not pd.isna(ew) and not pd.isna(med) and ew < med:
+                    in_pause = True
+                    pause_wait = "above"
+                elif stop_side == "short" and not pd.isna(ew) and not pd.isna(med) and ew > med:
+                    in_pause = True
+                    pause_wait = "below"
+
+        if not pd.isna(z) and lower is not None and upper is not None:
+            sig = "short" if z > 0 else "long"
+            target = upper if z > 0 else lower
+            dist_sig = max(se_val - abs(z), 0.0)
+            dist_dollar = abs(float(ew) - float(target))
+            if in_pause:
+                status_str = (f"FLAT (paused — wait {pause_wait} median) · "
+                              f"would be {sig} @ {target:.3f}")
+            else:
+                status_str = (f"FLAT · {dist_sig:.2f}σ (${dist_dollar:.2f}) "
+                              f"to {sig} @ {target:.3f}")
+        else:
+            status_str = "FLAT (paused)" if in_pause else "FLAT"
+        entry_date_str = ""
+        signal_alert = ""
+        if not trades.empty:
+            last_exit = pd.to_datetime(trades["exit_date"].max())
+            if last_exit.date() == pd.Timestamp(pick["last_bar_date"]).date():
+                last_trade = trades.iloc[-1]
+                signal_alert = f"EXIT today ({last_trade.get('exit_reason', '?')})"
+
+    params_str = f"W{pick['W']} / SE{pick['SE']:g} / SL{pick['SL']:g}"
+
+    # Distance to next entry in σ (FLAT picks only; active = NaN)
+    if open_trade is None and not pd.isna(z):
+        se_val = float(pick.get("SE", 1.0))
+        dist_to_entry_sigma = max(se_val - abs(z), 0.0)
+    else:
+        dist_to_entry_sigma = float("nan")
+
+    return {
+        "diff": pick["diff"],
+        "shape": pick["shape"],
+        "contract": current_contract,
+        "params": params_str,
+        "weight": weight,
+        "current": ew,
+        "median": med,
+        "lower": lower,
+        "upper": upper,
+        "z": z,
+        "status": status_str,
+        "entry_date": entry_date_str,
+        "signal_alert": signal_alert,
+        "daily_pnl_raw": daily_raw,
+        "daily_pnl_weighted": daily_raw * weight,
+        "open_trade_pnl_raw": open_pnl_raw,
+        "open_trade_pnl_weighted": open_pnl_raw * weight,
+        "ytd_realised_raw": ytd_realised_raw,
+        "ytd_realised_weighted": ytd_realised_raw * weight,
+        "dist_to_entry_sigma": dist_to_entry_sigma,
+        "fname": fname,
+        "cell": pick["cell"],
+        "formula": pick["formula"],
+    }
+
+
+def portfolio_metrics(daily: pd.Series) -> dict:
+    """YTD performance metrics on the portfolio daily P&L series."""
+    if daily.empty or daily.std() == 0:
+        return {"ytd_pnl": 0.0, "sharpe": np.nan, "max_dd": 0.0,
+                "win_rate": np.nan, "best_day": 0.0, "worst_day": 0.0,
+                "n_days": int(len(daily))}
+    cum = daily.cumsum()
+    dd = cum - cum.cummax()
+    return {
+        "ytd_pnl": float(daily.sum()),
+        "sharpe": float(daily.mean() / daily.std() * np.sqrt(252)),
+        "max_dd": float(dd.min()),
+        "win_rate": float((daily > 0).mean() * 100),
+        "best_day": float(daily.max()),
+        "worst_day": float(daily.min()),
+        "n_days": int(len(daily)),
+    }
+
+
+# ── Trade log persistence ─────────────────────────────────────────────
+
+def load_trade_log() -> pd.DataFrame:
+    if not TRADE_LOG_FP.exists():
+        return pd.DataFrame(columns=TRADE_LOG_COLS)
+    df = pd.read_csv(TRADE_LOG_FP, parse_dates=["entry_date", "exit_date",
+                                                  "created_at", "updated_at"])
+    for c in TRADE_LOG_COLS:
+        if c not in df.columns:
+            df[c] = None
+    return df[TRADE_LOG_COLS]
+
+
+def save_trade_log_row(row: dict) -> str:
+    """Append a new trade. Returns the trade_id."""
+    log = load_trade_log()
+    row = dict(row)
+    if "trade_id" not in row or not row["trade_id"]:
+        row["trade_id"] = uuid.uuid4().hex[:12]
+    row["created_at"] = datetime.now().isoformat(timespec="seconds")
+    row["updated_at"] = row["created_at"]
+    for c in TRADE_LOG_COLS:
+        if c not in row:
+            row[c] = None
+    log = pd.concat([log, pd.DataFrame([row])[TRADE_LOG_COLS]], ignore_index=True)
+    log.to_csv(TRADE_LOG_FP, index=False)
+    return row["trade_id"]
+
+
+def update_trade_log_row(trade_id: str, updates: dict) -> bool:
+    log = load_trade_log()
+    mask = log["trade_id"] == trade_id
+    if not mask.any():
+        return False
+    for k, v in updates.items():
+        log.loc[mask, k] = v
+    log.loc[mask, "updated_at"] = datetime.now().isoformat(timespec="seconds")
+    log.to_csv(TRADE_LOG_FP, index=False)
+    return True
+
+
+def delete_trade_log_row(trade_id: str) -> bool:
+    log = load_trade_log()
+    n0 = len(log)
+    log = log[log["trade_id"] != trade_id]
+    if len(log) == n0:
+        return False
+    log.to_csv(TRADE_LOG_FP, index=False)
+    return True
+
+
+# ── Refresh subprocess ────────────────────────────────────────────────
+
+def run_refresh(include_data: bool = True) -> tuple[bool, str]:
+    """Invoke refresh_18m.py + _monitor_refresh_mpt7.py as a subprocess.
+    Returns (success, log_text)."""
+    chunks = []
+    if include_data:
+        try:
+            r = subprocess.run(
+                ["python", str(DATA_REFRESH_SCRIPT)],
+                cwd=str(BLOOMBERG_COT),
+                capture_output=True, text=True, timeout=900,
+            )
+            chunks.append("=== refresh_18m.py ===\n" + (r.stdout or "") + (r.stderr or ""))
+            if r.returncode != 0:
+                return False, "\n".join(chunks)
+        except Exception as e:
+            chunks.append(f"refresh_18m failed: {e}")
+            return False, "\n".join(chunks)
+
+    try:
+        r = subprocess.run(
+            ["python", str(REFRESH_SCRIPT)],
+            cwd=str(BLOOMBERG_COT),
+            capture_output=True, text=True, timeout=900,
+        )
+        chunks.append("=== _monitor_refresh_mpt7.py ===\n" + (r.stdout or "") + (r.stderr or ""))
+        return r.returncode == 0, "\n".join(chunks)
+    except Exception as e:
+        chunks.append(f"monitor refresh failed: {e}")
+        return False, "\n".join(chunks)
