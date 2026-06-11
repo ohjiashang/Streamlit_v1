@@ -1,32 +1,40 @@
-"""Helpers for the MPT-7 v2 monitoring page.
+"""Helpers for the Mean Reversion V2 Y2026 monitoring page.
 
-Reads the per-pick state files produced by
-`BloombergCOT/analytics/_monitor_refresh_mpt7.py`. All file I/O is cached at the
-Streamlit level — the refresh button clears the cache and reruns.
+State files (per-pick parquet + JSON) are served from Firebase Storage under
+folder `mpt7_v2/`. Local copy at `BloombergCOT/analytics/monitor_state/mpt7_v2/`
+is the source of truth; `_sync_monitor_to_firebase.py` publishes after each
+refresh.
 
-Live trade log lives at `BloombergCOT/analytics/live_trade_log.csv` and is
-read/written through `load_trade_log()` / `save_trade_log_row()` /
-`update_trade_log_row()`.
+The trade log + refresh subprocess are local-only — they no-op gracefully when
+running on Streamlit Cloud where the BloombergCOT directory isn't accessible.
 """
 from __future__ import annotations
 
 import json
 import subprocess
+import urllib.parse
+import urllib.request
 import uuid
 from datetime import datetime
+from io import BytesIO
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
 import streamlit as st
 
+FIREBASE_BUCKET = "hotei-streamlit.firebasestorage.app"
+FIREBASE_FOLDER = "mpt7_v2"
+
 BLOOMBERG_COT = Path(
     r"c:\Users\Jia Shang\OneDrive - Hotei Capital\Desktop\BloombergCOT"
 )
+LOCAL_MODE = BLOOMBERG_COT.exists()
 STATE_DIR = BLOOMBERG_COT / "analytics" / "monitor_state" / "mpt7_v2"
 TRADE_LOG_FP = BLOOMBERG_COT / "analytics" / "live_trade_log.csv"
 REFRESH_SCRIPT = BLOOMBERG_COT / "analytics" / "_monitor_refresh_mpt7.py"
 DATA_REFRESH_SCRIPT = BLOOMBERG_COT / "analytics" / "refresh_18m.py"
+SYNC_SCRIPT = BLOOMBERG_COT / "analytics" / "_sync_monitor_to_firebase.py"
 
 YEAR = 2026
 
@@ -40,31 +48,46 @@ TRADE_LOG_COLS = [
 ]
 
 
+def _firebase_url(path: str) -> str:
+    encoded = urllib.parse.quote(path, safe="")
+    return (f"https://firebasestorage.googleapis.com/v0/b/"
+            f"{FIREBASE_BUCKET}/o/{encoded}?alt=media")
+
+
+def _fetch_bytes(path: str) -> bytes | None:
+    try:
+        with urllib.request.urlopen(_firebase_url(path), timeout=20) as r:
+            return r.read()
+    except urllib.error.HTTPError as e:
+        if e.code == 404:
+            return None
+        raise
+
+
 @st.cache_data(ttl=900)
 def load_state() -> dict:
-    fp = STATE_DIR / "state.json"
-    if not fp.exists():
-        return {"error": "state.json missing — run refresh first", "picks": []}
-    with open(fp, encoding="utf-8") as f:
-        return json.load(f)
+    raw = _fetch_bytes(f"{FIREBASE_FOLDER}/state.json")
+    if raw is None:
+        return {"error": "state.json missing on Firebase — run sync", "picks": []}
+    return json.loads(raw.decode("utf-8"))
 
 
 @st.cache_data(ttl=900)
 def load_pick_df(fname: str) -> pd.DataFrame:
-    fp = STATE_DIR / fname / "df.parquet"
-    if not fp.exists():
+    raw = _fetch_bytes(f"{FIREBASE_FOLDER}/{fname}/df.parquet")
+    if raw is None:
         return pd.DataFrame()
-    df = pd.read_parquet(fp)
+    df = pd.read_parquet(BytesIO(raw))
     df["Date"] = pd.to_datetime(df["Date"])
     return df
 
 
 @st.cache_data(ttl=900)
 def load_pick_trades(fname: str) -> pd.DataFrame:
-    fp = STATE_DIR / fname / "trades_closed.parquet"
-    if not fp.exists():
+    raw = _fetch_bytes(f"{FIREBASE_FOLDER}/{fname}/trades_closed.parquet")
+    if raw is None:
         return pd.DataFrame()
-    t = pd.read_parquet(fp)
+    t = pd.read_parquet(BytesIO(raw))
     if not t.empty:
         t["entry_date"] = pd.to_datetime(t["entry_date"])
         t["exit_date"] = pd.to_datetime(t["exit_date"])
@@ -72,11 +95,10 @@ def load_pick_trades(fname: str) -> pd.DataFrame:
 
 
 def load_pick_open_trade(fname: str) -> dict | None:
-    fp = STATE_DIR / fname / "open_trade.json"
-    if not fp.exists():
+    raw = _fetch_bytes(f"{FIREBASE_FOLDER}/{fname}/open_trade.json")
+    if raw is None:
         return None
-    with open(fp, encoding="utf-8") as f:
-        d = json.load(f)
+    d = json.loads(raw.decode("utf-8"))
     d["entry_date"] = pd.Timestamp(d["entry_date"])
     return d
 
@@ -202,10 +224,12 @@ def spread_return_correlation(window_months: int = 12) -> pd.DataFrame:
 
 @st.cache_data(ttl=900)
 def load_backtest_baseline_daily_pnl(year: int = YEAR) -> pd.Series:
-    """The backtest's own daily_pnl sheet, sliced to `year`."""
-    fp = BLOOMBERG_COT / "analytics" / "portfolio_MPT_meanvar_universe_v2.xlsx"
+    """The backtest's own daily_pnl sheet, sliced to `year`. Read from Firebase."""
+    raw = _fetch_bytes(f"{FIREBASE_FOLDER}/portfolio_MPT_meanvar_universe_v2.xlsx")
+    if raw is None:
+        return pd.Series(dtype=float)
     try:
-        s = pd.read_excel(fp, sheet_name="daily_pnl")
+        s = pd.read_excel(BytesIO(raw), sheet_name="daily_pnl")
     except Exception:
         return pd.Series(dtype=float)
     s["Date"] = pd.to_datetime(s["Date"])
@@ -358,7 +382,7 @@ def portfolio_metrics(daily: pd.Series) -> dict:
 # ── Trade log persistence ─────────────────────────────────────────────
 
 def load_trade_log() -> pd.DataFrame:
-    if not TRADE_LOG_FP.exists():
+    if not LOCAL_MODE or not TRADE_LOG_FP.exists():
         return pd.DataFrame(columns=TRADE_LOG_COLS)
     df = pd.read_csv(TRADE_LOG_FP, parse_dates=["entry_date", "exit_date",
                                                   "created_at", "updated_at"])
@@ -370,6 +394,8 @@ def load_trade_log() -> pd.DataFrame:
 
 def save_trade_log_row(row: dict) -> str:
     """Append a new trade. Returns the trade_id."""
+    if not LOCAL_MODE:
+        raise RuntimeError("Trade log not writeable in cloud mode")
     log = load_trade_log()
     row = dict(row)
     if "trade_id" not in row or not row["trade_id"]:
@@ -385,6 +411,8 @@ def save_trade_log_row(row: dict) -> str:
 
 
 def update_trade_log_row(trade_id: str, updates: dict) -> bool:
+    if not LOCAL_MODE:
+        raise RuntimeError("Trade log not writeable in cloud mode")
     log = load_trade_log()
     mask = log["trade_id"] == trade_id
     if not mask.any():
@@ -397,6 +425,8 @@ def update_trade_log_row(trade_id: str, updates: dict) -> bool:
 
 
 def delete_trade_log_row(trade_id: str) -> bool:
+    if not LOCAL_MODE:
+        raise RuntimeError("Trade log not writeable in cloud mode")
     log = load_trade_log()
     n0 = len(log)
     log = log[log["trade_id"] != trade_id]
@@ -409,8 +439,11 @@ def delete_trade_log_row(trade_id: str) -> bool:
 # ── Refresh subprocess ────────────────────────────────────────────────
 
 def run_refresh(include_data: bool = True) -> tuple[bool, str]:
-    """Invoke refresh_18m.py + _monitor_refresh_mpt7.py as a subprocess.
-    Returns (success, log_text)."""
+    """Invoke refresh_18m.py + _monitor_refresh_mpt7.py + _sync_monitor_to_firebase.py
+    as subprocesses. Returns (success, log_text). Local-only — fails immediately
+    in cloud mode."""
+    if not LOCAL_MODE:
+        return False, "Refresh not available in cloud mode."
     chunks = []
     if include_data:
         try:
@@ -433,7 +466,21 @@ def run_refresh(include_data: bool = True) -> tuple[bool, str]:
             capture_output=True, text=True, timeout=900,
         )
         chunks.append("=== _monitor_refresh_mpt7.py ===\n" + (r.stdout or "") + (r.stderr or ""))
-        return r.returncode == 0, "\n".join(chunks)
+        if r.returncode != 0:
+            return False, "\n".join(chunks)
     except Exception as e:
         chunks.append(f"monitor refresh failed: {e}")
+        return False, "\n".join(chunks)
+
+    # Sync to Firebase so cloud reads see the new state
+    try:
+        r = subprocess.run(
+            ["python", str(SYNC_SCRIPT)],
+            cwd=str(BLOOMBERG_COT),
+            capture_output=True, text=True, timeout=300,
+        )
+        chunks.append("=== _sync_monitor_to_firebase.py ===\n" + (r.stdout or "") + (r.stderr or ""))
+        return r.returncode == 0, "\n".join(chunks)
+    except Exception as e:
+        chunks.append(f"firebase sync failed: {e}")
         return False, "\n".join(chunks)

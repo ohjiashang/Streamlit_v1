@@ -21,7 +21,7 @@ import sys
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from utils.mpt_monitor_helpers import (
-    BLOOMBERG_COT, STATE_DIR, TRADE_LOG_FP, YEAR,
+    BLOOMBERG_COT, STATE_DIR, TRADE_LOG_FP, YEAR, LOCAL_MODE,
     load_state, load_pick_df, load_pick_trades, load_pick_open_trade,
     compute_daily_pnl, build_portfolio_daily_pnl,
     load_backtest_baseline_daily_pnl,
@@ -62,19 +62,25 @@ with col_hdr_l:
     else:
         st.success(msg)
 with col_hdr_r:
-    refresh_kind = st.radio("Refresh:", ["State only", "Full (data + state)"],
-                             horizontal=True, label_visibility="collapsed", index=0)
-    if st.button("🔄 Refresh", use_container_width=True, type="primary"):
-        with st.spinner("Refreshing — may take 1-5 min..."):
-            ok, log = run_refresh(include_data=(refresh_kind == "Full (data + state)"))
-        if ok:
-            st.success("Refreshed.")
-        else:
-            st.error("Refresh failed.")
-        with st.expander("Refresh log"):
-            st.text(log[-5000:])
-        st.cache_data.clear()
-        st.rerun()
+    if LOCAL_MODE:
+        refresh_kind = st.radio("Refresh:", ["State only", "Full (data + state)"],
+                                 horizontal=True, label_visibility="collapsed", index=0)
+        if st.button("🔄 Refresh", use_container_width=True, type="primary"):
+            with st.spinner("Refreshing — may take 1-5 min..."):
+                ok, log = run_refresh(include_data=(refresh_kind == "Full (data + state)"))
+            if ok:
+                st.success("Refreshed + synced to Firebase.")
+            else:
+                st.error("Refresh failed.")
+            with st.expander("Refresh log"):
+                st.text(log[-5000:])
+            st.cache_data.clear()
+            st.rerun()
+    else:
+        if st.button("🔄 Reload from Firebase", use_container_width=True):
+            st.cache_data.clear()
+            st.rerun()
+        st.caption("Cloud view (read-only)")
 
 # Status rows for grid + metrics
 status_rows = [derive_status_row(p) for p in state["picks"]]
@@ -389,49 +395,52 @@ if disc:
     for d in disc:
         st.warning(d)
 
-# Entry form
-with st.expander("➕ Log a new fill (entry)"):
-    f_pick = st.selectbox("Pick", range(len(pick_labels)),
-                          format_func=lambda i: pick_labels[i], key="log_entry_pick")
-    f_row = status_df.iloc[f_pick]
-    f_meta = next(p for p in state["picks"] if p["fname"] == f_row["fname"])
-    col_f1, col_f2, col_f3 = st.columns(3)
-    with col_f1:
-        f_side = st.selectbox("Side", ["long", "short"], key="f_side")
-        f_lots = st.number_input("Lots", value=1, min_value=1, key="f_lots")
-    with col_f2:
-        f_date = st.date_input("Entry date", value=last_bar.date(), key="f_date")
-        f_signal = st.number_input("Signal price (EW_adj at signal)",
-                                    value=float(f_row["current"]), format="%.4f",
-                                    key="f_signal")
-    with col_f3:
-        f_fill = st.number_input("Fill price (your actual exec)",
-                                  value=float(f_row["current"]), format="%.4f",
-                                  key="f_fill")
-        f_slip = st.number_input("Slippage per leg ($)", value=0.10, format="%.4f",
-                                  key="f_slip",
-                                  help="Per-leg slippage estimate. Default 10c.")
-    f_notes = st.text_input("Notes (optional)", key="f_notes")
-    if st.button("Save entry", type="primary"):
-        new_id = save_trade_log_row({
-            "fname": f_row["fname"], "cell": f_row["cell"],
-            "diff": f_row["diff"], "shape": f_row["shape"],
-            "weight": float(f_row["weight"]),
-            "side": f_side,
-            "entry_date": pd.Timestamp(f_date).isoformat(),
-            "entry_signal_price": f_signal,
-            "entry_fill_price": f_fill,
-            "entry_slippage_per_leg": f_slip,
-            "n_lots": int(f_lots),
-            "notes": f_notes,
-            "closed": False,
-        })
-        st.success(f"Logged trade {new_id}")
-        st.rerun()
+# Entry form (local-only — trade log lives on the local machine)
+if not LOCAL_MODE:
+    st.caption("Live trade log forms are local-only (Streamlit Cloud cannot write back to the source file).")
+if LOCAL_MODE:
+    with st.expander("➕ Log a new fill (entry)"):
+        f_pick = st.selectbox("Pick", range(len(pick_labels)),
+                              format_func=lambda i: pick_labels[i], key="log_entry_pick")
+        f_row = status_df.iloc[f_pick]
+        f_meta = next(p for p in state["picks"] if p["fname"] == f_row["fname"])
+        col_f1, col_f2, col_f3 = st.columns(3)
+        with col_f1:
+            f_side = st.selectbox("Side", ["long", "short"], key="f_side")
+            f_lots = st.number_input("Lots", value=1, min_value=1, key="f_lots")
+        with col_f2:
+            f_date = st.date_input("Entry date", value=last_bar.date(), key="f_date")
+            f_signal = st.number_input("Signal price (EW_adj at signal)",
+                                        value=float(f_row["current"]), format="%.4f",
+                                        key="f_signal")
+        with col_f3:
+            f_fill = st.number_input("Fill price (your actual exec)",
+                                      value=float(f_row["current"]), format="%.4f",
+                                      key="f_fill")
+            f_slip = st.number_input("Slippage per leg ($)", value=0.10, format="%.4f",
+                                      key="f_slip",
+                                      help="Per-leg slippage estimate. Default 10c.")
+        f_notes = st.text_input("Notes (optional)", key="f_notes")
+        if st.button("Save entry", type="primary"):
+            new_id = save_trade_log_row({
+                "fname": f_row["fname"], "cell": f_row["cell"],
+                "diff": f_row["diff"], "shape": f_row["shape"],
+                "weight": float(f_row["weight"]),
+                "side": f_side,
+                "entry_date": pd.Timestamp(f_date).isoformat(),
+                "entry_signal_price": f_signal,
+                "entry_fill_price": f_fill,
+                "entry_slippage_per_leg": f_slip,
+                "n_lots": int(f_lots),
+                "notes": f_notes,
+                "closed": False,
+            })
+            st.success(f"Logged trade {new_id}")
+            st.rerun()
 
 # Open live trades — exit form
 open_live = log_y[~log_y["closed"].isin([True, "True", "true", 1])].copy()
-if not open_live.empty:
+if LOCAL_MODE and not open_live.empty:
     with st.expander(f"🚪 Close an open live trade ({len(open_live)})"):
         choices = open_live.apply(
             lambda r: f"{r['trade_id'][:6]} · {r['diff']} ({r['shape']}) · "
