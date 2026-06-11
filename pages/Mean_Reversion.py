@@ -195,57 +195,6 @@ st.dataframe(
     },
 )
 
-# ── Section F: Watchlist (FLAT picks — distance to entry) ────────────
-st.subheader("Watchlist — distance to entry")
-watch_rows = []
-for _, r in status_df.iterrows():
-    if not str(r["status"]).startswith("FLAT"):
-        continue
-    if pd.isna(r["z"]):
-        continue
-    cell = r["cell"]
-    try:
-        se = float(cell.split("_SE")[1].split("_")[0])
-    except Exception:
-        se = 1.0
-    sig = "long" if r["z"] < 0 else "short"
-    if sig == "long":
-        dist = float(r["current"] - r["lower"])
-        target = r["lower"]
-    else:
-        dist = float(r["upper"] - r["current"])
-        target = r["upper"]
-    watch_rows.append({
-        "diff": r["diff"], "shape": r["shape"], "contract": r["contract"],
-        "would_be": sig,
-        "target_band": target, "distance_$": dist,
-        "distance_σ": (se - abs(r["z"])) if abs(r["z"]) < se else 0.0,
-    })
-if watch_rows:
-    wdf = (pd.DataFrame(watch_rows).sort_values("distance_σ")
-           .rename(columns={"diff": "Diff", "shape": "Shape", "contract": "Contract",
-                            "would_be": "Would be", "target_band": "Target band",
-                            "distance_$": "Distance ($)", "distance_σ": "Distance (σ)"}))
-    wstyle = (wdf.style
-              .format({"Target band": "{:.3f}", "Distance ($)": "{:.3f}",
-                       "Distance (σ)": "{:.2f}"}))
-    st.dataframe(
-        wstyle, use_container_width=True, hide_index=True,
-        column_config={
-            "Diff": st.column_config.Column(width="small"),
-            "Shape": st.column_config.Column(width="small"),
-            "Contract": st.column_config.Column(width="medium"),
-            "Would be": st.column_config.Column(width="small"),
-            "Target band": st.column_config.Column(width="small"),
-            "Distance ($)": st.column_config.Column(width="small"),
-            "Distance (σ)": st.column_config.Column(width="small"),
-        },
-    )
-else:
-    st.caption("No FLAT picks — all 7 in trade or no data.")
-
-st.divider()
-
 # ── Section C: Drill-down ────────────────────────────────────────────
 st.subheader("Drill-down per pick")
 pick_labels = [f"{r['diff']} ({r['shape']})" for _, r in status_df.iterrows()]
