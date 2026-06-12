@@ -199,17 +199,24 @@ if not port.empty:
     pick_fnames = [p["fname"] for p in state["picks"]]
     cum = port["portfolio_daily_pnl"].cumsum()
     dd = cum - cum.cummax()
-    base_cum = baseline.cumsum() if not baseline.empty else pd.Series(dtype=float)
 
     col_eq, col_dd = st.columns(2)
     with col_eq:
         fig_eq = go.Figure()
         fig_eq.add_trace(go.Scatter(x=cum.index, y=cum.values, name="Live (YTD)",
                                      line=dict(color="darkblue", width=2)))
-        if not base_cum.empty:
-            fig_eq.add_trace(go.Scatter(x=base_cum.index, y=base_cum.values,
-                                         name="Backtest baseline",
-                                         line=dict(color="grey", width=1.2, dash="dash")))
+        last_x = cum.index[-1]
+        last_y = float(cum.iloc[-1])
+        fig_eq.add_trace(go.Scatter(
+            x=[last_x], y=[last_y],
+            mode="markers+text",
+            text=[f"<b>${last_y:+.3f}</b>"],
+            textposition="top left",
+            textfont=dict(size=14, color="darkblue"),
+            marker=dict(size=10, color="darkblue"),
+            showlegend=False,
+            hovertemplate=f"{last_x.date()}: ${last_y:+.3f}<extra></extra>",
+        ))
         fig_eq.add_hline(y=0, line=dict(color="grey", width=0.5))
         fig_eq.update_layout(title=f"Cumulative P&L Y{YEAR}", height=350,
                               margin=dict(t=40, b=20))
