@@ -239,7 +239,7 @@ if not port.empty:
                                 showlegend=False)
         st.plotly_chart(fig_left, use_container_width=True)
     with col_right:
-        # Right (spans both rows): YTD attribution
+        # Right top: YTD attribution
         attribution = port[pick_fnames].sum().sort_values()
         diff_map = {p["fname"]: f"{p['diff']} ({p['shape']})" for p in state["picks"]}
         fig_attr = go.Figure(go.Bar(x=attribution.values,
@@ -247,16 +247,17 @@ if not port.empty:
                                      orientation="h",
                                      marker_color=["green" if v >= 0 else "red" for v in attribution.values]))
         fig_attr.update_layout(title="YTD attribution (weighted, by pick)",
-                                height=640, margin=dict(t=40, b=20))
+                                height=350, margin=dict(t=40, b=20))
         st.plotly_chart(fig_attr, use_container_width=True)
 
-    # Daily P&L bars (last 60 BD) — full width below
-    last60 = port["portfolio_daily_pnl"].tail(60)
-    fig_bar = go.Figure()
-    fig_bar.add_trace(go.Bar(x=last60.index, y=last60.values,
-                              marker_color=["green" if v >= 0 else "red" for v in last60.values]))
-    fig_bar.update_layout(title="Daily P&L (last 60 BD)", height=280, margin=dict(t=40, b=20))
-    st.plotly_chart(fig_bar, use_container_width=True)
+        # Right bottom: Daily P&L bars (last 60 BD)
+        last60 = port["portfolio_daily_pnl"].tail(60)
+        fig_bar = go.Figure()
+        fig_bar.add_trace(go.Bar(x=last60.index, y=last60.values,
+                                  marker_color=["green" if v >= 0 else "red" for v in last60.values]))
+        fig_bar.update_layout(title="Daily P&L (last 60 BD)", height=290,
+                                margin=dict(t=40, b=20))
+        st.plotly_chart(fig_bar, use_container_width=True)
 
 st.divider()
 
