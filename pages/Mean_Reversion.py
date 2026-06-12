@@ -107,7 +107,7 @@ open_pnl_portfolio = float(status_df["open_trade_pnl_weighted"].sum())
 realised_ytd_portfolio = float(status_df["ytd_realised_weighted"].sum())
 n_active = int(status_df["status"].str.startswith(("LONG", "SHORT")).sum())
 
-c1, c2, c3, c4 = st.columns(4)
+c1, c2, c3, c4, _ = st.columns([1, 1, 1, 1, 4])
 with c1:
     sign = "+" if day_pnl_portfolio >= 0 else "-"
     day_pnl_caption = f"{sign}${abs(day_pnl_portfolio):.3f}"
