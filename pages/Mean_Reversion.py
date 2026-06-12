@@ -125,7 +125,7 @@ with c5:
 st.divider()
 
 # ── Section B: Portfolio status grid ─────────────────────────────────
-st.header("Portfolio status")
+st.subheader("Portfolio status")
 
 def _row_color(row):
     alert = str(row.get("Signal alert", "") or "")
@@ -196,13 +196,13 @@ st.dataframe(
 )
 
 # ── Section D: Portfolio P&L ─────────────────────────────────────────
-st.header("Portfolio P&L (YTD)")
+st.subheader("Portfolio P&L (YTD)")
 if not port.empty:
     pick_fnames = [p["fname"] for p in state["picks"]]
     cum = port["portfolio_daily_pnl"].cumsum()
     dd = cum - cum.cummax()
 
-    col_left, col_right = st.columns(2)
+    col_left, col_right = st.columns([2, 1])
     with col_left:
         # Cumulative P&L (top) + Drawdown (bottom) sharing one x-axis
         last_x = cum.index[-1]
@@ -278,7 +278,7 @@ chart_df = df[df["Date"] >= tail_start].copy()
 fig = make_subplots(rows=2, cols=1, shared_xaxes=True, vertical_spacing=0.04,
                     row_heights=[0.7, 0.3])
 fig.add_trace(go.Scatter(x=chart_df["Date"], y=chart_df["EW_adj"],
-                          name="EW_adj", line=dict(color="black", width=1.2)),
+                          name="spread_normalised", line=dict(color="black", width=1.2)),
               row=1, col=1)
 fig.add_trace(go.Scatter(x=chart_df["Date"], y=chart_df["rolling_median"],
                           name="median", line=dict(color="grey", width=1.0)),
@@ -325,7 +325,7 @@ fig.add_trace(go.Scatter(x=pnl_running_ytd["Date"], y=pnl_running_ytd["pnl_runni
 fig.update_layout(height=600, margin=dict(t=30, b=20, l=10, r=10),
                   legend=dict(orientation="h", yanchor="top", y=-0.05))
 fig.update_xaxes(title_text="Date", row=2, col=1)
-fig.update_yaxes(title_text="EW_adj", row=1, col=1)
+fig.update_yaxes(title_text="spread_normalised", row=1, col=1)
 fig.update_yaxes(title_text="Cum P&L", row=2, col=1)
 st.plotly_chart(fig, use_container_width=True)
 
@@ -351,7 +351,7 @@ if leg_cols:
         st.markdown(f"**Leg breakdown — {sel_meta['formula']}**  ·  as of {last_bar.date()}")
         st.dataframe(leg_df, use_container_width=True, hide_index=True)
         st.caption(f"Σ signed legs = **{sum_legs:.4f}**  ·  EW = "
-                   f"**{float(last_row['EW']):.4f}**  ·  EW_adj (back-adj) = "
+                   f"**{float(last_row['EW']):.4f}**  ·  spread_normalised (back-adj) = "
                    f"**{float(last_row['EW_adj']):.4f}**")
     with col_r:
         if open_trade is not None:
@@ -427,7 +427,7 @@ if SHOW_TRADE_LOG:
                 f_lots = st.number_input("Lots", value=1, min_value=1, key="f_lots")
             with col_f2:
                 f_date = st.date_input("Entry date", value=last_bar.date(), key="f_date")
-                f_signal = st.number_input("Signal price (EW_adj at signal)",
+                f_signal = st.number_input("Signal price (spread_normalised at signal)",
                                             value=float(f_row["current"]), format="%.4f",
                                             key="f_signal")
             with col_f3:
@@ -536,7 +536,7 @@ with st.expander("📊 Diagnostics (analyst)"):
             ])
             st.dataframe(comp, use_container_width=True, hide_index=True)
 
-        st.markdown("**Per-pick spread-return correlation (daily EW_adj returns, trailing 12M)**")
+        st.markdown("**Per-pick spread-return correlation (daily spread_normalised returns, trailing 12M)**")
         st.caption("Correlation of daily price moves of each spread, regardless of trade state. "
                    "Reflects underlying market co-movement (not realised P&L overlap).")
         corr = spread_return_correlation(window_months=12)
