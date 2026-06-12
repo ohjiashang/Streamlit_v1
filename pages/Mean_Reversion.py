@@ -107,7 +107,7 @@ open_pnl_portfolio = float(status_df["open_trade_pnl_weighted"].sum())
 realised_ytd_portfolio = float(status_df["ytd_realised_weighted"].sum())
 n_active = int(status_df["status"].str.startswith(("LONG", "SHORT")).sum())
 
-c1, c2, c3, c4, _ = st.columns([1, 1, 1, 1, 4])
+c1, c2, c3, c4, c5, _ = st.columns([1, 1, 1, 1, 1, 3])
 with c1:
     sign = "+" if day_pnl_portfolio >= 0 else "-"
     day_pnl_caption = f"{sign}${abs(day_pnl_portfolio):.3f}"
@@ -116,8 +116,10 @@ with c1:
 with c2:
     st.metric("Realised P&L", f"${realised_ytd_portfolio:+.3f}")
 with c3:
-    st.metric("Sharpe", f"{metrics['sharpe']:.2f}" if not np.isnan(metrics['sharpe']) else "—")
+    st.metric("YTD P&L", f"${metrics['ytd_pnl']:+.3f}")
 with c4:
+    st.metric("Sharpe", f"{metrics['sharpe']:.2f}" if not np.isnan(metrics['sharpe']) else "—")
+with c5:
     st.metric("Active trades", f"{n_active} / {len(state['picks'])}")
 
 st.divider()
