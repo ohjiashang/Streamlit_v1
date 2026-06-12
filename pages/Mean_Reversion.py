@@ -109,23 +109,21 @@ n_active = int(status_df["status"].str.startswith(("LONG", "SHORT")).sum())
 
 c1, c2, c3, c4 = st.columns(4)
 with c1:
-    delta_vs_baseline = (metrics["ytd_pnl"] - baseline_ytd) if not np.isnan(baseline_ytd) else None
-    st.metric("YTD P&L (realised + unrealised)", f"${metrics['ytd_pnl']:+.3f}",
-              delta=f"vs backtest ${delta_vs_baseline:+.3f}" if delta_vs_baseline is not None else None)
+    sign = "+" if day_pnl_portfolio >= 0 else "-"
+    day_pnl_caption = f"{sign}${abs(day_pnl_portfolio):.3f}"
+    st.metric("Unrealised P&L", f"${open_pnl_portfolio:+.3f}",
+              delta=day_pnl_caption)
 with c2:
-    st.metric("Realised YTD P&L", f"${realised_ytd_portfolio:+.3f}",
-              delta=f"unrealised P&L ${open_pnl_portfolio:+.3f}")
+    st.metric("Realised P&L", f"${realised_ytd_portfolio:+.3f}")
 with c3:
-    st.metric("Active trades", f"{n_active} / {len(state['picks'])}",
-              delta=f"Sharpe {metrics['sharpe']:.2f}" if not np.isnan(metrics['sharpe']) else None)
+    st.metric("Sharpe", f"{metrics['sharpe']:.2f}" if not np.isnan(metrics['sharpe']) else "—")
 with c4:
-    st.metric("Day P&L", f"${day_pnl_portfolio:+.3f}",
-              delta=f"max DD ${metrics['max_dd']:.2f}")
+    st.metric("Active trades", f"{n_active} / {len(state['picks'])}")
 
 st.divider()
 
 # ── Section B: Portfolio status grid ─────────────────────────────────
-st.subheader("Portfolio status")
+st.header("Portfolio status")
 
 def _row_color(row):
     alert = str(row.get("Signal alert", "") or "")
@@ -196,7 +194,7 @@ st.dataframe(
 )
 
 # ── Section D: Portfolio P&L ─────────────────────────────────────────
-st.subheader("Portfolio P&L (YTD)")
+st.header("Portfolio P&L (YTD)")
 if not port.empty:
     pick_fnames = [p["fname"] for p in state["picks"]]
     cum = port["portfolio_daily_pnl"].cumsum()
