@@ -204,35 +204,40 @@ if not port.empty:
 
     col_left, col_right = st.columns(2)
     with col_left:
-        # Row 1 of left: Cumulative P&L
-        fig_eq = go.Figure()
-        fig_eq.add_trace(go.Scatter(x=cum.index, y=cum.values, name="Live (YTD)",
-                                     line=dict(color="darkblue", width=2)))
+        # Cumulative P&L (top) + Drawdown (bottom) sharing one x-axis
         last_x = cum.index[-1]
         last_y = float(cum.iloc[-1])
-        fig_eq.add_trace(go.Scatter(
-            x=[last_x], y=[last_y],
-            mode="markers+text",
-            text=[f"<b>${last_y:+.3f}</b>"],
-            textposition="top left",
-            textfont=dict(size=14, color="darkblue"),
-            marker=dict(size=10, color="darkblue"),
-            showlegend=False,
-            hovertemplate=f"{last_x.date()}: ${last_y:+.3f}<extra></extra>",
-        ))
-        fig_eq.add_hline(y=0, line=dict(color="grey", width=0.5))
-        fig_eq.update_layout(title=f"Cumulative P&L Y{YEAR}", height=300,
-                              margin=dict(t=40, b=20))
-        st.plotly_chart(fig_eq, use_container_width=True)
-
-        # Row 2 of left: Drawdown
-        fig_dd = go.Figure()
-        fig_dd.add_trace(go.Scatter(x=dd.index, y=dd.values,
-                                     fill="tozeroy", fillcolor="rgba(255,0,0,0.2)",
-                                     line=dict(color="red", width=1), name="DD"))
-        fig_dd.update_layout(title=f"Drawdown Y{YEAR}", height=300,
-                              margin=dict(t=40, b=20))
-        st.plotly_chart(fig_dd, use_container_width=True)
+        fig_left = make_subplots(
+            rows=2, cols=1, shared_xaxes=True, vertical_spacing=0.07,
+            row_heights=[0.6, 0.4],
+            subplot_titles=(f"Cumulative P&L Y{YEAR}", f"Drawdown Y{YEAR}"),
+        )
+        fig_left.add_trace(
+            go.Scatter(x=cum.index, y=cum.values, name="Live (YTD)",
+                       line=dict(color="darkblue", width=2)),
+            row=1, col=1,
+        )
+        fig_left.add_trace(
+            go.Scatter(x=[last_x], y=[last_y],
+                       mode="markers+text",
+                       text=[f"<b>${last_y:+.3f}</b>"],
+                       textposition="top left",
+                       textfont=dict(size=14, color="darkblue"),
+                       marker=dict(size=10, color="darkblue"),
+                       showlegend=False,
+                       hovertemplate=f"{last_x.date()}: ${last_y:+.3f}<extra></extra>"),
+            row=1, col=1,
+        )
+        fig_left.add_hline(y=0, line=dict(color="grey", width=0.5), row=1, col=1)
+        fig_left.add_trace(
+            go.Scatter(x=dd.index, y=dd.values,
+                       fill="tozeroy", fillcolor="rgba(255,0,0,0.2)",
+                       line=dict(color="red", width=1), name="DD"),
+            row=2, col=1,
+        )
+        fig_left.update_layout(height=640, margin=dict(t=40, b=20),
+                                showlegend=False)
+        st.plotly_chart(fig_left, use_container_width=True)
     with col_right:
         # Right (spans both rows): YTD attribution
         attribution = port[pick_fnames].sum().sort_values()
