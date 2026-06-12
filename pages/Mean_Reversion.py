@@ -311,137 +311,140 @@ if not trades.empty:
 st.divider()
 
 # ── Section G: Manual trade log ─────────────────────────────────────
-st.subheader("Live trade log")
-log = load_trade_log()
-log_y = log[(pd.to_datetime(log["entry_date"]).dt.year == YEAR) | (log["entry_date"].isna())]
+# Hidden for now; flip SHOW_TRADE_LOG to True to re-enable.
+SHOW_TRADE_LOG = False
+if SHOW_TRADE_LOG:
+    st.subheader("Live trade log")
+    log = load_trade_log()
+    log_y = log[(pd.to_datetime(log["entry_date"]).dt.year == YEAR) | (log["entry_date"].isna())]
 
-cols_lc, cols_rc = st.columns([1, 1])
-with cols_lc:
-    st.caption(f"Stored at `{TRADE_LOG_FP}`")
-with cols_rc:
-    show_view = st.radio("MTM source:", ["Signal-state (auto)", "Live (manual log)"],
-                          horizontal=True, label_visibility="collapsed")
+    cols_lc, cols_rc = st.columns([1, 1])
+    with cols_lc:
+        st.caption(f"Stored at `{TRADE_LOG_FP}`")
+    with cols_rc:
+        show_view = st.radio("MTM source:", ["Signal-state (auto)", "Live (manual log)"],
+                              horizontal=True, label_visibility="collapsed")
 
-# Discrepancy alerts
-disc = []
-for _, r in status_df.iterrows():
-    if not r["status"].startswith("FLAT"):
-        side = r["status"].split(" ")[0].lower()
-        # Has a matching open live trade?
-        open_match = log_y[(log_y["fname"] == r["fname"])
-                            & (log_y["side"] == side)
-                            & (log_y["closed"].isin([False, "False", "false", 0, np.nan]))]
-        if open_match.empty:
-            disc.append(f"⚠️ Signal says **{r['status']}** on **{r['diff']} ({r['shape']})** — no live entry logged.")
+    # Discrepancy alerts
+    disc = []
+    for _, r in status_df.iterrows():
+        if not r["status"].startswith("FLAT"):
+            side = r["status"].split(" ")[0].lower()
+            # Has a matching open live trade?
+            open_match = log_y[(log_y["fname"] == r["fname"])
+                                & (log_y["side"] == side)
+                                & (log_y["closed"].isin([False, "False", "false", 0, np.nan]))]
+            if open_match.empty:
+                disc.append(f"⚠️ Signal says **{r['status']}** on **{r['diff']} ({r['shape']})** — no live entry logged.")
+        else:
+            # Is there an unclosed live trade for this cell whose signal is now flat?
+            open_match = log_y[(log_y["fname"] == r["fname"])
+                                & ~log_y["closed"].isin([True, "True", "true", 1])]
+            if not open_match.empty:
+                disc.append(f"⚠️ Live trade open on **{r['diff']} ({r['shape']})** but signal is now FLAT — log exit?")
+
+    if disc:
+        for d in disc:
+            st.warning(d)
+
+    # Entry form (local-only — trade log lives on the local machine)
+    if not LOCAL_MODE:
+        st.caption("Live trade log forms are local-only (Streamlit Cloud cannot write back to the source file).")
+    if LOCAL_MODE:
+        with st.expander("➕ Log a new fill (entry)"):
+            f_pick = st.selectbox("Pick", range(len(pick_labels)),
+                                  format_func=lambda i: pick_labels[i], key="log_entry_pick")
+            f_row = status_df.iloc[f_pick]
+            f_meta = next(p for p in state["picks"] if p["fname"] == f_row["fname"])
+            col_f1, col_f2, col_f3 = st.columns(3)
+            with col_f1:
+                f_side = st.selectbox("Side", ["long", "short"], key="f_side")
+                f_lots = st.number_input("Lots", value=1, min_value=1, key="f_lots")
+            with col_f2:
+                f_date = st.date_input("Entry date", value=last_bar.date(), key="f_date")
+                f_signal = st.number_input("Signal price (EW_adj at signal)",
+                                            value=float(f_row["current"]), format="%.4f",
+                                            key="f_signal")
+            with col_f3:
+                f_fill = st.number_input("Fill price (your actual exec)",
+                                          value=float(f_row["current"]), format="%.4f",
+                                          key="f_fill")
+                f_slip = st.number_input("Slippage per leg ($)", value=0.10, format="%.4f",
+                                          key="f_slip",
+                                          help="Per-leg slippage estimate. Default 10c.")
+            f_notes = st.text_input("Notes (optional)", key="f_notes")
+            if st.button("Save entry", type="primary"):
+                new_id = save_trade_log_row({
+                    "fname": f_row["fname"], "cell": f_row["cell"],
+                    "diff": f_row["diff"], "shape": f_row["shape"],
+                    "weight": float(f_row["weight"]),
+                    "side": f_side,
+                    "entry_date": pd.Timestamp(f_date).isoformat(),
+                    "entry_signal_price": f_signal,
+                    "entry_fill_price": f_fill,
+                    "entry_slippage_per_leg": f_slip,
+                    "n_lots": int(f_lots),
+                    "notes": f_notes,
+                    "closed": False,
+                })
+                st.success(f"Logged trade {new_id}")
+                st.rerun()
+
+    # Open live trades — exit form
+    open_live = log_y[~log_y["closed"].isin([True, "True", "true", 1])].copy()
+    if LOCAL_MODE and not open_live.empty:
+        with st.expander(f"🚪 Close an open live trade ({len(open_live)})"):
+            choices = open_live.apply(
+                lambda r: f"{r['trade_id'][:6]} · {r['diff']} ({r['shape']}) · "
+                           f"{r['side']} @ {r['entry_fill_price']:.3f} "
+                           f"on {pd.Timestamp(r['entry_date']).date()}", axis=1).tolist()
+            sel_close = st.selectbox("Trade", range(len(choices)),
+                                      format_func=lambda i: choices[i])
+            chosen = open_live.iloc[sel_close]
+            col_c1, col_c2, col_c3 = st.columns(3)
+            with col_c1:
+                x_date = st.date_input("Exit date", value=last_bar.date(), key="x_date")
+            with col_c2:
+                row_pick = status_df[status_df["fname"] == chosen["fname"]]
+                cur_price = float(row_pick["current"].iloc[0]) if not row_pick.empty else 0.0
+                x_signal = st.number_input("Signal price (exit)",
+                                            value=cur_price, format="%.4f", key="x_signal")
+                x_fill = st.number_input("Fill price (exit)",
+                                          value=cur_price, format="%.4f", key="x_fill")
+            with col_c3:
+                x_slip = st.number_input("Exit slippage per leg ($)",
+                                          value=0.10, format="%.4f", key="x_slip")
+            if st.button("Close trade"):
+                direction = 1.0 if chosen["side"] == "long" else -1.0
+                pnl_realized = direction * (x_fill - chosen["entry_fill_price"]) * chosen["n_lots"]
+                update_trade_log_row(chosen["trade_id"], {
+                    "exit_date": pd.Timestamp(x_date).isoformat(),
+                    "exit_signal_price": x_signal,
+                    "exit_fill_price": x_fill,
+                    "exit_slippage_per_leg": x_slip,
+                    "closed": True,
+                    "pnl_realized": round(pnl_realized, 4),
+                })
+                st.success(f"Closed {chosen['trade_id'][:6]} · realized P&L {pnl_realized:+.3f}")
+                st.rerun()
+
+    # Trade log table
+    if not log_y.empty:
+        show_cols = ["trade_id", "diff", "shape", "side", "n_lots",
+                     "entry_date", "entry_signal_price", "entry_fill_price", "entry_slippage_per_leg",
+                     "exit_date", "exit_signal_price", "exit_fill_price", "exit_slippage_per_leg",
+                     "closed", "pnl_realized", "notes"]
+        show = log_y[show_cols].copy()
+        show["entry_date"] = pd.to_datetime(show["entry_date"]).dt.date
+        show["exit_date"] = pd.to_datetime(show["exit_date"]).dt.date
+        show["trade_id"] = show["trade_id"].str[:8]
+        st.dataframe(show.sort_values("entry_date", ascending=False),
+                     use_container_width=True, hide_index=True)
+        csv = log_y.to_csv(index=False).encode("utf-8")
+        st.download_button("Download trade log (CSV)", csv, "live_trade_log_y2026.csv",
+                           "text/csv")
     else:
-        # Is there an unclosed live trade for this cell whose signal is now flat?
-        open_match = log_y[(log_y["fname"] == r["fname"])
-                            & ~log_y["closed"].isin([True, "True", "true", 1])]
-        if not open_match.empty:
-            disc.append(f"⚠️ Live trade open on **{r['diff']} ({r['shape']})** but signal is now FLAT — log exit?")
-
-if disc:
-    for d in disc:
-        st.warning(d)
-
-# Entry form (local-only — trade log lives on the local machine)
-if not LOCAL_MODE:
-    st.caption("Live trade log forms are local-only (Streamlit Cloud cannot write back to the source file).")
-if LOCAL_MODE:
-    with st.expander("➕ Log a new fill (entry)"):
-        f_pick = st.selectbox("Pick", range(len(pick_labels)),
-                              format_func=lambda i: pick_labels[i], key="log_entry_pick")
-        f_row = status_df.iloc[f_pick]
-        f_meta = next(p for p in state["picks"] if p["fname"] == f_row["fname"])
-        col_f1, col_f2, col_f3 = st.columns(3)
-        with col_f1:
-            f_side = st.selectbox("Side", ["long", "short"], key="f_side")
-            f_lots = st.number_input("Lots", value=1, min_value=1, key="f_lots")
-        with col_f2:
-            f_date = st.date_input("Entry date", value=last_bar.date(), key="f_date")
-            f_signal = st.number_input("Signal price (EW_adj at signal)",
-                                        value=float(f_row["current"]), format="%.4f",
-                                        key="f_signal")
-        with col_f3:
-            f_fill = st.number_input("Fill price (your actual exec)",
-                                      value=float(f_row["current"]), format="%.4f",
-                                      key="f_fill")
-            f_slip = st.number_input("Slippage per leg ($)", value=0.10, format="%.4f",
-                                      key="f_slip",
-                                      help="Per-leg slippage estimate. Default 10c.")
-        f_notes = st.text_input("Notes (optional)", key="f_notes")
-        if st.button("Save entry", type="primary"):
-            new_id = save_trade_log_row({
-                "fname": f_row["fname"], "cell": f_row["cell"],
-                "diff": f_row["diff"], "shape": f_row["shape"],
-                "weight": float(f_row["weight"]),
-                "side": f_side,
-                "entry_date": pd.Timestamp(f_date).isoformat(),
-                "entry_signal_price": f_signal,
-                "entry_fill_price": f_fill,
-                "entry_slippage_per_leg": f_slip,
-                "n_lots": int(f_lots),
-                "notes": f_notes,
-                "closed": False,
-            })
-            st.success(f"Logged trade {new_id}")
-            st.rerun()
-
-# Open live trades — exit form
-open_live = log_y[~log_y["closed"].isin([True, "True", "true", 1])].copy()
-if LOCAL_MODE and not open_live.empty:
-    with st.expander(f"🚪 Close an open live trade ({len(open_live)})"):
-        choices = open_live.apply(
-            lambda r: f"{r['trade_id'][:6]} · {r['diff']} ({r['shape']}) · "
-                       f"{r['side']} @ {r['entry_fill_price']:.3f} "
-                       f"on {pd.Timestamp(r['entry_date']).date()}", axis=1).tolist()
-        sel_close = st.selectbox("Trade", range(len(choices)),
-                                  format_func=lambda i: choices[i])
-        chosen = open_live.iloc[sel_close]
-        col_c1, col_c2, col_c3 = st.columns(3)
-        with col_c1:
-            x_date = st.date_input("Exit date", value=last_bar.date(), key="x_date")
-        with col_c2:
-            row_pick = status_df[status_df["fname"] == chosen["fname"]]
-            cur_price = float(row_pick["current"].iloc[0]) if not row_pick.empty else 0.0
-            x_signal = st.number_input("Signal price (exit)",
-                                        value=cur_price, format="%.4f", key="x_signal")
-            x_fill = st.number_input("Fill price (exit)",
-                                      value=cur_price, format="%.4f", key="x_fill")
-        with col_c3:
-            x_slip = st.number_input("Exit slippage per leg ($)",
-                                      value=0.10, format="%.4f", key="x_slip")
-        if st.button("Close trade"):
-            direction = 1.0 if chosen["side"] == "long" else -1.0
-            pnl_realized = direction * (x_fill - chosen["entry_fill_price"]) * chosen["n_lots"]
-            update_trade_log_row(chosen["trade_id"], {
-                "exit_date": pd.Timestamp(x_date).isoformat(),
-                "exit_signal_price": x_signal,
-                "exit_fill_price": x_fill,
-                "exit_slippage_per_leg": x_slip,
-                "closed": True,
-                "pnl_realized": round(pnl_realized, 4),
-            })
-            st.success(f"Closed {chosen['trade_id'][:6]} · realized P&L {pnl_realized:+.3f}")
-            st.rerun()
-
-# Trade log table
-if not log_y.empty:
-    show_cols = ["trade_id", "diff", "shape", "side", "n_lots",
-                 "entry_date", "entry_signal_price", "entry_fill_price", "entry_slippage_per_leg",
-                 "exit_date", "exit_signal_price", "exit_fill_price", "exit_slippage_per_leg",
-                 "closed", "pnl_realized", "notes"]
-    show = log_y[show_cols].copy()
-    show["entry_date"] = pd.to_datetime(show["entry_date"]).dt.date
-    show["exit_date"] = pd.to_datetime(show["exit_date"]).dt.date
-    show["trade_id"] = show["trade_id"].str[:8]
-    st.dataframe(show.sort_values("entry_date", ascending=False),
-                 use_container_width=True, hide_index=True)
-    csv = log_y.to_csv(index=False).encode("utf-8")
-    st.download_button("Download trade log (CSV)", csv, "live_trade_log_y2026.csv",
-                       "text/csv")
-else:
-    st.caption("No live trades logged yet for Y2026.")
+        st.caption("No live trades logged yet for Y2026.")
 
 st.divider()
 
@@ -536,7 +539,10 @@ with st.expander("📊 Diagnostics (analyst)"):
             st.plotly_chart(fig_corr, use_container_width=True)
 
     # Realized slippage from trade log
-    closed_log = log_y[log_y["closed"].isin([True, "True", "true", 1])]
+    if not SHOW_TRADE_LOG:
+        closed_log = pd.DataFrame()
+    else:
+        closed_log = log_y[log_y["closed"].isin([True, "True", "true", 1])]
     if not closed_log.empty:
         st.markdown("**Realized slippage from logged fills**")
         entry_slip = closed_log["entry_slippage_per_leg"].dropna().astype(float)
