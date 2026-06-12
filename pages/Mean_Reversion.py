@@ -195,6 +195,57 @@ st.dataframe(
     },
 )
 
+# ── Section D: Portfolio P&L ─────────────────────────────────────────
+st.subheader("Portfolio P&L (YTD)")
+if not port.empty:
+    pick_fnames = [p["fname"] for p in state["picks"]]
+    cum = port["portfolio_daily_pnl"].cumsum()
+    dd = cum - cum.cummax()
+    base_cum = baseline.cumsum() if not baseline.empty else pd.Series(dtype=float)
+
+    col_eq, col_dd = st.columns(2)
+    with col_eq:
+        fig_eq = go.Figure()
+        fig_eq.add_trace(go.Scatter(x=cum.index, y=cum.values, name="Live (YTD)",
+                                     line=dict(color="darkblue", width=2)))
+        if not base_cum.empty:
+            fig_eq.add_trace(go.Scatter(x=base_cum.index, y=base_cum.values,
+                                         name="Backtest baseline",
+                                         line=dict(color="grey", width=1.2, dash="dash")))
+        fig_eq.add_hline(y=0, line=dict(color="grey", width=0.5))
+        fig_eq.update_layout(title=f"Cumulative P&L Y{YEAR}", height=350,
+                              margin=dict(t=40, b=20))
+        st.plotly_chart(fig_eq, use_container_width=True)
+    with col_dd:
+        fig_dd = go.Figure()
+        fig_dd.add_trace(go.Scatter(x=dd.index, y=dd.values,
+                                     fill="tozeroy", fillcolor="rgba(255,0,0,0.2)",
+                                     line=dict(color="red", width=1), name="DD"))
+        fig_dd.update_layout(title=f"Drawdown Y{YEAR}", height=350,
+                              margin=dict(t=40, b=20))
+        st.plotly_chart(fig_dd, use_container_width=True)
+
+    # Daily P&L bars (last 60 BD)
+    last60 = port["portfolio_daily_pnl"].tail(60)
+    fig_bar = go.Figure()
+    fig_bar.add_trace(go.Bar(x=last60.index, y=last60.values,
+                              marker_color=["green" if v >= 0 else "red" for v in last60.values]))
+    fig_bar.update_layout(title="Daily P&L (last 60 BD)", height=280, margin=dict(t=40, b=20))
+    st.plotly_chart(fig_bar, use_container_width=True)
+
+    # Attribution waterfall
+    attribution = port[pick_fnames].sum().sort_values()
+    diff_map = {p["fname"]: f"{p['diff']} ({p['shape']})" for p in state["picks"]}
+    fig_attr = go.Figure(go.Bar(x=attribution.values,
+                                 y=[diff_map.get(f, f) for f in attribution.index],
+                                 orientation="h",
+                                 marker_color=["green" if v >= 0 else "red" for v in attribution.values]))
+    fig_attr.update_layout(title="YTD attribution (weighted, by pick)",
+                            height=320, margin=dict(t=40, b=20))
+    st.plotly_chart(fig_attr, use_container_width=True)
+
+st.divider()
+
 # ── Section C: Drill-down ────────────────────────────────────────────
 st.subheader("Drill-down per pick")
 pick_labels = [f"{r['diff']} ({r['shape']})" for _, r in status_df.iterrows()]
@@ -445,57 +496,6 @@ if SHOW_TRADE_LOG:
                            "text/csv")
     else:
         st.caption("No live trades logged yet for Y2026.")
-
-st.divider()
-
-# ── Section D: Portfolio P&L ─────────────────────────────────────────
-st.subheader("Portfolio P&L (YTD)")
-if not port.empty:
-    pick_fnames = [p["fname"] for p in state["picks"]]
-    cum = port["portfolio_daily_pnl"].cumsum()
-    dd = cum - cum.cummax()
-    base_cum = baseline.cumsum() if not baseline.empty else pd.Series(dtype=float)
-
-    col_eq, col_dd = st.columns(2)
-    with col_eq:
-        fig_eq = go.Figure()
-        fig_eq.add_trace(go.Scatter(x=cum.index, y=cum.values, name="Live (YTD)",
-                                     line=dict(color="darkblue", width=2)))
-        if not base_cum.empty:
-            fig_eq.add_trace(go.Scatter(x=base_cum.index, y=base_cum.values,
-                                         name="Backtest baseline",
-                                         line=dict(color="grey", width=1.2, dash="dash")))
-        fig_eq.add_hline(y=0, line=dict(color="grey", width=0.5))
-        fig_eq.update_layout(title=f"Cumulative P&L Y{YEAR}", height=350,
-                              margin=dict(t=40, b=20))
-        st.plotly_chart(fig_eq, use_container_width=True)
-    with col_dd:
-        fig_dd = go.Figure()
-        fig_dd.add_trace(go.Scatter(x=dd.index, y=dd.values,
-                                     fill="tozeroy", fillcolor="rgba(255,0,0,0.2)",
-                                     line=dict(color="red", width=1), name="DD"))
-        fig_dd.update_layout(title=f"Drawdown Y{YEAR}", height=350,
-                              margin=dict(t=40, b=20))
-        st.plotly_chart(fig_dd, use_container_width=True)
-
-    # Daily P&L bars (last 60 BD)
-    last60 = port["portfolio_daily_pnl"].tail(60)
-    fig_bar = go.Figure()
-    fig_bar.add_trace(go.Bar(x=last60.index, y=last60.values,
-                              marker_color=["green" if v >= 0 else "red" for v in last60.values]))
-    fig_bar.update_layout(title="Daily P&L (last 60 BD)", height=280, margin=dict(t=40, b=20))
-    st.plotly_chart(fig_bar, use_container_width=True)
-
-    # Attribution waterfall
-    attribution = port[pick_fnames].sum().sort_values()
-    diff_map = {p["fname"]: f"{p['diff']} ({p['shape']})" for p in state["picks"]}
-    fig_attr = go.Figure(go.Bar(x=attribution.values,
-                                 y=[diff_map.get(f, f) for f in attribution.index],
-                                 orientation="h",
-                                 marker_color=["green" if v >= 0 else "red" for v in attribution.values]))
-    fig_attr.update_layout(title="YTD attribution (weighted, by pick)",
-                            height=320, margin=dict(t=40, b=20))
-    st.plotly_chart(fig_attr, use_container_width=True)
 
 st.divider()
 
