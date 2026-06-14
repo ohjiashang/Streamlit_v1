@@ -107,7 +107,14 @@ open_pnl_portfolio = float(status_df["open_trade_pnl_weighted"].sum())
 realised_ytd_portfolio = float(status_df["ytd_realised_weighted"].sum())
 n_active = int(status_df["status"].str.startswith(("LONG", "SHORT")).sum())
 
-c1, c2, c3, c4, c5, _ = st.columns([1, 1, 1, 1, 1, 3])
+# Max loss = worst negative cumulative P&L YTD (deepest point of equity curve below 0)
+if not port.empty:
+    _cum_ytd = port["portfolio_daily_pnl"].cumsum()
+    max_loss_ytd = float(min(_cum_ytd.min(), 0.0))
+else:
+    max_loss_ytd = 0.0
+
+c1, c2, c3, c4, c5, c6, c7, _ = st.columns([1, 1, 1, 1, 1, 1, 1, 2])
 with c1:
     sign = "+" if day_pnl_portfolio >= 0 else "-"
     day_pnl_caption = f"{sign}${abs(day_pnl_portfolio):.3f}"
@@ -121,6 +128,10 @@ with c4:
     st.metric("Sharpe", f"{metrics['sharpe']:.2f}" if not np.isnan(metrics['sharpe']) else "—")
 with c5:
     st.metric("Active trades", f"{n_active} / {len(state['picks'])}")
+with c6:
+    st.metric("Max loss", f"${max_loss_ytd:+.3f}")
+with c7:
+    st.metric("Max DD", f"${metrics['max_dd']:+.3f}")
 
 st.divider()
 
@@ -516,54 +527,57 @@ if SHOW_TRADE_LOG:
 st.divider()
 
 # ── Section E: Diagnostics ──────────────────────────────────────────
-with st.expander("📊 Diagnostics (analyst)"):
-    if not port.empty:
-        pick_fnames = [p["fname"] for p in state["picks"]]
-        st.markdown("**Realized vs backtest baseline**")
-        if not baseline.empty:
-            base_m = portfolio_metrics(baseline)
-            comp = pd.DataFrame([
-                {"metric": "YTD P&L", "live": f"{metrics['ytd_pnl']:+.3f}",
-                 "backtest": f"{base_m['ytd_pnl']:+.3f}"},
-                {"metric": "Sharpe", "live": f"{metrics['sharpe']:.2f}",
-                 "backtest": f"{base_m['sharpe']:.2f}"},
-                {"metric": "Max DD", "live": f"{metrics['max_dd']:.3f}",
-                 "backtest": f"{base_m['max_dd']:.3f}"},
-                {"metric": "Win rate", "live": f"{metrics['win_rate']:.1f}%",
-                 "backtest": f"{base_m['win_rate']:.1f}%"},
-                {"metric": "Best day", "live": f"{metrics['best_day']:.3f}",
-                 "backtest": f"{base_m['best_day']:.3f}"},
-                {"metric": "Worst day", "live": f"{metrics['worst_day']:.3f}",
-                 "backtest": f"{base_m['worst_day']:.3f}"},
-            ])
-            st.dataframe(comp, use_container_width=True, hide_index=True)
+# Hidden for now; flip SHOW_DIAGNOSTICS to True to re-enable.
+SHOW_DIAGNOSTICS = False
+if SHOW_DIAGNOSTICS:
+    with st.expander("📊 Diagnostics (analyst)"):
+        if not port.empty:
+            pick_fnames = [p["fname"] for p in state["picks"]]
+            st.markdown("**Realized vs backtest baseline**")
+            if not baseline.empty:
+                base_m = portfolio_metrics(baseline)
+                comp = pd.DataFrame([
+                    {"metric": "YTD P&L", "live": f"{metrics['ytd_pnl']:+.3f}",
+                     "backtest": f"{base_m['ytd_pnl']:+.3f}"},
+                    {"metric": "Sharpe", "live": f"{metrics['sharpe']:.2f}",
+                     "backtest": f"{base_m['sharpe']:.2f}"},
+                    {"metric": "Max DD", "live": f"{metrics['max_dd']:.3f}",
+                     "backtest": f"{base_m['max_dd']:.3f}"},
+                    {"metric": "Win rate", "live": f"{metrics['win_rate']:.1f}%",
+                     "backtest": f"{base_m['win_rate']:.1f}%"},
+                    {"metric": "Best day", "live": f"{metrics['best_day']:.3f}",
+                     "backtest": f"{base_m['best_day']:.3f}"},
+                    {"metric": "Worst day", "live": f"{metrics['worst_day']:.3f}",
+                     "backtest": f"{base_m['worst_day']:.3f}"},
+                ])
+                st.dataframe(comp, use_container_width=True, hide_index=True)
 
-        st.markdown("**Per-pick spread-return correlation (daily spread_normalised returns, trailing 12M)**")
-        st.caption("Correlation of daily price moves of each spread, regardless of trade state. "
-                   "Reflects underlying market co-movement (not realised P&L overlap).")
-        corr = spread_return_correlation(window_months=12)
-        if corr.empty:
-            st.caption("Not enough data yet.")
+            st.markdown("**Per-pick spread-return correlation (daily spread_normalised returns, trailing 12M)**")
+            st.caption("Correlation of daily price moves of each spread, regardless of trade state. "
+                       "Reflects underlying market co-movement (not realised P&L overlap).")
+            corr = spread_return_correlation(window_months=12)
+            if corr.empty:
+                st.caption("Not enough data yet.")
+            else:
+                diff_map = {p["fname"]: f"{p['diff'][:8]} ({p['shape'][:4]})" for p in state["picks"]}
+                corr.columns = [diff_map.get(c, c) for c in corr.columns]
+                corr.index = [diff_map.get(c, c) for c in corr.index]
+                fig_corr = go.Figure(go.Heatmap(z=corr.values, x=corr.columns, y=corr.index,
+                                                  zmin=-1, zmax=1, colorscale="RdBu_r",
+                                                  text=np.round(corr.values, 2), texttemplate="%{text}"))
+                fig_corr.update_layout(height=360, margin=dict(t=20, b=20))
+                st.plotly_chart(fig_corr, use_container_width=True)
+
+        # Realized slippage from trade log
+        if not SHOW_TRADE_LOG:
+            closed_log = pd.DataFrame()
         else:
-            diff_map = {p["fname"]: f"{p['diff'][:8]} ({p['shape'][:4]})" for p in state["picks"]}
-            corr.columns = [diff_map.get(c, c) for c in corr.columns]
-            corr.index = [diff_map.get(c, c) for c in corr.index]
-            fig_corr = go.Figure(go.Heatmap(z=corr.values, x=corr.columns, y=corr.index,
-                                              zmin=-1, zmax=1, colorscale="RdBu_r",
-                                              text=np.round(corr.values, 2), texttemplate="%{text}"))
-            fig_corr.update_layout(height=360, margin=dict(t=20, b=20))
-            st.plotly_chart(fig_corr, use_container_width=True)
-
-    # Realized slippage from trade log
-    if not SHOW_TRADE_LOG:
-        closed_log = pd.DataFrame()
-    else:
-        closed_log = log_y[log_y["closed"].isin([True, "True", "true", 1])]
-    if not closed_log.empty:
-        st.markdown("**Realized slippage from logged fills**")
-        entry_slip = closed_log["entry_slippage_per_leg"].dropna().astype(float)
-        exit_slip = closed_log["exit_slippage_per_leg"].dropna().astype(float)
-        st.write({"n_closed": int(len(closed_log)),
-                   "avg_entry_slip_per_leg": float(entry_slip.mean()) if len(entry_slip) else 0.0,
-                   "avg_exit_slip_per_leg": float(exit_slip.mean()) if len(exit_slip) else 0.0})
+            closed_log = log_y[log_y["closed"].isin([True, "True", "true", 1])]
+        if not closed_log.empty:
+            st.markdown("**Realized slippage from logged fills**")
+            entry_slip = closed_log["entry_slippage_per_leg"].dropna().astype(float)
+            exit_slip = closed_log["exit_slippage_per_leg"].dropna().astype(float)
+            st.write({"n_closed": int(len(closed_log)),
+                       "avg_entry_slip_per_leg": float(entry_slip.mean()) if len(entry_slip) else 0.0,
+                       "avg_exit_slip_per_leg": float(exit_slip.mean()) if len(exit_slip) else 0.0})
 
