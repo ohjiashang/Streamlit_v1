@@ -162,17 +162,17 @@ def _z_color(v):
 
 display_df = status_df[[
     "diff", "shape", "contract", "params", "weight",
-    "current",
+    "current", "median",
     "status", "entry_date", "signal_alert",
     "daily_pnl_weighted", "open_trade_pnl_weighted", "ytd_realised_weighted",
 ]].copy()
 display_df.columns = ["Diff", "Shape", "Contract", "Params", "Weight",
-                      "Current",
+                      "Current", "Median",
                       "Status", "Entry date", "Signal alert",
                       "Day P&L", "Unrealised P&L", "Realised YTD P&L"]
 
 styled = (display_df.style
-          .format({"Weight": "{:.1%}", "Current": "{:.3f}",
+          .format({"Weight": "{:.1%}", "Current": "{:.3f}", "Median": "{:.3f}",
                    "Day P&L": "${:+.3f}", "Unrealised P&L": "${:+.3f}",
                    "Realised YTD P&L": "${:+.3f}"})
           .apply(_row_color, axis=1)
@@ -186,6 +186,7 @@ st.dataframe(
         "Params": st.column_config.Column(width="medium"),
         "Weight": st.column_config.Column(width="small"),
         "Current": st.column_config.Column(width="small"),
+        "Median": st.column_config.Column(width="small"),
         "Status": st.column_config.Column(width="large"),
         "Entry date": st.column_config.Column(width="small"),
         "Signal alert": st.column_config.Column(width="medium"),
