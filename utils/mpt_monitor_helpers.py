@@ -391,20 +391,42 @@ def derive_status_row(pick: dict) -> dict:
             _grp_idx[_prod] = len(_grp)
             _grp.append((_prod, []))
         _grp[_grp_idx[_prod]][1].append((_sign, _off))
+    def _fmt_leg(sign: str, name: str, offsets: list[str]) -> str:
+        gs = "+" if sign == "+" else "−"
+        if len(offsets) == 1:
+            mp = f"M{offsets[0]}"
+        else:
+            mp = "/".join([f"M{o}" for o in offsets])
+        return f"{gs} {name} ({mp})"
+
     formula_parts = []
     for _prod, _sign_offs in _grp:
-        _gsign = "+" if _sign_offs[0][0] == "+" else "−"
         _offs = [o for _, o in _sign_offs]
-        if len(_offs) == 1:
-            _mpart = f"M{_offs[0]}"
-        else:
-            _mpart = "/".join([f"M{o}" for o in _offs])
         _name = PRODUCT_NAMES.get(_prod, _prod)
-        # Wrap multi-word synthetic expansions in parens to avoid the embedded
-        # "-" being confused with a sign between legs.
-        if " - " in _name or " + " in _name:
-            _name = f"({_name})"
-        formula_parts.append(f"{_gsign} {_name} ({_mpart})")
+        # If the friendly name is a synthetic expression (contains " + " or
+        # " - "), expand it into per-component legs. Each component inherits
+        # the original product's offsets, with sign = outer × inner.
+        if re.search(r"\s[+\-]\s", _name):
+            _split = re.split(r"\s([+\-])\s", _name)
+            components: list[tuple[str, str]] = []
+            if not _name.lstrip().startswith(("+", "-")):
+                components.append(("+", _split[0].strip()))
+                _idx = 1
+            else:
+                _idx = 0
+            while _idx < len(_split) - 1:
+                components.append((_split[_idx], _split[_idx + 1].strip()))
+                _idx += 2
+            for inner_sign, comp_name in components:
+                comp_pairs = []
+                for outer_sign, outer_off in _sign_offs:
+                    combined = "+" if outer_sign == inner_sign else "-"
+                    comp_pairs.append((combined, outer_off))
+                grp_sign = comp_pairs[0][0]
+                grp_offsets = [o for _, o in comp_pairs]
+                formula_parts.append(_fmt_leg(grp_sign, comp_name, grp_offsets))
+        else:
+            formula_parts.append(_fmt_leg(_sign_offs[0][0], _name, _offs))
     formula_display = " ".join(formula_parts)
 
     # Distance to next entry in σ (FLAT picks only; active = NaN)

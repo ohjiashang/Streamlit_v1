@@ -61,7 +61,12 @@ def _build_m_legend() -> str:
             return ""
         from datetime import datetime as _dt
         _m1 = _dt.strptime(_months[0], "%b%y")
-        return f"M1 Contract = {_m1.strftime('%b%y')}"
+        _pairs = []
+        for i in range(6):
+            _y = _m1.year + (_m1.month - 1 + i) // 12
+            _m = ((_m1.month - 1 + i) % 12) + 1
+            _pairs.append(f"M{i+1} = {_dt(_y, _m, 1).strftime('%b%y')}")
+        return " · ".join(_pairs)
     except Exception:
         return ""
 
