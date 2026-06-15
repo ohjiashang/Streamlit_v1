@@ -22,6 +22,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from utils.mpt_monitor_helpers import (
     BLOOMBERG_COT, STATE_DIR, TRADE_LOG_FP, YEAR, LOCAL_MODE,
+    PRODUCT_NAMES, LEG_NAMES_COMPACT,
     load_state, load_pick_df, load_pick_trades, load_pick_open_trade,
     compute_daily_pnl, build_portfolio_daily_pnl,
     load_backtest_baseline_daily_pnl,
@@ -29,6 +30,19 @@ from utils.mpt_monitor_helpers import (
     load_trade_log, save_trade_log_row, update_trade_log_row, delete_trade_log_row,
     run_refresh,
 )
+
+
+def _friendly_leg_label(leg: str) -> str:
+    """SMT[1] -> 'S92 M1'.  Synthetic names get a compact alias from
+    LEG_NAMES_COMPACT (e.g. ULJ -> 'Jet Diff') so the leg breakdown reads
+    cleanly without parenthesised expansions."""
+    import re
+    m = re.match(r"(\w+)\[(\d+)\]", leg)
+    if not m:
+        return leg
+    raw_prod, offset = m.group(1), m.group(2)
+    name = LEG_NAMES_COMPACT.get(raw_prod, PRODUCT_NAMES.get(raw_prod, raw_prod))
+    return f"{name} M{offset}"
 
 st.set_page_config(layout="wide", page_title="Mean Reversion V2")
 st.title("Mean Reversion V2 - Y2026")
@@ -391,13 +405,13 @@ if leg_cols:
     for c in leg_cols:
         contract_col = f"{c}_contract"
         ctc = last_row.get(contract_col, "?") if contract_col in df.columns else "?"
-        leg_table.append({"leg": c, "contract": ctc,
+        leg_table.append({"leg": _friendly_leg_label(c), "contract": ctc,
                           "signed_price": round(float(last_row[c]), 4)})
     leg_df = pd.DataFrame(leg_table)
     sum_legs = leg_df["signed_price"].sum()
     col_l, col_r = st.columns([1.5, 1])
     with col_l:
-        st.markdown(f"**Leg breakdown — {sel_meta['formula']}**  ·  as of {last_bar.date()}")
+        st.markdown(f"**Leg breakdown — {sel['formula_display']}**  ·  as of {last_bar.date()}")
         st.dataframe(leg_df, use_container_width=True, hide_index=True)
         st.caption(f"Σ signed legs = **{sum_legs:.4f}**  ·  EW = "
                    f"**{float(last_row['EW']):.4f}**  ·  spread_normalised (back-adj) = "

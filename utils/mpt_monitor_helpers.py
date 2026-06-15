@@ -52,6 +52,13 @@ PRODUCT_NAMES = {
     "SMT": "S92",
 }
 
+# Compact aliases used in the per-leg breakdown table where the multi-component
+# synthetic expansion (e.g. "(NWE Jet - ICEGO) M2") reads awkwardly. Falls back
+# to PRODUCT_NAMES when not overridden.
+LEG_NAMES_COMPACT = {
+    "ULJ": "Jet Diff",
+}
+
 TRADE_LOG_COLS = [
     "trade_id", "fname", "cell", "diff", "shape", "weight",
     "side",
