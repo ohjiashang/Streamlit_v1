@@ -178,12 +178,12 @@ def _z_color(v):
 
 
 display_df = status_df[[
-    "diff", "shape", "contract", "params", "weight",
+    "diff", "shape", "contract", "offset", "params", "weight",
     "current", "median",
     "status", "entry_date", "signal_alert",
     "daily_pnl_weighted", "open_trade_pnl_weighted", "ytd_realised_weighted",
 ]].copy()
-display_df.columns = ["Diff", "Shape", "Contract", "Params", "Weight",
+display_df.columns = ["Diff", "Shape", "Contract", "Offset", "Params", "Weight",
                       "Current", "Median",
                       "Status", "Entry date", "Signal alert",
                       "Day P&L", "Unrealised P&L", "Realised YTD P&L"]
@@ -200,6 +200,7 @@ st.dataframe(
         "Diff": st.column_config.Column(width="small"),
         "Shape": st.column_config.Column(width="small"),
         "Contract": st.column_config.Column(width="medium"),
+        "Offset": st.column_config.Column(width="medium"),
         "Params": st.column_config.Column(width="medium"),
         "Weight": st.column_config.Column(width="small"),
         "Current": st.column_config.Column(width="small"),

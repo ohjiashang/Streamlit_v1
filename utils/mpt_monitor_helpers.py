@@ -331,6 +331,38 @@ def derive_status_row(pick: dict) -> dict:
 
     params_str = f"W{pick['W']} / SE{pick['SE']:g} / SL{pick['SL']:g}"
 
+    # Offset: parse the formula's [N] markers into a readable contract-month
+    # layout. Boxes show pairs per product ("M2/M3"); products joined by " - ".
+    # E.g. AEO[2] - AEO[3] - BSP[1] + BSP[2]  →  "M2/M3 - M1/M2"
+    import re
+    matches = re.findall(r"(\w+)\[(\d+)\]", pick.get("formula", ""))
+    _groups: dict[str, list[str]] = {}
+    _order: list[str] = []
+    for _prod, _off in matches:
+        if _prod not in _groups:
+            _groups[_prod] = []
+            _order.append(_prod)
+        _groups[_prod].append(_off)
+    _parts = []
+    for _prod in _order:
+        offs = _groups[_prod]
+        if len(offs) == 1:
+            _parts.append(f"M{offs[0]}")
+        elif len(offs) == 2:
+            _parts.append(f"M{offs[0]}/M{offs[1]}")
+        else:
+            _pairs = ["/".join([f"M{o}" for o in offs[i:i+2]])
+                      for i in range(0, len(offs), 2)]
+            _parts.append("-".join(_pairs))
+    # Single-product "box" formulas use a synthetic-diff leg (e.g. ULJ =
+    # NWE_Jet - ICEGO). Duplicate the pair so the display reads as a 4-leg
+    # box rather than a single 2-leg calendar spread.
+    if ("box" in pick.get("shape", "") and len(_order) == 1
+            and len(_groups[_order[0]]) == 2):
+        offset_str = f"{_parts[0]} - {_parts[0]}"
+    else:
+        offset_str = " - ".join(_parts)
+
     # Distance to next entry in σ (FLAT picks only; active = NaN)
     if open_trade is None and not pd.isna(z):
         se_val = float(pick.get("SE", 1.0))
@@ -342,6 +374,7 @@ def derive_status_row(pick: dict) -> dict:
         "diff": pick["diff"],
         "shape": pick["shape"],
         "contract": current_contract,
+        "offset": offset_str,
         "params": params_str,
         "weight": weight,
         "current": ew,
