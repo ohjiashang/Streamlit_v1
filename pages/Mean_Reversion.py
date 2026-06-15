@@ -67,8 +67,6 @@ def _build_m_legend() -> str:
 
 
 _m_legend = _build_m_legend()
-if _m_legend:
-    st.caption(f"*{_m_legend}*")
 
 last_bar = pd.Timestamp(state["portfolio_last_bar"])
 refreshed_at = datetime.fromisoformat(state["refreshed_at"])
@@ -168,6 +166,8 @@ st.divider()
 
 # ── Section B: Portfolio status grid ─────────────────────────────────
 st.subheader("Portfolio status")
+if _m_legend:
+    st.caption(f"*{_m_legend}*")
 
 def _row_color(row):
     alert = str(row.get("Signal alert", "") or "")
