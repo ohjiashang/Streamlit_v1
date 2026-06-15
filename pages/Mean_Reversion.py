@@ -47,13 +47,19 @@ if "error" in state:
 
 last_bar = pd.Timestamp(state["portfolio_last_bar"])
 refreshed_at = datetime.fromisoformat(state["refreshed_at"])
+# staleness_bd: business days between last bar and today, exclusive of today.
+# Expected value is 1 (last bar = D-1 of today's close). Higher = genuinely stale.
 staleness_bd = int(np.busday_count(last_bar.date(), date.today()))
-banner_kind = "warning" if staleness_bd >= 3 else "info" if staleness_bd >= 2 else None
+lag_bd = max(staleness_bd - 1, 0)  # how many extra BD missing beyond the expected D-1
+banner_kind = "warning" if lag_bd >= 2 else "info" if lag_bd >= 1 else None
 
 col_hdr_l, col_hdr_r = st.columns([3, 1])
 with col_hdr_l:
-    msg = (f"**As of:** {last_bar.date().isoformat()} "
-           f"({staleness_bd} business day{'s' if staleness_bd != 1 else ''} stale)  "
+    if lag_bd == 0:
+        stale_clause = ""
+    else:
+        stale_clause = (f" ({lag_bd} business day{'s' if lag_bd != 1 else ''} behind D-1) ")
+    msg = (f"**As of:** {last_bar.date().isoformat()}{stale_clause}  "
            f"·  **Refreshed:** {refreshed_at.strftime('%Y-%m-%d %H:%M')}")
     if banner_kind == "warning":
         st.warning(msg + "  ·  ⚠️ Data is stale — refresh recommended")
