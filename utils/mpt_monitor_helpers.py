@@ -363,6 +363,31 @@ def derive_status_row(pick: dict) -> dict:
     else:
         offset_str = " - ".join(_parts)
 
+    # Formula display: combine sign + product + M-offsets into one readable
+    # string per leg group, e.g. "+ AEO (M2/M3) − BSP (M1/M2)".
+    formula = pick.get("formula", "")
+    formula_padded = formula
+    if formula_padded and not re.match(r"^\s*[+-]", formula_padded):
+        formula_padded = "+" + formula_padded
+    items = re.findall(r"([+-])\s*(\w+)\[(\d+)\]", formula_padded)
+    _grp = []
+    _grp_idx = {}
+    for _sign, _prod, _off in items:
+        if _prod not in _grp_idx:
+            _grp_idx[_prod] = len(_grp)
+            _grp.append((_prod, []))
+        _grp[_grp_idx[_prod]][1].append((_sign, _off))
+    formula_parts = []
+    for _prod, _sign_offs in _grp:
+        _gsign = "+" if _sign_offs[0][0] == "+" else "−"
+        _offs = [o for _, o in _sign_offs]
+        if len(_offs) == 1:
+            _mpart = f"M{_offs[0]}"
+        else:
+            _mpart = "/".join([f"M{o}" for o in _offs])
+        formula_parts.append(f"{_gsign} {_prod} ({_mpart})")
+    formula_display = " ".join(formula_parts)
+
     # Distance to next entry in σ (FLAT picks only; active = NaN)
     if open_trade is None and not pd.isna(z):
         se_val = float(pick.get("SE", 1.0))
@@ -375,6 +400,7 @@ def derive_status_row(pick: dict) -> dict:
         "shape": pick["shape"],
         "contract": current_contract,
         "offset": offset_str,
+        "formula_display": formula_display,
         "params": params_str,
         "weight": weight,
         "current": ew,
