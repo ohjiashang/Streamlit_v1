@@ -134,13 +134,21 @@ with col_hdr_r:
 status_rows = [derive_status_row(p) for p in state["picks"]]
 status_df = pd.DataFrame(status_rows)
 
-# Default sort: active trades first, then FLAT picks by ascending distance-to-entry σ
-status_df["_is_flat"] = status_df["status"].str.startswith("FLAT")
+# Default sort: active trades (0) → FLAT non-cooldown by ascending σ (1) → cooldown (2)
+def _sort_group(status: str) -> int:
+    s = str(status)
+    if not s.startswith("FLAT"):
+        return 0
+    if "cooldown" in s.lower():
+        return 2
+    return 1
+
+status_df["_sort_group"] = status_df["status"].apply(_sort_group)
 status_df["_sort_dist"] = status_df["dist_to_entry_sigma"].fillna(float("inf"))
 status_df = (status_df
-             .sort_values(["_is_flat", "_sort_dist", "weight"],
+             .sort_values(["_sort_group", "_sort_dist", "weight"],
                           ascending=[True, True, False])
-             .drop(columns=["_is_flat", "_sort_dist"])
+             .drop(columns=["_sort_group", "_sort_dist"])
              .reset_index(drop=True))
 
 # Portfolio metrics
