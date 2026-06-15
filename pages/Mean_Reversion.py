@@ -258,14 +258,14 @@ if not port.empty:
                                 showlegend=False)
         st.plotly_chart(fig_left, use_container_width=True)
     with col_right:
-        # Right top: YTD attribution
+        # Right top: YTD P&L attribution
         attribution = port[pick_fnames].sum().sort_values()
         diff_map = {p["fname"]: f"{p['diff']} ({p['shape']})" for p in state["picks"]}
         fig_attr = go.Figure(go.Bar(x=attribution.values,
                                      y=[diff_map.get(f, f) for f in attribution.index],
                                      orientation="h",
                                      marker_color=["green" if v >= 0 else "red" for v in attribution.values]))
-        fig_attr.update_layout(title="YTD attribution (weighted, by pick)",
+        fig_attr.update_layout(title="YTD P&L attribution (weighted, by pick)",
                                 height=350, margin=dict(t=40, b=20))
         st.plotly_chart(fig_attr, use_container_width=True)
 
