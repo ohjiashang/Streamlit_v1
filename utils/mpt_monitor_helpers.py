@@ -38,6 +38,20 @@ SYNC_SCRIPT = BLOOMBERG_COT / "analytics" / "_sync_monitor_to_firebase.py"
 
 YEAR = 2026
 
+# Trader-friendly names for raw ICE product codes used in pick formulas.
+# Synthetic legs (SGO, ICEGO, TC5, etc.) keep their config-defined names.
+PRODUCT_NAMES = {
+    "AEO": "Ebob",
+    "RBS": "Rbob",
+    "BSP": "Brt",
+    "NEC": "NWE Naph",
+    "NJC": "MOPJ Naph",
+    "SYS": "S380",
+    "SZS": "S180",
+    "ULJ": "NWE Jet - ICEGO",
+    "SMT": "S92",
+}
+
 TRADE_LOG_COLS = [
     "trade_id", "fname", "cell", "diff", "shape", "weight",
     "side",
@@ -385,7 +399,12 @@ def derive_status_row(pick: dict) -> dict:
             _mpart = f"M{_offs[0]}"
         else:
             _mpart = "/".join([f"M{o}" for o in _offs])
-        formula_parts.append(f"{_gsign} {_prod} ({_mpart})")
+        _name = PRODUCT_NAMES.get(_prod, _prod)
+        # Wrap multi-word synthetic expansions in parens to avoid the embedded
+        # "-" being confused with a sign between legs.
+        if " - " in _name or " + " in _name:
+            _name = f"({_name})"
+        formula_parts.append(f"{_gsign} {_name} ({_mpart})")
     formula_display = " ".join(formula_parts)
 
     # Distance to next entry in σ (FLAT picks only; active = NaN)
