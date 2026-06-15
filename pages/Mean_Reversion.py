@@ -45,6 +45,31 @@ if "error" in state:
         st.rerun()
     st.stop()
 
+
+# Build a small M1..M6 → contract month caption under the title. Uses 92_EW
+# (M1/M2 box, both products at offsets [1]/[2]) as the reference so we know
+# the first comma chunk of `contract` is "{M1_code}/{M2_code}".
+def _build_m_legend() -> str:
+    try:
+        _df = load_pick_df("92_EWM11box")
+        if _df.empty:
+            return ""
+        _contract = str(_df.iloc[-1].get("contract", ""))
+        _first_chunk = _contract.split(",")[0] if _contract else ""
+        _months = _first_chunk.split("/")
+        if len(_months) < 2:
+            return ""
+        from datetime import datetime as _dt
+        _m1 = _dt.strptime(_months[0], "%b%y")
+        return f"M1 Contract = {_m1.strftime('%b%y')}"
+    except Exception:
+        return ""
+
+
+_m_legend = _build_m_legend()
+if _m_legend:
+    st.caption(f"*{_m_legend}*")
+
 last_bar = pd.Timestamp(state["portfolio_last_bar"])
 refreshed_at = datetime.fromisoformat(state["refreshed_at"])
 # staleness_bd: business days between last bar and today, exclusive of today.
