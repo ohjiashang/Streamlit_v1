@@ -230,18 +230,19 @@ def _z_color(v):
 
 
 display_df = status_df[[
-    "diff", "shape", "formula_display", "params", "weight",
+    "diff", "shape", "formula_display", "params", "weight", "var99_bbl",
     "current", "median",
     "status", "entry_date", "signal_alert",
     "daily_pnl_weighted", "open_trade_pnl_weighted", "ytd_realised_weighted",
 ]].copy()
-display_df.columns = ["Diff", "Shape", "Formula", "Params", "Weight",
+display_df.columns = ["Diff", "Shape", "Formula", "Params", "Weight", "VaR99 ($/bbl)",
                       "Current", "Median",
                       "Status", "Entry date", "Signal alert",
                       "Day P&L", "Unrealised P&L", "Realised YTD P&L"]
 
 styled = (display_df.style
-          .format({"Weight": "{:.1%}", "Current": "{:.3f}", "Median": "{:.3f}",
+          .format({"Weight": "{:.1%}", "VaR99 ($/bbl)": "{:.2f}",
+                   "Current": "{:.3f}", "Median": "{:.3f}",
                    "Day P&L": "${:+.3f}", "Unrealised P&L": "${:+.3f}",
                    "Realised YTD P&L": "${:+.3f}"})
           .apply(_row_color, axis=1)
@@ -254,6 +255,7 @@ st.dataframe(
         "Formula": st.column_config.Column(width="large"),
         "Params": st.column_config.Column(width="medium"),
         "Weight": st.column_config.Column(width="small"),
+        "VaR99 ($/bbl)": st.column_config.Column(width="small"),
         "Current": st.column_config.Column(width="small"),
         "Median": st.column_config.Column(width="small"),
         "Status": st.column_config.Column(width="large"),

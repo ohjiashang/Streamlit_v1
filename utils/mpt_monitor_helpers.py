@@ -451,6 +451,7 @@ def derive_status_row(pick: dict) -> dict:
         "formula_display": formula_display,
         "params": params_str,
         "weight": weight,
+        "var99_bbl": pick.get("var99_bbl"),
         "current": ew,
         "median": med,
         "lower": lower,
