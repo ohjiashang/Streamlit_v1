@@ -423,8 +423,7 @@ if leg_cols:
     with col_l:
         st.markdown(f"**Leg breakdown — {sel['formula_display']}**  ·  as of {last_bar.date()}")
         st.dataframe(leg_df, use_container_width=True, hide_index=True)
-        st.caption(f"Σ signed legs = **{sum_legs:.4f}**  ·  spread = "
-                   f"**{float(last_row['EW']):.4f}**")
+        st.caption(f"Σ signed legs = **{sum_legs:.4f}**")
     with col_r:
         if open_trade is not None:
             st.markdown(f"**Open trade**")

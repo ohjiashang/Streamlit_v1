@@ -38,6 +38,8 @@ SYNC_SCRIPT = BLOOMBERG_COT / "analytics" / "_sync_monitor_to_firebase.py"
 
 YEAR = 2026
 
+
+
 # Trader-friendly names for raw ICE product codes used in pick formulas.
 # Synthetic legs (SGO, ICEGO, TC5, etc.) keep their config-defined names.
 PRODUCT_NAMES = {
