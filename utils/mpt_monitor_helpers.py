@@ -316,11 +316,17 @@ def derive_status_row(pick: dict) -> dict:
     z = (ew - med) / std if (med is not None and std and std > 0) else np.nan
 
     # ── Daily P&L (open-trade only, raw frame) ────────────────────────
+    # If the position was opened at today's close, Day P&L = 0 (nothing was
+    # held during yesterday → today). For any earlier entry, Day P&L =
+    # direction × (today's raw close − yesterday's raw close).
     daily_raw = 0.0
     if open_trade is not None and raw_series is not None and len(raw_series) >= 2:
         direction = +1 if str(open_trade["side"]).lower() == "long" else -1
-        # Today's day-over-day change in raw spread
-        daily_raw = direction * float(raw_series.iloc[-1] - raw_series.iloc[-2])
+        entry_d = pd.Timestamp(open_trade["entry_date"])
+        last_bar_d = pd.Timestamp(raw_series.index[-1])
+        if entry_d.date() < last_bar_d.date():
+            daily_raw = direction * float(raw_series.iloc[-1] - raw_series.iloc[-2])
+        # else: same-day entry → no overnight delta to mark, daily_raw stays 0
 
     # ── Realised YTD (blended frame — unchanged) ──────────────────────
     ew_series_blended = df.set_index("Date")["EW_adj"]
