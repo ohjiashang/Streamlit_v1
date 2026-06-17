@@ -179,7 +179,12 @@ with c1:
 with c2:
     st.metric("Realised P&L", f"${realised_ytd_portfolio:+.3f}")
 with c3:
-    st.metric("YTD P&L", f"${metrics['ytd_pnl']:+.3f}")
+    # YTD P&L = Realised + Unrealised in display frame (raw on current days).
+    # `metrics["ytd_pnl"]` was built from the blended EW_adj daily series, so
+    # we substitute the Realised + Unrealised sum to keep the scorecard
+    # consistent with what the per-pick rows show.
+    ytd_pnl_display = realised_ytd_portfolio + open_pnl_portfolio
+    st.metric("YTD P&L", f"${ytd_pnl_display:+.3f}")
 with c4:
     st.metric("Sharpe", f"{metrics['sharpe']:.2f}" if not np.isnan(metrics['sharpe']) else "—")
 with c5:

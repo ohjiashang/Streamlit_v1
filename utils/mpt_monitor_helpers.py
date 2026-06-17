@@ -261,42 +261,92 @@ def load_backtest_baseline_daily_pnl(year: int = YEAR) -> pd.Series:
 
 
 def derive_status_row(pick: dict) -> dict:
-    """Build one row for the Section B status grid."""
+    """Build one row for the Section B status grid.
+
+    Strategy bands, Status σ-distances, and realised YTD all stay on the
+    blended EW_adj series (the strategy's internal convention — keeps the
+    backtest signals consistent across roll boundaries).
+
+    But the **displayed Current value**, the **Unrealised P&L** for any open
+    trade, and **today's Day P&L** are switched to the **raw sum-of-signed-legs
+    frame** so the dashboard's numbers match what the trader actually quotes
+    at D-1. This affects display only — it never re-detects trades."""
     fname = pick["fname"]
     weight = pick["weight"]
-    ew = pick["last_ew_adj"]
     med = pick["last_median"]
     std = pick["last_std"]
     upper = pick["last_upper"]
     lower = pick["last_lower"]
-    z = (ew - med) / std if (med is not None and std and std > 0) else np.nan
 
     open_trade = load_pick_open_trade(fname)
     df = load_pick_df(fname)
     trades = load_pick_trades(fname)
     current_contract = str(df.iloc[-1]["contract"]) if not df.empty else ""
 
-    # Daily P&L (t-2 close → t-1 close), weighted
-    ew_series = df.set_index("Date")["EW_adj"]
-    daily = compute_daily_pnl(trades, ew_series, YEAR, open_trade)
-    daily_raw = float(daily.iloc[-1]) if len(daily) > 0 else 0.0
+    # ── Raw-spread display helpers ────────────────────────────────────
+    leg_cols = [c for c in df.columns
+                if c not in {"Date", "EW", "EW_adj", "rolling_median",
+                              "rolling_std", "upper_bound", "lower_bound",
+                              "contract", "pnl_running"}
+                and not c.endswith("_contract")] if not df.empty else []
+    df_sorted = df.sort_values("Date").reset_index(drop=True) if not df.empty else df
+    raw_series = None
+    if leg_cols and not df_sorted.empty:
+        raw_series = df_sorted[leg_cols].sum(axis=1)
+        raw_series.index = pd.to_datetime(df_sorted["Date"])
 
-    # In-year convention: count only the YEAR portion of each trade's P&L.
-    # Cross-year trades (entered in Y-1, closed in Y) contribute only the
-    # post-Jan-1 portion; pre-year MTM is excluded.
-    realised_daily = compute_daily_pnl(trades, ew_series, YEAR, open_trade=None)
+    def _raw_at(ts: pd.Timestamp) -> float | None:
+        if raw_series is None:
+            return None
+        if ts in raw_series.index:
+            return float(raw_series.loc[ts])
+        # Find nearest earlier date if exact match missing
+        prior = raw_series.index[raw_series.index <= ts]
+        if len(prior) == 0:
+            return None
+        return float(raw_series.loc[prior[-1]])
+
+    # Use raw spread at last bar for "Current" column AND z-score
+    # (so Status σ-distance uses raw vs blended median — small inconsistency,
+    # but the user wants the live displayed Current to drive everything they see).
+    ew_raw_today = (float(raw_series.iloc[-1])
+                     if raw_series is not None and len(raw_series) > 0
+                     else pick["last_ew_adj"])
+    ew = ew_raw_today  # the "Current" displayed value
+    z = (ew - med) / std if (med is not None and std and std > 0) else np.nan
+
+    # ── Daily P&L (open-trade only, raw frame) ────────────────────────
+    daily_raw = 0.0
+    if open_trade is not None and raw_series is not None and len(raw_series) >= 2:
+        direction = +1 if str(open_trade["side"]).lower() == "long" else -1
+        # Today's day-over-day change in raw spread
+        daily_raw = direction * float(raw_series.iloc[-1] - raw_series.iloc[-2])
+
+    # ── Realised YTD (blended frame — unchanged) ──────────────────────
+    ew_series_blended = df.set_index("Date")["EW_adj"]
+    realised_daily = compute_daily_pnl(trades, ew_series_blended, YEAR, open_trade=None)
     ytd_realised_raw = float(realised_daily.sum()) if len(realised_daily) > 0 else 0.0
 
-    # Open trade in-year MTM (entered before Y-start → counts from Jan 1 only)
-    if open_trade is not None:
-        open_only_daily = compute_daily_pnl(pd.DataFrame(), ew_series, YEAR, open_trade)
-        open_pnl_raw = float(open_only_daily.sum()) if len(open_only_daily) > 0 else 0.0
+    # ── Open-trade Unrealised P&L (raw frame) ─────────────────────────
+    if open_trade is not None and raw_series is not None and len(raw_series) > 0:
+        entry_d = pd.Timestamp(open_trade["entry_date"])
+        raw_entry = _raw_at(entry_d)
+        if raw_entry is not None:
+            direction = +1 if str(open_trade["side"]).lower() == "long" else -1
+            open_pnl_raw = direction * (ew_raw_today - raw_entry)
+        else:
+            open_pnl_raw = 0.0
     else:
         open_pnl_raw = 0.0
 
     if open_trade is not None:
         entry_date_str = (f"{pd.Timestamp(open_trade['entry_date']).date().isoformat()} "
                           f"({open_trade['days_held']}d)")
+        # Display entry in raw frame to match the Current column
+        entry_d = pd.Timestamp(open_trade["entry_date"])
+        raw_entry_display = _raw_at(entry_d)
+        entry_price_display = (round(raw_entry_display, 4) if raw_entry_display is not None
+                                else open_trade['entry_price'])
         # Distance to median (take-profit) exit, in σ and $
         if not pd.isna(z) and med is not None:
             dist_to_med_sigma = abs(float(z))
@@ -305,7 +355,7 @@ def derive_status_row(pick: dict) -> dict:
                         f"to exit @ {float(med):.3f}")
         else:
             exit_str = ""
-        status_str = (f"{open_trade['side'].upper()} @ {open_trade['entry_price']}{exit_str}")
+        status_str = (f"{open_trade['side'].upper()} @ {entry_price_display}{exit_str}")
         signal_alert = ""
         if pd.Timestamp(open_trade["entry_date"]).date() == pd.Timestamp(pick["last_bar_date"]).date():
             signal_alert = f"FRESH {open_trade['side'].upper()} ENTRY today"
