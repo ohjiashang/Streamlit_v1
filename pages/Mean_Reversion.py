@@ -353,6 +353,22 @@ open_trade = load_pick_open_trade(sel["fname"])
 # 18-month tail chart with bands + entries/exits
 tail_start = df["Date"].max() - pd.DateOffset(months=18)
 chart_df = df[df["Date"] >= tail_start].copy()
+# Override EW_adj for the CURRENT (in-progress) month with raw sum-of-signed-legs.
+# Past month-ends keep their blending intact (the strategy's signal convention),
+# but the in-progress month's last 5 BDs would otherwise blend against next
+# month's contracts that haven't been rolled yet — exactly the artefact the
+# Portfolio status table is now correcting. Matching the chart keeps the
+# drilldown consistent with the table for D-1.
+_chart_leg_cols = [c for c in chart_df.columns
+                    if c not in {"Date", "EW", "EW_adj", "rolling_median",
+                                  "rolling_std", "upper_bound", "lower_bound",
+                                  "contract", "pnl_running"}
+                    and not c.endswith("_contract")]
+if _chart_leg_cols:
+    _last_date = pd.Timestamp(chart_df["Date"].max())
+    _mask_curr = ((chart_df["Date"].dt.year == _last_date.year)
+                   & (chart_df["Date"].dt.month == _last_date.month))
+    chart_df.loc[_mask_curr, "EW_adj"] = chart_df.loc[_mask_curr, _chart_leg_cols].sum(axis=1)
 fig = make_subplots(rows=2, cols=1, shared_xaxes=True, vertical_spacing=0.04,
                     row_heights=[0.7, 0.3])
 fig.add_trace(go.Scatter(x=chart_df["Date"], y=chart_df["EW_adj"],
