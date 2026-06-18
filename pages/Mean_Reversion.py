@@ -435,7 +435,16 @@ if leg_cols:
     with col_l:
         st.markdown(f"**Leg breakdown — {sel['formula_display']}**  ·  as of {last_bar.date()}")
         st.dataframe(leg_df, use_container_width=True, hide_index=True)
-        st.caption(f"Σ signed legs = **{sum_legs:.4f}**")
+        _upper = sel_meta.get("last_upper")
+        _lower = sel_meta.get("last_lower")
+        _med = sel_meta.get("last_median")
+        st.caption(
+            f"Σ signed legs = **{sum_legs:.4f}**  ·  "
+            f"upper = **{_upper:.4f}**  ·  median = **{_med:.4f}**  ·  "
+            f"lower = **{_lower:.4f}**"
+            if (_upper is not None and _lower is not None and _med is not None)
+            else f"Σ signed legs = **{sum_legs:.4f}**"
+        )
     with col_r:
         if open_trade is not None:
             st.markdown(f"**Open trade**")
