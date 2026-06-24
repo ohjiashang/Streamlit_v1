@@ -128,8 +128,7 @@ with col_hdr_l:
         st.success(msg)
     _roll_lbl = _roll_day_label(date.today())
     if _roll_lbl:
-        st.warning(f"🔄 **{_roll_lbl}** — within the last 5 business days of the "
-                   f"month (roll window; 1 = 5th-last BD → 5 = final BD)")
+        st.warning(f"🔄 **{_roll_lbl}** — within the last 5 business days of the month")
 with col_hdr_r:
     if LOCAL_MODE:
         refresh_kind = st.radio("Refresh:", ["State only", "Full (data + state)"],
