@@ -44,6 +44,23 @@ def _friendly_leg_label(leg: str) -> str:
     name = LEG_NAMES_COMPACT.get(raw_prod, PRODUCT_NAMES.get(raw_prod, raw_prod))
     return f"{name} M{offset}"
 
+
+def _roll_day_label(today: date) -> str | None:
+    """If `today` is within the last 5 business days of its month, return
+    'Roll day X' where X counts UP from the start of the roll window
+    (1 = 5th-last BD, 5 = final BD). Returns None outside that window.
+    Non-business days snap forward to the next BD's count."""
+    first_next = date(today.year + (today.month == 12), (today.month % 12) + 1, 1)
+    last_bd = np.busday_offset(np.datetime64(first_next, "D"), -1, roll="backward")
+    today64 = np.busday_offset(np.datetime64(today, "D"), 0, roll="forward")
+    if today64 > last_bd:
+        return None
+    bd_remaining = int(np.busday_count(today64, last_bd)) + 1  # inclusive of today
+    if 1 <= bd_remaining <= 5:
+        return f"Roll day {6 - bd_remaining}"  # 5th-last BD → 1, final BD → 5
+    return None
+
+
 st.set_page_config(layout="wide", page_title="Mean Reversion V2")
 st.title("Mean Reversion V2 - Y2026")
 
@@ -109,6 +126,10 @@ with col_hdr_l:
         st.info(msg)
     else:
         st.success(msg)
+    _roll_lbl = _roll_day_label(date.today())
+    if _roll_lbl:
+        st.warning(f"🔄 **{_roll_lbl}** — within the last 5 business days of the "
+                   f"month (roll window; 1 = 5th-last BD → 5 = final BD)")
 with col_hdr_r:
     if LOCAL_MODE:
         refresh_kind = st.radio("Refresh:", ["State only", "Full (data + state)"],
