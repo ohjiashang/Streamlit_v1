@@ -189,11 +189,12 @@ st.caption(
     "I'll wire up the full formula engine next."
 )
 
+PG_RANK = {pg: i for i, pg in enumerate(PG_ORDER)}
 all_diff_choices = sorted(
     [(e["product_group"], e["diff"], e["data_file"],
        e.get("W", 12), e.get("SE", 2.0), e.get("shape", ""))
       for e in index],
-    key=sort_key,
+    key=lambda t: (PG_RANK.get(t[0], 99), t[1]),
 )
 diff_options = [f"{pg} · {df} ({sh})" for pg, df, _, _, _, sh in all_diff_choices]
 
