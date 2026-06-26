@@ -32,7 +32,7 @@ FAMILY_LABEL = {"D": "Distillates",
                  "L": "Lights",
                  "F": "Fuel Oil",
                  "C": "Crude"}
-AVAILABLE_FAMILIES = ["D"]  # extend later
+AVAILABLE_FAMILIES = ["L", "D", "F", "C"]   # all 4 families bundled
 
 
 @st.cache_data(ttl=900)
@@ -151,8 +151,7 @@ fam = st.sidebar.selectbox(
     format_func=lambda x: f"{x} — {FAMILY_LABEL[x]}",
     index=0,
 )
-st.sidebar.caption("Only Distillates available in this build. "
-                    "Lights / Fuel Oil / Crude coming next.")
+st.sidebar.caption("Lights · Distillates · Fuel Oil · Crude — switch any time.")
 
 data = load_family_data(fam)
 if not data:
