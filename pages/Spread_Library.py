@@ -180,131 +180,245 @@ for i in range(0, len(entries), 2):
 
 st.divider()
 
-# ── Custom diff combiner (Path A MVP) ─────────────────────────────
-st.header("Custom diff combiner")
+# ── Path B: full formula engine ───────────────────────────────────
+st.header("Custom formula explorer")
 st.caption(
-    "Quick exploratory tool: combine 2 of the 38 precomputed diffs with `+` or `−`. "
-    "Useful for synthetic cross-product spreads (e.g. `S380-Brt − GO_EW`). "
-    "For arbitrary per-leg per-offset formulas (full `SYS[3] - SGO[2] + ICEGO[3]` style), "
-    "I'll wire up the full formula engine next."
+    "Type any synthetic spread using **raw products** or **leg aliases**, with per-leg offsets. "
+    "Examples:  `BSP[1] - DBI[1]`  ·  `SYS[3] - SGO[2] + ICEGO[3]`  ·  `S380-GO_EW M323`  ·  "
+    "`BOX(BSP, 1, 1)` (= `BSP[1] - BSP[2]`)  ·  `BOX(BSP, 1, 3)` (3-month box = `BSP[1] - BSP[4]`)."
 )
 
-PG_RANK = {pg: i for i, pg in enumerate(PG_ORDER)}
-all_diff_choices = sorted(
-    [(e["product_group"], e["diff"], e["data_file"],
-       e.get("W", 12), e.get("SE", 2.0), e.get("shape", ""))
-      for e in index],
-    key=lambda t: (PG_RANK.get(t[0], 99), t[1]),
-)
-diff_options = [f"{pg} · {df} ({sh})" for pg, df, _, _, _, sh in all_diff_choices]
+RAW_PRODUCTS_DIR = PAGE_DIR.parent / "data" / "raw_products"
 
-cc1, cc2, cc3, cc4 = st.columns([3, 1, 3, 1])
-with cc1:
-    leg1_idx = st.selectbox("Leg 1", options=range(len(diff_options)),
-                              format_func=lambda i: diff_options[i],
-                              key="leg1_idx")
-with cc2:
-    op = st.selectbox("Op", options=["+", "−"], index=1, key="combine_op")
-with cc3:
-    default_l2 = min(leg1_idx + 1, len(diff_options) - 1)
-    leg2_idx = st.selectbox("Leg 2", options=range(len(diff_options)),
-                              format_func=lambda i: diff_options[i],
-                              index=default_l2, key="leg2_idx")
-with cc4:
-    rolling_W_combo = st.number_input("W (m)", min_value=3, max_value=24,
-                                          value=12, step=1,
-                                          key="combine_W")
 
-leg1 = all_diff_choices[leg1_idx]
-leg2 = all_diff_choices[leg2_idx]
+@st.cache_data(ttl=900)
+def load_aliases() -> dict:
+    fp = RAW_PRODUCTS_DIR / "aliases.json"
+    if not fp.exists():
+        return {}
+    return json.loads(fp.read_text())
 
-df1 = load_spread(leg1[2], leg1[3], leg1[4])
-df2 = load_spread(leg2[2], leg2[3], leg2[4])
 
-# Align on date and compute combined series
-merged = (df1[["Date", "EW_adj"]].rename(columns={"EW_adj": "leg1"})
-                                  .merge(df2[["Date", "EW_adj"]].rename(
-                                                columns={"EW_adj": "leg2"}),
-                                          on="Date", how="inner"))
-if merged.empty:
-    st.warning("No overlapping dates for the chosen legs.")
+@st.cache_data(ttl=900)
+def load_product_offset(prod: str, off: int) -> pd.DataFrame:
+    fp = RAW_PRODUCTS_DIR / prod / f"M{off}.parquet"
+    if not fp.exists():
+        return pd.DataFrame()
+    df = pd.read_parquet(fp)
+    df["Date"] = pd.to_datetime(df["Date"])
+    return df.sort_values("Date").reset_index(drop=True)
+
+
+def list_available_products() -> list[str]:
+    if not RAW_PRODUCTS_DIR.exists():
+        return []
+    return sorted([p.name for p in RAW_PRODUCTS_DIR.iterdir()
+                    if p.is_dir() and any(p.glob("M*.parquet"))])
+
+
+def parse_formula(formula: str, aliases: dict,
+                    default_offset: int = 1) -> list[tuple[float, str, int]]:
+    """Parse a flat formula string → list of (sign, product, offset) terms.
+    Supports raw products (BSP, SYS, ...) and aliases (Brt, GO_EW, SGO, ...).
+    Offsets default to `default_offset` when not specified.
+    Recursively expands aliases.
+    No paren support — aliases handle nested expressions.
+    """
+    import re
+    text = formula.replace("−", "-").strip()
+    if not text:
+        return []
+    tok_re = re.compile(r"\s*([A-Za-z_][A-Za-z_0-9.+]*|\[|\]|[+\-]|\d+)")
+    pos, tokens = 0, []
+    while pos < len(text):
+        m = tok_re.match(text, pos)
+        if not m:
+            raise ValueError(f"Bad token near '{text[pos:pos+12]}'")
+        tokens.append(m.group(1))
+        pos = m.end()
+
+    out_terms = []
+    cur_sign = 1
+    i = 0
+    while i < len(tokens):
+        t = tokens[i]
+        if t == "+":
+            cur_sign = 1; i += 1
+        elif t == "-":
+            cur_sign = -1; i += 1
+        elif re.match(r"^[A-Za-z_][A-Za-z_0-9.+]*$", t):
+            name = t
+            off = None
+            if i + 1 < len(tokens) and tokens[i+1] == "[":
+                if i + 3 < len(tokens) and tokens[i+3] == "]":
+                    off = int(tokens[i+2])
+                    i += 4
+                else:
+                    raise ValueError(f"Bad offset bracket after {name}")
+            else:
+                i += 1
+            if name in aliases:
+                # Recursively parse alias body. If user gave an explicit offset
+                # on the alias, propagate it as the default for sub-legs.
+                sub_default = off if off is not None else default_offset
+                sub_terms = parse_formula(aliases[name], aliases,
+                                            default_offset=sub_default)
+                for s_sub, p_sub, o_sub in sub_terms:
+                    out_terms.append((cur_sign * s_sub, p_sub, o_sub))
+            else:
+                final_off = off if off is not None else default_offset
+                out_terms.append((cur_sign, name, final_off))
+            cur_sign = 1   # reset after consuming a term (default + for next)
+        else:
+            i += 1
+    return out_terms
+
+
+def expand_box(formula: str) -> str:
+    """Replace `BOX(LEG, M1, MN)` with `LEG[M1] - LEG[M1+MN]`."""
+    import re
+    pattern = re.compile(r"BOX\(\s*([A-Za-z_][A-Za-z_0-9.+]*)\s*,\s*(\d+)\s*,\s*(\d+)\s*\)")
+    def sub(m):
+        leg, m1, mn = m.group(1), int(m.group(2)), int(m.group(3))
+        return f"({leg}[{m1}] - {leg}[{m1+mn}])"
+    return pattern.sub(sub, formula)
+
+
+# ── Path B UI ────────────────────────────────────────────────────
+aliases = load_aliases()
+available_products = list_available_products()
+if not available_products:
+    st.warning(
+        "Raw product data not bundled yet. Run "
+        "`analytics/_generate_raw_product_series.py` to produce data files "
+        "under `data/raw_products/`, then commit & push."
+    )
 else:
-    sign = 1 if op == "+" else -1
-    merged["EW_adj"] = merged["leg1"] + sign * merged["leg2"]
-    # Recompute rolling median + bands on the combined series
-    win = max(int(rolling_W_combo * 22), 5)
-    merged["rolling_median"] = merged["EW_adj"].rolling(win, min_periods=win).median()
-    merged["rolling_std"] = merged["EW_adj"].rolling(win, min_periods=win).std()
-    merged["upper_bound"] = merged["rolling_median"] + 2.0 * merged["rolling_std"]
-    merged["lower_bound"] = merged["rolling_median"] - 2.0 * merged["rolling_std"]
-    if view == "Jan 2025 onwards":
-        merged = merged[merged["Date"] >= pd.Timestamp("2025-01-01")].reset_index(drop=True)
+    fc1, fc2 = st.columns([3, 1])
+    with fc1:
+        formula_input = st.text_input(
+            "Formula",
+            value="BSP[1] - DBI[1]",
+            help="Examples: `BSP[1] - DBI[1]`, `SYS[3] - SGO[2] + ICEGO[3]`, "
+                  "`BOX(BSP, 1, 1)`, `S380-GO_EW` (uses default offset=1)",
+            key="formula_input",
+        )
+    with fc2:
+        rolling_W_form = st.number_input(
+            "W (m)", min_value=3, max_value=24, value=12, step=1,
+            key="formula_W",
+        )
 
-    diff_label = f"{leg1[1]} {op} {leg2[1]}"
-    pg_label = f"{leg1[0]} / {leg2[0]}"
-    last_row = merged.iloc[-1]
-    cmb_metrics_c1, cmb_metrics_c2, cmb_metrics_c3, cmb_metrics_c4 = st.columns(4)
-    with cmb_metrics_c1:
-        st.metric("Last EW_adj (combined)", f"{last_row['EW_adj']:.3f}")
-    with cmb_metrics_c2:
-        st.metric("Last median", f"{last_row['rolling_median']:.3f}"
-                  if pd.notna(last_row["rolling_median"]) else "n/a")
-    with cmb_metrics_c3:
-        st.metric("Std (current view)", f"{merged['EW_adj'].std():.3f}")
-    with cmb_metrics_c4:
-        st.metric("Last bar", str(last_row["Date"].date()))
+    try:
+        expanded_form = expand_box(formula_input)
+        terms = parse_formula(expanded_form, aliases)
+        # Filter to known products
+        unknown = [(s, p, o) for s, p, o in terms if p not in available_products]
+        if unknown:
+            unknown_names = sorted({p for _, p, _ in unknown})
+            st.error(
+                f"Unknown product(s): {unknown_names}. Available raw products: "
+                f"{available_products}"
+            )
+        else:
+            # Compose terms display
+            terms_str = " ".join(
+                f"{'+ ' if s > 0 and i > 0 else ('- ' if s < 0 else '')}{p}[{o}]"
+                for i, (s, p, o) in enumerate(terms)
+            )
+            st.caption(f"**Expanded:** `{terms_str}`")
 
-    fig_c = go.Figure()
-    fig_c.add_trace(go.Scatter(
-        x=merged["Date"], y=merged["upper_bound"],
-        line=dict(color="lightblue", width=0.8, dash="dot"),
-        showlegend=False, hoverinfo="skip", name="upper",
-    ))
-    fig_c.add_trace(go.Scatter(
-        x=merged["Date"], y=merged["lower_bound"],
-        line=dict(color="lightblue", width=0.8, dash="dot"),
-        fill="tonexty", fillcolor="rgba(173,216,230,0.12)",
-        showlegend=False, hoverinfo="skip", name="lower",
-    ))
-    fig_c.add_trace(go.Scatter(
-        x=merged["Date"], y=merged["rolling_median"],
-        line=dict(color="grey", width=1.0),
-        name=f"median ({rolling_W_combo}m)",
-    ))
-    fig_c.add_trace(go.Scatter(
-        x=merged["Date"], y=merged["EW_adj"],
-        line=dict(color="black", width=1.3),
-        name=diff_label,
-        hovertemplate="%{x|%Y-%m-%d}: %{y:.3f}<extra></extra>",
-    ))
-    fig_c.add_trace(go.Scatter(
-        x=[last_row["Date"]], y=[last_row["EW_adj"]],
-        mode="markers",
-        marker=dict(symbol="diamond", size=12, color="orange",
-                     line=dict(width=1, color="black")),
-        showlegend=False, hoverinfo="skip",
-    ))
-    fig_c.update_layout(
-        height=420,
-        margin=dict(t=40, b=20, l=10, r=10),
-        title=dict(text=f"<b>{pg_label}</b> · {diff_label}",
-                    font=dict(size=13)),
-        legend=dict(orientation="h", yanchor="top", y=-0.1),
-        plot_bgcolor="white",
-        hovermode="x unified",
-    )
-    fig_c.update_xaxes(showgrid=True, gridcolor="rgba(0,0,0,0.06)")
-    fig_c.update_yaxes(showgrid=True, gridcolor="rgba(0,0,0,0.06)")
-    st.plotly_chart(fig_c, use_container_width=True)
+            # Build series: load each (product, offset), align dates, sum with signs
+            series = None
+            for s, p, o in terms:
+                df_po = load_product_offset(p, o)
+                if df_po.empty:
+                    st.error(f"Missing data for {p}[{o}].")
+                    st.stop()
+                ren = df_po.rename(columns={"EW_adj": f"{p}_{o}"}).set_index("Date")
+                if series is None:
+                    series = pd.DataFrame(index=ren.index)
+                series[f"_{len(series.columns)}"] = (
+                    s * ren[f"{p}_{o}"].reindex(series.index)
+                    if not series.empty
+                    else s * ren[f"{p}_{o}"]
+                )
+            if series is None or series.empty:
+                st.warning("Could not build series.")
+            else:
+                series_aligned = series.dropna()
+                ew = series_aligned.sum(axis=1)
+                df_form = pd.DataFrame({"Date": ew.index, "EW_adj": ew.values})
+                # Rolling med + bands
+                win = max(int(rolling_W_form * 22), 5)
+                df_form["rolling_median"] = df_form["EW_adj"].rolling(
+                    win, min_periods=win).median()
+                df_form["rolling_std"] = df_form["EW_adj"].rolling(
+                    win, min_periods=win).std()
+                df_form["upper_bound"] = df_form["rolling_median"] + 2.0 * df_form["rolling_std"]
+                df_form["lower_bound"] = df_form["rolling_median"] - 2.0 * df_form["rolling_std"]
+                if view == "Jan 2025 onwards":
+                    df_form = df_form[df_form["Date"] >= pd.Timestamp("2025-01-01")
+                                       ].reset_index(drop=True)
 
-    st.caption(
-        f"Combined formula: `{diff_label}` (computed by date-aligned arithmetic on the "
-        f"EW_adj of leg-1 and leg-2). Rolling window for median+bands is "
-        f"configurable above (`W={rolling_W_combo}m`)."
-    )
+                last_row = df_form.iloc[-1]
+                fm1, fm2, fm3, fm4 = st.columns(4)
+                with fm1:
+                    st.metric("Last EW_adj", f"{last_row['EW_adj']:.3f}")
+                with fm2:
+                    st.metric("Last median",
+                               f"{last_row['rolling_median']:.3f}"
+                               if pd.notna(last_row["rolling_median"]) else "n/a")
+                with fm3:
+                    st.metric("Std (current view)",
+                               f"{df_form['EW_adj'].std():.3f}")
+                with fm4:
+                    st.metric("Last bar", str(last_row["Date"].date()))
+
+                fig_f = go.Figure()
+                fig_f.add_trace(go.Scatter(
+                    x=df_form["Date"], y=df_form["upper_bound"],
+                    line=dict(color="lightblue", width=0.8, dash="dot"),
+                    showlegend=False, hoverinfo="skip", name="upper"))
+                fig_f.add_trace(go.Scatter(
+                    x=df_form["Date"], y=df_form["lower_bound"],
+                    line=dict(color="lightblue", width=0.8, dash="dot"),
+                    fill="tonexty", fillcolor="rgba(173,216,230,0.12)",
+                    showlegend=False, hoverinfo="skip", name="lower"))
+                fig_f.add_trace(go.Scatter(
+                    x=df_form["Date"], y=df_form["rolling_median"],
+                    line=dict(color="grey", width=1.0),
+                    name=f"median ({rolling_W_form}m)"))
+                fig_f.add_trace(go.Scatter(
+                    x=df_form["Date"], y=df_form["EW_adj"],
+                    line=dict(color="black", width=1.3),
+                    name=formula_input,
+                    hovertemplate="%{x|%Y-%m-%d}: %{y:.3f}<extra></extra>"))
+                fig_f.add_trace(go.Scatter(
+                    x=[last_row["Date"]], y=[last_row["EW_adj"]],
+                    mode="markers",
+                    marker=dict(symbol="diamond", size=12, color="orange",
+                                 line=dict(width=1, color="black")),
+                    showlegend=False, hoverinfo="skip"))
+                fig_f.update_layout(
+                    height=420,
+                    margin=dict(t=40, b=20, l=10, r=10),
+                    title=dict(text=f"<b>{formula_input}</b>",
+                                font=dict(size=13)),
+                    legend=dict(orientation="h", yanchor="top", y=-0.1),
+                    plot_bgcolor="white",
+                    hovermode="x unified",
+                )
+                fig_f.update_xaxes(showgrid=True, gridcolor="rgba(0,0,0,0.06)")
+                fig_f.update_yaxes(showgrid=True, gridcolor="rgba(0,0,0,0.06)")
+                st.plotly_chart(fig_f, use_container_width=True)
+
+    except ValueError as e:
+        st.error(f"Formula parse error: {e}")
 
 st.divider()
 st.caption(
-    "All charts read precomputed parquets under `data/spreads/`. "
-    "Generated via `analytics/_generate_spread_library.py`."
+    "Gallery charts read precomputed diffs at `data/spreads/`. "
+    "Formula explorer uses raw product Mn series at `data/raw_products/`. "
+    "Generated via `_generate_spread_library.py` and `_generate_raw_product_series.py`."
 )
