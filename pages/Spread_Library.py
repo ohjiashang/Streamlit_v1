@@ -183,9 +183,11 @@ st.divider()
 # ── Path B: full formula engine ───────────────────────────────────
 st.header("Custom formula explorer")
 st.caption(
-    "Type any synthetic spread using **raw products** or **leg aliases**, with per-leg offsets. "
-    "Examples:  `BSP[1] - DBI[1]`  ·  `SYS[3] - SGO[2] + ICEGO[3]`  ·  `S380-GO_EW M323`  ·  "
-    "`BOX(BSP, 1, 1)` (= `BSP[1] - BSP[2]`)  ·  `BOX(BSP, 1, 3)` (3-month box = `BSP[1] - BSP[4]`)."
+    "Type any synthetic spread using **raw products** or **leg aliases**, with per-leg "
+    "offsets and optional coefficients. All product values are already in $/bbl basis. "
+    "Examples: `BSP[1] - DBI[1]`  ·  `SYS[3] - SGO[2] + ICEGO[3]`  ·  "
+    "`0.5 * S380[1] + 0.5 * S180[1]`  ·  `0.8 * BOX(BSP, 1, 1) + 0.2 * BOX(BSP, 2, 1)`  ·  "
+    "`BOX(BSP, 1, 1)` (= `BSP[1] - BSP[2]`)  ·  `BOX(BSP, 1, 3)` (3m box = `BSP[1] - BSP[4]`)."
 )
 
 RAW_PRODUCTS_DIR = PAGE_DIR.parent / "data" / "raw_products"
@@ -218,17 +220,25 @@ def list_available_products() -> list[str]:
 
 def parse_formula(formula: str, aliases: dict,
                     default_offset: int = 1) -> list[tuple[float, str, int]]:
-    """Parse a flat formula string → list of (sign, product, offset) terms.
-    Supports raw products (BSP, SYS, ...) and aliases (Brt, GO_EW, SGO, ...).
-    Offsets default to `default_offset` when not specified.
-    Recursively expands aliases.
-    No paren support — aliases handle nested expressions.
+    """Parse a flat formula string → list of (coef, product, offset) terms,
+    where coef is a signed float (sign × coefficient).
+
+    Supports:
+      - Raw products (BSP, SYS, ...) and aliases (Brt, GO_EW, SGO, ...)
+      - Offsets via `[N]` — default to `default_offset` if omitted
+      - Coefficients: `2.5 * BSP[1]`, `-0.5 * DBI[2]`, `8.33 * AEO[2]`
+      - Operators: `+`, `-`, `*`
+    Aliases recursively expand; user-specified coefficient/offset propagates.
+    No parens — aliases handle nested expressions.
     """
     import re
     text = formula.replace("−", "-").strip()
     if not text:
         return []
-    tok_re = re.compile(r"\s*([A-Za-z_][A-Za-z_0-9.+]*|\[|\]|[+\-]|\d+)")
+    # Tokenizer: float first, then int, then identifier, then ops
+    tok_re = re.compile(
+        r"\s*([A-Za-z_][A-Za-z_0-9.+]*|\d+\.\d+|\d+|\*|\[|\]|[+\-])"
+    )
     pos, tokens = 0, []
     while pos < len(text):
         m = tok_re.match(text, pos)
@@ -237,16 +247,32 @@ def parse_formula(formula: str, aliases: dict,
         tokens.append(m.group(1))
         pos = m.end()
 
+    def is_number(s: str) -> bool:
+        return bool(re.fullmatch(r"\d+\.\d+|\d+", s))
+
+    def is_name(s: str) -> bool:
+        return bool(re.fullmatch(r"[A-Za-z_][A-Za-z_0-9.+]*", s))
+
     out_terms = []
     cur_sign = 1
+    cur_coef = 1.0
     i = 0
     while i < len(tokens):
         t = tokens[i]
         if t == "+":
-            cur_sign = 1; i += 1
+            cur_sign = 1; cur_coef = 1.0; i += 1
         elif t == "-":
-            cur_sign = -1; i += 1
-        elif re.match(r"^[A-Za-z_][A-Za-z_0-9.+]*$", t):
+            cur_sign = -1; cur_coef = 1.0; i += 1
+        elif is_number(t):
+            # Must be followed by '*' as a coefficient
+            if i + 1 < len(tokens) and tokens[i+1] == "*":
+                cur_coef = float(t)
+                i += 2
+            else:
+                raise ValueError(
+                    f"Bare number '{t}' must be a coefficient — write `{t} * NAME`"
+                )
+        elif is_name(t):
             name = t
             off = None
             if i + 1 < len(tokens) and tokens[i+1] == "[":
@@ -257,18 +283,18 @@ def parse_formula(formula: str, aliases: dict,
                     raise ValueError(f"Bad offset bracket after {name}")
             else:
                 i += 1
+            effective_coef = cur_sign * cur_coef
             if name in aliases:
-                # Recursively parse alias body. If user gave an explicit offset
-                # on the alias, propagate it as the default for sub-legs.
                 sub_default = off if off is not None else default_offset
                 sub_terms = parse_formula(aliases[name], aliases,
                                             default_offset=sub_default)
-                for s_sub, p_sub, o_sub in sub_terms:
-                    out_terms.append((cur_sign * s_sub, p_sub, o_sub))
+                for c_sub, p_sub, o_sub in sub_terms:
+                    out_terms.append((effective_coef * c_sub, p_sub, o_sub))
             else:
                 final_off = off if off is not None else default_offset
-                out_terms.append((cur_sign, name, final_off))
-            cur_sign = 1   # reset after consuming a term (default + for next)
+                out_terms.append((effective_coef, name, final_off))
+            cur_sign = 1   # reset for next term
+            cur_coef = 1.0
         else:
             i += 1
     return out_terms
@@ -321,10 +347,15 @@ else:
                 f"{available_products}"
             )
         else:
-            # Compose terms display
+            # Compose terms display (coef-aware)
+            def fmt_term(coef: float, prod: str, off: int, first: bool) -> str:
+                sign_char = "-" if coef < 0 else ("+" if not first else "")
+                abs_coef = abs(coef)
+                coef_str = "" if abs(abs_coef - 1.0) < 1e-9 else f"{abs_coef:g} * "
+                pad = " " if sign_char and not first else ""
+                return f"{sign_char}{pad}{coef_str}{prod}[{off}]"
             terms_str = " ".join(
-                f"{'+ ' if s > 0 and i > 0 else ('- ' if s < 0 else '')}{p}[{o}]"
-                for i, (s, p, o) in enumerate(terms)
+                fmt_term(c, p, o, i == 0) for i, (c, p, o) in enumerate(terms)
             )
             st.caption(f"**Expanded:** `{terms_str}`")
 
