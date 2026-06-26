@@ -1,10 +1,7 @@
 """Spread Library — 9/10-year EW_adj chart for every diff in the universe.
 
 Reads precomputed parquets from data/spreads/<safe_diff>.parquet.
-For each diff (1mbox shape, Y2026 top-1 cell config):
-  - Renders EW_adj over full history with rolling median + entry bands
-  - Toggle: full history vs. Jan 2025 onwards (recent zoom)
-  - Family + diff dropdowns to navigate
+Interactive Plotly chart matching the Mean Reversion drilldown style.
 """
 from __future__ import annotations
 import json
@@ -13,8 +10,8 @@ import warnings
 
 import pandas as pd
 import streamlit as st
-import matplotlib.pyplot as plt
-import matplotlib.dates as mdates
+import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 
 warnings.filterwarnings("ignore")
 
@@ -45,19 +42,18 @@ def load_spread(filename: str) -> pd.DataFrame:
 
 # ── Header ───────────────────────────────────────────────────────
 st.title("Spread Library")
-st.caption("Per-diff 9-year normalised EW_adj history with rolling median + entry bands. "
+st.caption("Per-diff EW_adj history with rolling median + entry bands. "
             "Top-1 cell of each diff (1mbox shape, Y2026 classifier).")
-st.divider()
 
 # ── Load index ───────────────────────────────────────────────────
 index = load_index()
 if not index:
     st.error(f"No data found. Expected: {INDEX_FP}")
-    st.info("Run `analytics/_generate_spread_library.py` to produce the data files, "
-             "then commit & push the `data/spreads/` directory.")
+    st.info("Run `analytics/_generate_spread_library.py` to produce data, "
+             "then commit & push `data/spreads/`.")
     st.stop()
 
-# ── Sidebar: family + diff ───────────────────────────────────────
+# ── Sidebar: family + diff + view ────────────────────────────────
 st.sidebar.header("Filters")
 
 groups_present = sorted({e["product_group"] for e in index})
@@ -72,17 +68,17 @@ diffs_in_family = sorted({e["diff"] for e in index
                             if e["product_group"] == fam_choice})
 diff_choice = st.sidebar.selectbox("Diff", options=diffs_in_family, index=0)
 
-# ── View toggle ──────────────────────────────────────────────────
 view = st.sidebar.radio(
     "Date range",
     options=["Full history", "Jan 2025 onwards"],
     index=0,
-    help="Toggle between the full 9-year view and a recent-action zoom.",
+    help="Toggle between the full 9-year view and a recent zoom. "
+          "You can also pan/zoom the chart freely.",
 )
 
 st.sidebar.divider()
 
-# Find the entry matching the selection
+# Find entry
 entry = next((e for e in index
               if e["product_group"] == fam_choice
               and e["diff"] == diff_choice), None)
@@ -113,58 +109,63 @@ st.caption(
     f"**Data:** {entry['first_bar']} → {entry['last_bar']}"
 )
 
-# ── Chart ─────────────────────────────────────────────────────────
+# ── Chart (Plotly, drilldown style) ──────────────────────────────
 df = load_spread(entry["data_file"])
-
-# Apply date filter for view toggle
 if view == "Jan 2025 onwards":
     df = df[df["Date"] >= pd.Timestamp("2025-01-01")].reset_index(drop=True)
 
-fig, ax = plt.subplots(figsize=(14, 6))
+fig = make_subplots(rows=1, cols=1)
 
-if "rolling_median" in df:
-    ax.plot(df["Date"], df["rolling_median"], color="grey",
-             linewidth=1.0, alpha=0.7,
-             label=f"rolling median ({entry['W']}m)")
-if "upper_bound" in df and "lower_bound" in df:
-    ax.plot(df["Date"], df["upper_bound"], color="steelblue",
-             linewidth=0.9, linestyle="--", alpha=0.7,
-             label=f"upper (med + {entry['SE']}σ)")
-    ax.plot(df["Date"], df["lower_bound"], color="firebrick",
-             linewidth=0.9, linestyle="--", alpha=0.7,
-             label=f"lower (med − {entry['SE']}σ)")
-    ax.fill_between(df["Date"], df["upper_bound"], df["lower_bound"],
-                     color="grey", alpha=0.05)
-
-ax.plot(df["Date"], df["EW_adj"], color="black", linewidth=1.2,
-         label="EW_adj (normalised spread)")
-ax.axhline(0, color="grey", linewidth=0.6)
-
-# Mark current
-last_row = df.iloc[-1]
-ax.scatter([last_row["Date"]], [last_row["EW_adj"]],
-            s=80, color="orange", zorder=5,
-            edgecolors="black", linewidths=0.8,
-            label=f"current ({last_row['EW_adj']:.3f})")
-
-ax.set_title(
-    f"{diff_choice} 1mbox · {entry['fname']} W{entry['W']}M_SE{entry['SE']}_SL{entry['SL']}",
-    fontsize=12, fontweight="bold",
-)
-ax.set_ylabel(r"EW_adj (normalised \$/bbl)")
-ax.set_xlabel("Date")
-ax.legend(loc="upper left", fontsize=9, ncol=2, framealpha=0.92)
-ax.grid(alpha=0.3)
-ax.xaxis.set_major_locator(mdates.YearLocator() if view == "Full history"
-                            else mdates.MonthLocator(interval=2))
-ax.xaxis.set_major_formatter(mdates.DateFormatter(
-    "%Y" if view == "Full history" else "%b%y"
+# Upper / lower bands with light-blue fill (same as drilldown)
+fig.add_trace(go.Scatter(
+    x=df["Date"], y=df["upper_bound"],
+    name=f"upper (med + {entry['SE']}σ)",
+    line=dict(color="lightblue", width=0.8, dash="dot"),
 ))
-if view == "Jan 2025 onwards":
-    plt.setp(ax.xaxis.get_majorticklabels(), rotation=45, ha="right")
-st.pyplot(fig, clear_figure=True)
+fig.add_trace(go.Scatter(
+    x=df["Date"], y=df["lower_bound"],
+    name=f"lower (med − {entry['SE']}σ)",
+    line=dict(color="lightblue", width=0.8, dash="dot"),
+    fill="tonexty", fillcolor="rgba(173,216,230,0.15)",
+))
+# Rolling median
+fig.add_trace(go.Scatter(
+    x=df["Date"], y=df["rolling_median"],
+    name=f"median ({entry['W']}m)",
+    line=dict(color="grey", width=1.0),
+))
+# Spread normalised (main line — same colour/width as drilldown)
+fig.add_trace(go.Scatter(
+    x=df["Date"], y=df["EW_adj"],
+    name="spread_normalised",
+    line=dict(color="black", width=1.2),
+))
+# Current marker
+last = df.iloc[-1]
+fig.add_trace(go.Scatter(
+    x=[last["Date"]], y=[last["EW_adj"]],
+    mode="markers",
+    name=f"current ({last['EW_adj']:.3f})",
+    marker=dict(symbol="diamond", size=14, color="orange",
+                line=dict(width=1.5, color="black")),
+))
 
-# ── Below-chart summary ──────────────────────────────────────────
+fig.update_layout(
+    height=560,
+    margin=dict(t=40, b=20, l=10, r=10),
+    legend=dict(orientation="h", yanchor="top", y=-0.05),
+    title=dict(
+        text=f"{diff_choice} 1mbox · {entry['fname']} "
+              f"W{entry['W']}M_SE{entry['SE']}_SL{entry['SL']}",
+        font=dict(size=14),
+    ),
+    hovermode="x unified",
+)
+fig.update_xaxes(title_text="Date")
+fig.update_yaxes(title_text="spread_normalised")
+st.plotly_chart(fig, use_container_width=True)
+
+# ── Distribution stats ───────────────────────────────────────────
 st.subheader("Distribution & extremes (current view)")
 if not df.empty:
     c1, c2, c3, c4 = st.columns(4)
