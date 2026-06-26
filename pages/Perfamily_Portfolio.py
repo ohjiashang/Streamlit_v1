@@ -17,8 +17,8 @@ import warnings
 import numpy as np
 import pandas as pd
 import streamlit as st
-import matplotlib.pyplot as plt
-import matplotlib.dates as mdates
+import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 
 warnings.filterwarnings("ignore")
 
@@ -124,25 +124,44 @@ def cap_sort_key(c):
 cap_df["sort_k"] = cap_df["cap"].map(cap_sort_key)
 cap_df = cap_df.sort_values("sort_k").reset_index(drop=True)
 
-# Chart
-fig, ax1 = plt.subplots(figsize=(11, 4.5))
-x = list(range(len(cap_df)))
-ax1.plot(x, cap_df["sharpe"], "o-", color="steelblue",
-         linewidth=2.5, markersize=10, label="Sharpe")
-ax1.plot(x, cap_df["sortino"], "s-", color="seagreen",
-         linewidth=2, markersize=8, label="Sortino")
-ax1.plot(x, cap_df["calmar"], "^-", color="darkorange",
-         linewidth=2, markersize=8, label="Calmar")
-ax1.set_xticks(x)
-ax1.set_xticklabels(cap_df["cap"].astype(str))
-ax1.set_xlabel("Cap (max picks)", fontsize=11)
-ax1.set_ylabel("Risk-adjusted return", fontsize=11)
-ax1.grid(alpha=0.3)
-ax1.axhline(0, color="grey", linewidth=0.7)
-ax1.legend(loc="upper left", fontsize=10)
-ax1.set_title(f"{FAMILY_LABEL[fam]} — Cap sweep (TOTAL, 2021-2026 OOS)",
-              fontsize=12, fontweight="bold")
-st.pyplot(fig, clear_figure=True)
+# Plotly cap-sweep chart
+fig_cap = go.Figure()
+x_labels = cap_df["cap"].astype(str).tolist()
+fig_cap.add_trace(go.Scatter(
+    x=x_labels, y=cap_df["sharpe"],
+    name="Sharpe", mode="lines+markers",
+    line=dict(color="steelblue", width=2.5),
+    marker=dict(size=10, symbol="circle"),
+))
+fig_cap.add_trace(go.Scatter(
+    x=x_labels, y=cap_df["sortino"],
+    name="Sortino", mode="lines+markers",
+    line=dict(color="seagreen", width=2),
+    marker=dict(size=9, symbol="square"),
+))
+fig_cap.add_trace(go.Scatter(
+    x=x_labels, y=cap_df["calmar"],
+    name="Calmar", mode="lines+markers",
+    line=dict(color="darkorange", width=2),
+    marker=dict(size=9, symbol="triangle-up"),
+))
+fig_cap.add_hline(y=0, line=dict(color="grey", width=0.7))
+fig_cap.update_layout(
+    height=420,
+    margin=dict(t=50, b=20, l=10, r=10),
+    title=dict(
+        text=f"<b>{FAMILY_LABEL[fam]} — Cap sweep (TOTAL, 2021–2026 OOS)</b>",
+        font=dict(size=13),
+    ),
+    legend=dict(orientation="h", yanchor="top", y=-0.1),
+    xaxis_title="Cap (max picks)",
+    yaxis_title="Risk-adjusted return",
+    plot_bgcolor="white",
+    hovermode="x unified",
+)
+fig_cap.update_xaxes(showgrid=True, gridcolor="rgba(0,0,0,0.06)")
+fig_cap.update_yaxes(showgrid=True, gridcolor="rgba(0,0,0,0.06)")
+st.plotly_chart(fig_cap, use_container_width=True)
 
 # Table
 st.subheader("Cap-sweep metrics table")
@@ -211,40 +230,61 @@ else:
             m_disp = m_disp[keep].round(3)
             st.dataframe(m_disp, use_container_width=True, hide_index=True)
 
-        # Equity curve
+        # Equity curve (Plotly)
         st.subheader("Cumulative P&L (yearly reset)")
         daily = pd.DataFrame(sel_cap["daily_pnl"])
         if not daily.empty:
             daily["Date"] = pd.to_datetime(daily["Date"])
             daily = daily.set_index("Date")["pnl"].sort_index()
             yr_cum = daily.groupby(daily.index.year).cumsum()
-            fig2, ax = plt.subplots(figsize=(12, 4))
-            colors = plt.cm.tab10.colors
+
+            COLORS = ["#1f77b4", "#ff7f0e", "#2ca02c", "#d62728",
+                       "#9467bd", "#8c564b", "#e377c2", "#7f7f7f"]
+            fig_eq = go.Figure()
             for i, Y in enumerate(sorted(daily.index.year.unique())):
                 mask = daily.index.year == Y
                 sub = yr_cum[mask]
                 if sub.empty:
                     continue
-                color = colors[i % len(colors)]
-                ax.plot(sub.index, sub.values, linewidth=1.6,
-                         color=color, label=f"Y{Y}")
-                ax.fill_between(sub.index, 0, sub.values,
-                                 where=(sub.values >= 0), color=color, alpha=0.1)
-                ax.fill_between(sub.index, 0, sub.values,
-                                 where=(sub.values < 0), color=color, alpha=0.1)
+                col = COLORS[i % len(COLORS)]
+                fig_eq.add_trace(go.Scatter(
+                    x=sub.index, y=sub.values,
+                    name=f"Y{Y}",
+                    mode="lines",
+                    line=dict(color=col, width=1.7),
+                    fill="tozeroy",
+                    fillcolor=col.replace("rgb(", "rgba(").replace(")", ",0.10)")
+                                if col.startswith("rgb")
+                                else f"rgba(0,0,0,0.05)",
+                    hovertemplate=f"<b>Y{Y}</b><br>"
+                                    "%{x|%Y-%m-%d}: $%{y:+.2f}<extra></extra>",
+                ))
+                # End-of-year value annotation
                 last_v = float(sub.iloc[-1])
-                ax.annotate(f"{last_v:+.1f}", xy=(sub.index[-1], last_v),
-                             xytext=(4, 0), textcoords="offset points",
-                             fontsize=9, color=color, fontweight="bold",
-                             va="center")
-            ax.axhline(0, color="grey", linewidth=0.7)
-            ax.grid(alpha=0.3)
-            ax.legend(loc="upper left", ncol=3, fontsize=9)
-            ax.xaxis.set_major_locator(mdates.YearLocator())
-            ax.xaxis.set_major_formatter(mdates.DateFormatter("%Y"))
-            ax.set_title(f"{FAMILY_LABEL[fam]} cap={cap_choice} — yearly-reset cumulative P&L",
-                          fontsize=11, fontweight="bold")
-            st.pyplot(fig2, clear_figure=True)
+                fig_eq.add_annotation(
+                    x=sub.index[-1], y=last_v,
+                    text=f"<b>{last_v:+.1f}</b>",
+                    showarrow=False, xshift=20,
+                    font=dict(color=col, size=10),
+                )
+            fig_eq.add_hline(y=0, line=dict(color="grey", width=0.7))
+            fig_eq.update_layout(
+                height=420,
+                margin=dict(t=50, b=20, l=10, r=40),
+                title=dict(
+                    text=f"<b>{FAMILY_LABEL[fam]} cap={cap_choice} — "
+                          "yearly-reset cumulative P&L</b>",
+                    font=dict(size=12),
+                ),
+                legend=dict(orientation="h", yanchor="top", y=-0.1),
+                xaxis_title="Date",
+                yaxis_title="Cumulative P&L",
+                plot_bgcolor="white",
+                hovermode="x unified",
+            )
+            fig_eq.update_xaxes(showgrid=True, gridcolor="rgba(0,0,0,0.06)")
+            fig_eq.update_yaxes(showgrid=True, gridcolor="rgba(0,0,0,0.06)")
+            st.plotly_chart(fig_eq, use_container_width=True)
 
 st.divider()
 
