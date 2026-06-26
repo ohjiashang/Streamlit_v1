@@ -1,0 +1,1625 @@
+{
+  "GO_EWM13box_W3M_SE3.0_SL3.0_SLP0": {
+    "diff": "GO_EW",
+    "shape": "1mbox",
+    "family_tag": "D_GO_EW_1mbox",
+    "P_winner_by_year": {
+      "2021": 5.357025562780457e-07
+    }
+  },
+  "GO_EWM13box_W12M_SE3.0_SL3.0_SLP0": {
+    "diff": "GO_EW",
+    "shape": "1mbox",
+    "family_tag": "D_GO_EW_1mbox",
+    "P_winner_by_year": {
+      "2022": 0.02394689223697223
+    }
+  },
+  "GO_EWM32box_W6M_SE1.0_SL3.0_SLP0": {
+    "diff": "GO_EW",
+    "shape": "1mbox",
+    "family_tag": "D_GO_EW_1mbox",
+    "P_winner_by_year": {
+      "2023": 0.06792099860166982
+    }
+  },
+  "GO_EWM23box_W3M_SE1.0_SL3.0_SLP0": {
+    "diff": "GO_EW",
+    "shape": "1mbox",
+    "family_tag": "D_GO_EW_1mbox",
+    "P_winner_by_year": {
+      "2024": 0.2786429167670644
+    }
+  },
+  "GO_EWM12box_W3M_SE1.0_SL3.0_SLP0": {
+    "diff": "GO_EW",
+    "shape": "1mbox",
+    "family_tag": "D_GO_EW_1mbox",
+    "P_winner_by_year": {
+      "2025": 0.3430468884313048
+    }
+  },
+  "GO_EWM32box_W3M_SE2.0_SL3.0_SLP0": {
+    "diff": "GO_EW",
+    "shape": "1mbox",
+    "family_tag": "D_GO_EW_1mbox",
+    "P_winner_by_year": {
+      "2026": 0.4109163372485878
+    }
+  },
+  "GO_EWM13box3m_W12M_SE1.0_SL3.0_SLP0": {
+    "diff": "GO_EW",
+    "shape": "3mbox",
+    "family_tag": "D_GO_EW_3mbox",
+    "P_winner_by_year": {
+      "2021": 0.6949263977079974
+    }
+  },
+  "GO_EWM13box3m_W6M_SE2.0_SL3.0_SLP0": {
+    "diff": "GO_EW",
+    "shape": "3mbox",
+    "family_tag": "D_GO_EW_3mbox",
+    "P_winner_by_year": {
+      "2022": 0.2047284898852881
+    }
+  },
+  "GO_EWM31box3m_W12M_SE3.0_SL3.0_SLP0": {
+    "diff": "GO_EW",
+    "shape": "3mbox",
+    "family_tag": "D_GO_EW_3mbox",
+    "P_winner_by_year": {
+      "2023": 0.9999994419083164
+    }
+  },
+  "GO_EWM32box3m_W3M_SE1.0_SL3.0_SLP0": {
+    "diff": "GO_EW",
+    "shape": "3mbox",
+    "family_tag": "D_GO_EW_3mbox",
+    "P_winner_by_year": {
+      "2024": 0.1285496358002084
+    }
+  },
+  "GO_EWM13box3m_W3M_SE1.0_SL3.0_SLP0": {
+    "diff": "GO_EW",
+    "shape": "3mbox",
+    "family_tag": "D_GO_EW_3mbox",
+    "P_winner_by_year": {
+      "2025": 0.4951609703589957
+    }
+  },
+  "GO_EWM33box3m_W3M_SE1.0_SL3.0_SLP0": {
+    "diff": "GO_EW",
+    "shape": "3mbox",
+    "family_tag": "D_GO_EW_3mbox",
+    "P_winner_by_year": {
+      "2026": 0.1941596526987112
+    }
+  },
+  "GO_EWM11_W6M_SE2.0_SL3.0_SLP0": {
+    "diff": "GO_EW",
+    "shape": "outright",
+    "family_tag": "D_GO_EW_outright",
+    "P_winner_by_year": {
+      "2021": 0.6166994129538602
+    }
+  },
+  "GO_EWM21_W12M_SE1.0_SL3.0_SLP0": {
+    "diff": "GO_EW",
+    "shape": "outright",
+    "family_tag": "D_GO_EW_outright",
+    "P_winner_by_year": {
+      "2022": 0.4785863294967916
+    }
+  },
+  "GO_EWM13_W3M_SE1.0_SL3.0_SLP0": {
+    "diff": "GO_EW",
+    "shape": "outright",
+    "family_tag": "D_GO_EW_outright",
+    "P_winner_by_year": {
+      "2023": 0.9999986083382153,
+      "2026": 0.8488069251084354
+    }
+  },
+  "GO_EWM13_W3M_SE2.0_SL3.0_SLP0": {
+    "diff": "GO_EW",
+    "shape": "outright",
+    "family_tag": "D_GO_EW_outright",
+    "P_winner_by_year": {
+      "2024": 0.1636019896211178
+    }
+  },
+  "GO_EWM33_W12M_SE2.0_SL3.0_SLP0": {
+    "diff": "GO_EW",
+    "shape": "outright",
+    "family_tag": "D_GO_EW_outright",
+    "P_winner_by_year": {
+      "2025": 0.9997258896280269
+    }
+  },
+  "HO-BrtM13box_W6M_SE3.0_SL3.0_SLP0": {
+    "diff": "HO-Brt",
+    "shape": "1mbox",
+    "family_tag": "D_HO-Brt_1mbox",
+    "P_winner_by_year": {
+      "2021": 0.3819904645398435
+    }
+  },
+  "HO-BrtM33box_W12M_SE1.0_SL3.0_SLP0": {
+    "diff": "HO-Brt",
+    "shape": "1mbox",
+    "family_tag": "D_HO-Brt_1mbox",
+    "P_winner_by_year": {
+      "2022": 0.235336083119448
+    }
+  },
+  "HO-BrtM23box_W6M_SE3.0_SL3.0_SLP0": {
+    "diff": "HO-Brt",
+    "shape": "1mbox",
+    "family_tag": "D_HO-Brt_1mbox",
+    "P_winner_by_year": {
+      "2023": 0.2182421354908212
+    }
+  },
+  "HO-BrtM23box_W3M_SE3.0_SL3.0_SLP0": {
+    "diff": "HO-Brt",
+    "shape": "1mbox",
+    "family_tag": "D_HO-Brt_1mbox",
+    "P_winner_by_year": {
+      "2024": 0.9166578333265647
+    }
+  },
+  "HO-BrtM31box_W3M_SE3.0_SL1.0_SLP0": {
+    "diff": "HO-Brt",
+    "shape": "1mbox",
+    "family_tag": "D_HO-Brt_1mbox",
+    "P_winner_by_year": {
+      "2025": 0.9820781548201494
+    }
+  },
+  "HO-BrtM22box_W6M_SE3.0_SL3.0_SLP0": {
+    "diff": "HO-Brt",
+    "shape": "1mbox",
+    "family_tag": "D_HO-Brt_1mbox",
+    "P_winner_by_year": {
+      "2026": 0.1877523330969779
+    }
+  },
+  "HO-BrtM13box3m_W12M_SE1.0_SL3.0_SLP0": {
+    "diff": "HO-Brt",
+    "shape": "3mbox",
+    "family_tag": "D_HO-Brt_3mbox",
+    "P_winner_by_year": {
+      "2021": 0.131359900937892
+    }
+  },
+  "HO-BrtM23box3m_W12M_SE1.0_SL3.0_SLP0": {
+    "diff": "HO-Brt",
+    "shape": "3mbox",
+    "family_tag": "D_HO-Brt_3mbox",
+    "P_winner_by_year": {
+      "2022": 0.4115856337093101
+    }
+  },
+  "HO-BrtM13box3m_W6M_SE3.0_SL2.0_SLP0": {
+    "diff": "HO-Brt",
+    "shape": "3mbox",
+    "family_tag": "D_HO-Brt_3mbox",
+    "P_winner_by_year": {
+      "2023": 0.3028435317757048
+    }
+  },
+  "HO-BrtM12box3m_W6M_SE2.0_SL3.0_SLP0": {
+    "diff": "HO-Brt",
+    "shape": "3mbox",
+    "family_tag": "D_HO-Brt_3mbox",
+    "P_winner_by_year": {
+      "2024": 0.8829472648675455
+    }
+  },
+  "HO-BrtM21box3m_W3M_SE3.0_SL3.0_SLP0": {
+    "diff": "HO-Brt",
+    "shape": "3mbox",
+    "family_tag": "D_HO-Brt_3mbox",
+    "P_winner_by_year": {
+      "2025": 0.9974067704035897
+    }
+  },
+  "HO-BrtM31box3m_W3M_SE3.0_SL3.0_SLP0": {
+    "diff": "HO-Brt",
+    "shape": "3mbox",
+    "family_tag": "D_HO-Brt_3mbox",
+    "P_winner_by_year": {
+      "2026": 0.1556833982188934
+    }
+  },
+  "HO-BrtM22_W3M_SE2.0_SL3.0_SLP0": {
+    "diff": "HO-Brt",
+    "shape": "outright",
+    "family_tag": "D_HO-Brt_outright",
+    "P_winner_by_year": {
+      "2021": 0.9999992601657575
+    }
+  },
+  "HO-BrtM13_W3M_SE2.0_SL2.0_SLP0": {
+    "diff": "HO-Brt",
+    "shape": "outright",
+    "family_tag": "D_HO-Brt_outright",
+    "P_winner_by_year": {
+      "2022": 0.2805813078501818
+    }
+  },
+  "HO-BrtM31_W3M_SE1.0_SL3.0_SLP0": {
+    "diff": "HO-Brt",
+    "shape": "outright",
+    "family_tag": "D_HO-Brt_outright",
+    "P_winner_by_year": {
+      "2023": 0.1256819858704249
+    }
+  },
+  "HO-BrtM11_W12M_SE3.0_SL3.0_SLP0": {
+    "diff": "HO-Brt",
+    "shape": "outright",
+    "family_tag": "D_HO-Brt_outright",
+    "P_winner_by_year": {
+      "2024": 0.4644933528290575
+    }
+  },
+  "HO-BrtM33_W3M_SE3.0_SL3.0_SLP0": {
+    "diff": "HO-Brt",
+    "shape": "outright",
+    "family_tag": "D_HO-Brt_outright",
+    "P_winner_by_year": {
+      "2025": 0.006215487230512092
+    }
+  },
+  "HO-BrtM13_W3M_SE1.0_SL3.0_SLP0": {
+    "diff": "HO-Brt",
+    "shape": "outright",
+    "family_tag": "D_HO-Brt_outright",
+    "P_winner_by_year": {
+      "2026": 0.04918028185609713
+    }
+  },
+  "HOGOM32box_W12M_SE2.0_SL3.0_SLP0": {
+    "diff": "HOGO",
+    "shape": "1mbox",
+    "family_tag": "D_HOGO_1mbox",
+    "P_winner_by_year": {
+      "2021": 0.7334171251027969
+    }
+  },
+  "HOGOM33box_W12M_SE2.0_SL3.0_SLP0": {
+    "diff": "HOGO",
+    "shape": "1mbox",
+    "family_tag": "D_HOGO_1mbox",
+    "P_winner_by_year": {
+      "2022": 0.5347651908458119
+    }
+  },
+  "HOGOM23box_W6M_SE3.0_SL3.0_SLP0": {
+    "diff": "HOGO",
+    "shape": "1mbox",
+    "family_tag": "D_HOGO_1mbox",
+    "P_winner_by_year": {
+      "2023": 0.2812554791173979
+    }
+  },
+  "HOGOM11box_W3M_SE1.0_SL3.0_SLP0": {
+    "diff": "HOGO",
+    "shape": "1mbox",
+    "family_tag": "D_HOGO_1mbox",
+    "P_winner_by_year": {
+      "2024": 0.168235525381993
+    }
+  },
+  "HOGOM11box_W12M_SE2.0_SL3.0_SLP0": {
+    "diff": "HOGO",
+    "shape": "1mbox",
+    "family_tag": "D_HOGO_1mbox",
+    "P_winner_by_year": {
+      "2025": 0.1730158842029711
+    }
+  },
+  "HOGOM13box_W6M_SE2.0_SL3.0_SLP0": {
+    "diff": "HOGO",
+    "shape": "1mbox",
+    "family_tag": "D_HOGO_1mbox",
+    "P_winner_by_year": {
+      "2026": 0.9988790556637986
+    }
+  },
+  "HOGOM21box3m_W12M_SE1.0_SL3.0_SLP0": {
+    "diff": "HOGO",
+    "shape": "3mbox",
+    "family_tag": "D_HOGO_3mbox",
+    "P_winner_by_year": {
+      "2021": 0.5203020917052822
+    }
+  },
+  "HOGOM33box3m_W12M_SE1.0_SL3.0_SLP0": {
+    "diff": "HOGO",
+    "shape": "3mbox",
+    "family_tag": "D_HOGO_3mbox",
+    "P_winner_by_year": {
+      "2022": 0.8160296822295668
+    }
+  },
+  "HOGOM11box3m_W6M_SE3.0_SL3.0_SLP0": {
+    "diff": "HOGO",
+    "shape": "3mbox",
+    "family_tag": "D_HOGO_3mbox",
+    "P_winner_by_year": {
+      "2023": 0.1971649863842379
+    }
+  },
+  "HOGOM11box3m_W6M_SE2.0_SL3.0_SLP0": {
+    "diff": "HOGO",
+    "shape": "3mbox",
+    "family_tag": "D_HOGO_3mbox",
+    "P_winner_by_year": {
+      "2024": 0.1953960641528696,
+      "2026": 0.4352713661182728
+    }
+  },
+  "HOGOM11box3m_W6M_SE1.0_SL3.0_SLP0": {
+    "diff": "HOGO",
+    "shape": "3mbox",
+    "family_tag": "D_HOGO_3mbox",
+    "P_winner_by_year": {
+      "2025": 0.4321106583975638
+    }
+  },
+  "HOGOM12_W12M_SE3.0_SL3.0_SLP0": {
+    "diff": "HOGO",
+    "shape": "outright",
+    "family_tag": "D_HOGO_outright",
+    "P_winner_by_year": {
+      "2021": 0.998889070234982
+    }
+  },
+  "HOGOM13_W6M_SE1.0_SL3.0_SLP0": {
+    "diff": "HOGO",
+    "shape": "outright",
+    "family_tag": "D_HOGO_outright",
+    "P_winner_by_year": {
+      "2022": 0.8688411050158851
+    }
+  },
+  "HOGOM31_W3M_SE3.0_SL3.0_SLP0": {
+    "diff": "HOGO",
+    "shape": "outright",
+    "family_tag": "D_HOGO_outright",
+    "P_winner_by_year": {
+      "2023": 0.3079045108964359
+    }
+  },
+  "HOGOM12_W3M_SE3.0_SL3.0_SLP0": {
+    "diff": "HOGO",
+    "shape": "outright",
+    "family_tag": "D_HOGO_outright",
+    "P_winner_by_year": {
+      "2024": 0.8175528440814117
+    }
+  },
+  "HOGOM12_W6M_SE2.0_SL3.0_SLP0": {
+    "diff": "HOGO",
+    "shape": "outright",
+    "family_tag": "D_HOGO_outright",
+    "P_winner_by_year": {
+      "2025": 0.3041366021785201
+    }
+  },
+  "HOGOM22_W6M_SE2.0_SL1.0_SLP0": {
+    "diff": "HOGO",
+    "shape": "outright",
+    "family_tag": "D_HOGO_outright",
+    "P_winner_by_year": {
+      "2026": 0.9277551550803289
+    }
+  },
+  "ICEGO-BrtM22box_W12M_SE1.0_SL3.0_SLP0": {
+    "diff": "ICEGO-Brt",
+    "shape": "1mbox",
+    "family_tag": "D_ICEGO-Brt_1mbox",
+    "P_winner_by_year": {
+      "2021": 0.9999999999999973
+    }
+  },
+  "ICEGO-BrtM13box_W12M_SE1.0_SL3.0_SLP0": {
+    "diff": "ICEGO-Brt",
+    "shape": "1mbox",
+    "family_tag": "D_ICEGO-Brt_1mbox",
+    "P_winner_by_year": {
+      "2022": 0.0665945842610926
+    }
+  },
+  "ICEGO-BrtM23box_W3M_SE3.0_SL3.0_SLP0": {
+    "diff": "ICEGO-Brt",
+    "shape": "1mbox",
+    "family_tag": "D_ICEGO-Brt_1mbox",
+    "P_winner_by_year": {
+      "2023": 0.1095174015042882
+    }
+  },
+  "ICEGO-BrtM13box_W3M_SE2.0_SL3.0_SLP0": {
+    "diff": "ICEGO-Brt",
+    "shape": "1mbox",
+    "family_tag": "D_ICEGO-Brt_1mbox",
+    "P_winner_by_year": {
+      "2024": 0.1099178612067677
+    }
+  },
+  "ICEGO-BrtM33box_W6M_SE3.0_SL3.0_SLP0": {
+    "diff": "ICEGO-Brt",
+    "shape": "1mbox",
+    "family_tag": "D_ICEGO-Brt_1mbox",
+    "P_winner_by_year": {
+      "2025": 0.5709154163471116
+    }
+  },
+  "ICEGO-BrtM23box_W3M_SE1.0_SL3.0_SLP0": {
+    "diff": "ICEGO-Brt",
+    "shape": "1mbox",
+    "family_tag": "D_ICEGO-Brt_1mbox",
+    "P_winner_by_year": {
+      "2026": 0.1274180989317203
+    }
+  },
+  "ICEGO-BrtM13box3m_W3M_SE1.0_SL3.0_SLP0": {
+    "diff": "ICEGO-Brt",
+    "shape": "3mbox",
+    "family_tag": "D_ICEGO-Brt_3mbox",
+    "P_winner_by_year": {
+      "2021": 0.9723273863494774
+    }
+  },
+  "ICEGO-BrtM22box3m_W3M_SE3.0_SL3.0_SLP0": {
+    "diff": "ICEGO-Brt",
+    "shape": "3mbox",
+    "family_tag": "D_ICEGO-Brt_3mbox",
+    "P_winner_by_year": {
+      "2022": 0.3056639554639863
+    }
+  },
+  "ICEGO-BrtM33box3m_W3M_SE1.0_SL3.0_SLP0": {
+    "diff": "ICEGO-Brt",
+    "shape": "3mbox",
+    "family_tag": "D_ICEGO-Brt_3mbox",
+    "P_winner_by_year": {
+      "2023": 0.5691031283938689,
+      "2025": 0.7785548415732384,
+      "2026": 0.2133885337825709
+    }
+  },
+  "ICEGO-BrtM12box3m_W12M_SE1.0_SL2.0_SLP0": {
+    "diff": "ICEGO-Brt",
+    "shape": "3mbox",
+    "family_tag": "D_ICEGO-Brt_3mbox",
+    "P_winner_by_year": {
+      "2024": 0.3034215376036953
+    }
+  },
+  "ICEGO-BrtM12_W3M_SE2.0_SL2.0_SLP0": {
+    "diff": "ICEGO-Brt",
+    "shape": "outright",
+    "family_tag": "D_ICEGO-Brt_outright",
+    "P_winner_by_year": {
+      "2021": 1.0
+    }
+  },
+  "ICEGO-BrtM32_W3M_SE1.0_SL1.0_SLP0": {
+    "diff": "ICEGO-Brt",
+    "shape": "outright",
+    "family_tag": "D_ICEGO-Brt_outright",
+    "P_winner_by_year": {
+      "2022": 0.426277942015501
+    }
+  },
+  "ICEGO-BrtM13_W3M_SE2.0_SL3.0_SLP0": {
+    "diff": "ICEGO-Brt",
+    "shape": "outright",
+    "family_tag": "D_ICEGO-Brt_outright",
+    "P_winner_by_year": {
+      "2023": 0.9999999995582378
+    }
+  },
+  "ICEGO-BrtM33_W3M_SE1.0_SL3.0_SLP0": {
+    "diff": "ICEGO-Brt",
+    "shape": "outright",
+    "family_tag": "D_ICEGO-Brt_outright",
+    "P_winner_by_year": {
+      "2024": 0.9824053040463275
+    }
+  },
+  "ICEGO-BrtM13_W3M_SE3.0_SL2.0_SLP0": {
+    "diff": "ICEGO-Brt",
+    "shape": "outright",
+    "family_tag": "D_ICEGO-Brt_outright",
+    "P_winner_by_year": {
+      "2025": 3.315256325397989e-07
+    }
+  },
+  "ICEGO-BrtM21_W3M_SE3.0_SL1.0_SLP0": {
+    "diff": "ICEGO-Brt",
+    "shape": "outright",
+    "family_tag": "D_ICEGO-Brt_outright",
+    "P_winner_by_year": {
+      "2026": 0.102861320835852
+    }
+  },
+  "Jet_diffM12box_W12M_SE3.0_SL3.0_SLP0": {
+    "diff": "Jet_diff",
+    "shape": "1mbox",
+    "family_tag": "D_Jet_diff_1mbox",
+    "P_winner_by_year": {
+      "2021": 0.4562183891709143
+    }
+  },
+  "Jet_diffM31box_W3M_SE2.0_SL3.0_SLP0": {
+    "diff": "Jet_diff",
+    "shape": "1mbox",
+    "family_tag": "D_Jet_diff_1mbox",
+    "P_winner_by_year": {
+      "2022": 0.1816424485866834
+    }
+  },
+  "Jet_diffM13box_W3M_SE3.0_SL3.0_SLP0": {
+    "diff": "Jet_diff",
+    "shape": "1mbox",
+    "family_tag": "D_Jet_diff_1mbox",
+    "P_winner_by_year": {
+      "2023": 0.5960316988045606
+    }
+  },
+  "Jet_diffM33box_W6M_SE1.0_SL3.0_SLP0": {
+    "diff": "Jet_diff",
+    "shape": "1mbox",
+    "family_tag": "D_Jet_diff_1mbox",
+    "P_winner_by_year": {
+      "2024": 0.2233187157338205
+    }
+  },
+  "Jet_diffM11box_W3M_SE1.0_SL3.0_SLP0": {
+    "diff": "Jet_diff",
+    "shape": "1mbox",
+    "family_tag": "D_Jet_diff_1mbox",
+    "P_winner_by_year": {
+      "2025": 0.6122994088312382
+    }
+  },
+  "Jet_diffM21box_W3M_SE1.0_SL3.0_SLP0": {
+    "diff": "Jet_diff",
+    "shape": "1mbox",
+    "family_tag": "D_Jet_diff_1mbox",
+    "P_winner_by_year": {
+      "2026": 0.6813403984212297
+    }
+  },
+  "Jet_diffM12box3m_W3M_SE1.0_SL3.0_SLP0": {
+    "diff": "Jet_diff",
+    "shape": "3mbox",
+    "family_tag": "D_Jet_diff_3mbox",
+    "P_winner_by_year": {
+      "2021": 0.691067260505535
+    }
+  },
+  "Jet_diffM31box3m_W3M_SE2.0_SL3.0_SLP0": {
+    "diff": "Jet_diff",
+    "shape": "3mbox",
+    "family_tag": "D_Jet_diff_3mbox",
+    "P_winner_by_year": {
+      "2022": 0.1902683767574209
+    }
+  },
+  "Jet_diffM13box3m_W3M_SE1.0_SL3.0_SLP0": {
+    "diff": "Jet_diff",
+    "shape": "3mbox",
+    "family_tag": "D_Jet_diff_3mbox",
+    "P_winner_by_year": {
+      "2023": 0.2408091446903844
+    }
+  },
+  "Jet_diffM23box3m_W6M_SE2.0_SL2.0_SLP0": {
+    "diff": "Jet_diff",
+    "shape": "3mbox",
+    "family_tag": "D_Jet_diff_3mbox",
+    "P_winner_by_year": {
+      "2024": 0.999827611545284
+    }
+  },
+  "Jet_diffM13box3m_W12M_SE1.0_SL3.0_SLP0": {
+    "diff": "Jet_diff",
+    "shape": "3mbox",
+    "family_tag": "D_Jet_diff_3mbox",
+    "P_winner_by_year": {
+      "2025": 0.9706643978849899
+    }
+  },
+  "Jet_diffM12box3m_W12M_SE3.0_SL3.0_SLP0": {
+    "diff": "Jet_diff",
+    "shape": "3mbox",
+    "family_tag": "D_Jet_diff_3mbox",
+    "P_winner_by_year": {
+      "2026": 0.9828611282186567
+    }
+  },
+  "Jet_diffM13_W6M_SE2.0_SL1.0_SLP0": {
+    "diff": "Jet_diff",
+    "shape": "outright",
+    "family_tag": "D_Jet_diff_outright",
+    "P_winner_by_year": {
+      "2021": 0.663167138022331
+    }
+  },
+  "Jet_diffM31_W6M_SE1.0_SL3.0_SLP0": {
+    "diff": "Jet_diff",
+    "shape": "outright",
+    "family_tag": "D_Jet_diff_outright",
+    "P_winner_by_year": {
+      "2022": 0.2701350518587277,
+      "2026": 0.4113080259783182
+    }
+  },
+  "Jet_diffM31_W3M_SE1.0_SL3.0_SLP0": {
+    "diff": "Jet_diff",
+    "shape": "outright",
+    "family_tag": "D_Jet_diff_outright",
+    "P_winner_by_year": {
+      "2023": 0.1084455956772018
+    }
+  },
+  "Jet_diffM31_W3M_SE3.0_SL3.0_SLP0": {
+    "diff": "Jet_diff",
+    "shape": "outright",
+    "family_tag": "D_Jet_diff_outright",
+    "P_winner_by_year": {
+      "2024": 0.2609119046902514
+    }
+  },
+  "Jet_diffM12_W3M_SE3.0_SL3.0_SLP0": {
+    "diff": "Jet_diff",
+    "shape": "outright",
+    "family_tag": "D_Jet_diff_outright",
+    "P_winner_by_year": {
+      "2025": 0.9937198368183343
+    }
+  },
+  "NWE_Jet-BrtM33box_W6M_SE3.0_SL3.0_SLP0": {
+    "diff": "NWE_Jet-Brt",
+    "shape": "1mbox",
+    "family_tag": "D_NWE_Jet-Brt_1mbox",
+    "P_winner_by_year": {
+      "2021": 0.5787096662597794,
+      "2022": 0.3972962351262441
+    }
+  },
+  "NWE_Jet-BrtM31box_W3M_SE2.0_SL1.0_SLP0": {
+    "diff": "NWE_Jet-Brt",
+    "shape": "1mbox",
+    "family_tag": "D_NWE_Jet-Brt_1mbox",
+    "P_winner_by_year": {
+      "2023": 0.6621374045429531
+    }
+  },
+  "NWE_Jet-BrtM21box_W3M_SE3.0_SL3.0_SLP0": {
+    "diff": "NWE_Jet-Brt",
+    "shape": "1mbox",
+    "family_tag": "D_NWE_Jet-Brt_1mbox",
+    "P_winner_by_year": {
+      "2024": 0.7685270393658779
+    }
+  },
+  "NWE_Jet-BrtM32box_W3M_SE3.0_SL3.0_SLP0": {
+    "diff": "NWE_Jet-Brt",
+    "shape": "1mbox",
+    "family_tag": "D_NWE_Jet-Brt_1mbox",
+    "P_winner_by_year": {
+      "2025": 0.6758696498549895
+    }
+  },
+  "NWE_Jet-BrtM12box_W3M_SE1.0_SL3.0_SLP0": {
+    "diff": "NWE_Jet-Brt",
+    "shape": "1mbox",
+    "family_tag": "D_NWE_Jet-Brt_1mbox",
+    "P_winner_by_year": {
+      "2026": 0.8060539967865917
+    }
+  },
+  "NWE_Jet-BrtM11box3m_W12M_SE3.0_SL3.0_SLP0": {
+    "diff": "NWE_Jet-Brt",
+    "shape": "3mbox",
+    "family_tag": "D_NWE_Jet-Brt_3mbox",
+    "P_winner_by_year": {
+      "2021": 0.2589601043603761
+    }
+  },
+  "NWE_Jet-BrtM22box3m_W3M_SE1.0_SL3.0_SLP0": {
+    "diff": "NWE_Jet-Brt",
+    "shape": "3mbox",
+    "family_tag": "D_NWE_Jet-Brt_3mbox",
+    "P_winner_by_year": {
+      "2022": 0.4091689555032162
+    }
+  },
+  "NWE_Jet-BrtM31box3m_W3M_SE2.0_SL3.0_SLP0": {
+    "diff": "NWE_Jet-Brt",
+    "shape": "3mbox",
+    "family_tag": "D_NWE_Jet-Brt_3mbox",
+    "P_winner_by_year": {
+      "2023": 0.3944662084314665
+    }
+  },
+  "NWE_Jet-BrtM21box3m_W3M_SE1.0_SL3.0_SLP0": {
+    "diff": "NWE_Jet-Brt",
+    "shape": "3mbox",
+    "family_tag": "D_NWE_Jet-Brt_3mbox",
+    "P_winner_by_year": {
+      "2024": 0.2321494136267845,
+      "2025": 0.2470619674038654
+    }
+  },
+  "NWE_Jet-BrtM23box3m_W3M_SE3.0_SL3.0_SLP0": {
+    "diff": "NWE_Jet-Brt",
+    "shape": "3mbox",
+    "family_tag": "D_NWE_Jet-Brt_3mbox",
+    "P_winner_by_year": {
+      "2026": 0.1439693297875898
+    }
+  },
+  "NWE_Jet-BrtM31_W6M_SE2.0_SL3.0_SLP0": {
+    "diff": "NWE_Jet-Brt",
+    "shape": "outright",
+    "family_tag": "D_NWE_Jet-Brt_outright",
+    "P_winner_by_year": {
+      "2021": 0.005209536832311498
+    }
+  },
+  "NWE_Jet-BrtM13_W3M_SE1.0_SL2.0_SLP0": {
+    "diff": "NWE_Jet-Brt",
+    "shape": "outright",
+    "family_tag": "D_NWE_Jet-Brt_outright",
+    "P_winner_by_year": {
+      "2022": 0.05471019829443512
+    }
+  },
+  "NWE_Jet-BrtM12_W12M_SE1.0_SL1.0_SLP0": {
+    "diff": "NWE_Jet-Brt",
+    "shape": "outright",
+    "family_tag": "D_NWE_Jet-Brt_outright",
+    "P_winner_by_year": {
+      "2023": 0.9999999272980808
+    }
+  },
+  "NWE_Jet-BrtM31_W6M_SE1.0_SL3.0_SLP0": {
+    "diff": "NWE_Jet-Brt",
+    "shape": "outright",
+    "family_tag": "D_NWE_Jet-Brt_outright",
+    "P_winner_by_year": {
+      "2024": 0.06627680279419883
+    }
+  },
+  "NWE_Jet-BrtM33_W6M_SE1.0_SL3.0_SLP0": {
+    "diff": "NWE_Jet-Brt",
+    "shape": "outright",
+    "family_tag": "D_NWE_Jet-Brt_outright",
+    "P_winner_by_year": {
+      "2025": 0.03734250790307868
+    }
+  },
+  "NWE_Jet-BrtM31_W3M_SE1.0_SL3.0_SLP0": {
+    "diff": "NWE_Jet-Brt",
+    "shape": "outright",
+    "family_tag": "D_NWE_Jet-Brt_outright",
+    "P_winner_by_year": {
+      "2026": 0.6924932766659607
+    }
+  },
+  "RegradeM31box_W3M_SE2.0_SL3.0_SLP0": {
+    "diff": "Regrade",
+    "shape": "1mbox",
+    "family_tag": "D_Regrade_1mbox",
+    "P_winner_by_year": {
+      "2021": 0.9947413516796443
+    }
+  },
+  "RegradeM11box_W3M_SE3.0_SL3.0_SLP0": {
+    "diff": "Regrade",
+    "shape": "1mbox",
+    "family_tag": "D_Regrade_1mbox",
+    "P_winner_by_year": {
+      "2022": 0.7870149157752558
+    }
+  },
+  "RegradeM13box_W12M_SE2.0_SL3.0_SLP0": {
+    "diff": "Regrade",
+    "shape": "1mbox",
+    "family_tag": "D_Regrade_1mbox",
+    "P_winner_by_year": {
+      "2023": 0.5858069748952264
+    }
+  },
+  "RegradeM23box_W3M_SE1.0_SL3.0_SLP0": {
+    "diff": "Regrade",
+    "shape": "1mbox",
+    "family_tag": "D_Regrade_1mbox",
+    "P_winner_by_year": {
+      "2024": 0.7757241453055959
+    }
+  },
+  "RegradeM31box_W3M_SE1.0_SL3.0_SLP0": {
+    "diff": "Regrade",
+    "shape": "1mbox",
+    "family_tag": "D_Regrade_1mbox",
+    "P_winner_by_year": {
+      "2025": 0.2396678443037847
+    }
+  },
+  "RegradeM32box_W3M_SE2.0_SL3.0_SLP0": {
+    "diff": "Regrade",
+    "shape": "1mbox",
+    "family_tag": "D_Regrade_1mbox",
+    "P_winner_by_year": {
+      "2026": 0.2601372986966891
+    }
+  },
+  "RegradeM31box3m_W3M_SE1.0_SL3.0_SLP0": {
+    "diff": "Regrade",
+    "shape": "3mbox",
+    "family_tag": "D_Regrade_3mbox",
+    "P_winner_by_year": {
+      "2021": 0.3639095914470868
+    }
+  },
+  "RegradeM11box3m_W3M_SE2.0_SL3.0_SLP0": {
+    "diff": "Regrade",
+    "shape": "3mbox",
+    "family_tag": "D_Regrade_3mbox",
+    "P_winner_by_year": {
+      "2022": 0.2012999062294245
+    }
+  },
+  "RegradeM13box3m_W3M_SE1.0_SL3.0_SLP0": {
+    "diff": "Regrade",
+    "shape": "3mbox",
+    "family_tag": "D_Regrade_3mbox",
+    "P_winner_by_year": {
+      "2023": 0.2640539048152325
+    }
+  },
+  "RegradeM33box3m_W6M_SE2.0_SL3.0_SLP0": {
+    "diff": "Regrade",
+    "shape": "3mbox",
+    "family_tag": "D_Regrade_3mbox",
+    "P_winner_by_year": {
+      "2024": 0.9275844708771375
+    }
+  },
+  "RegradeM13box3m_W3M_SE3.0_SL3.0_SLP0": {
+    "diff": "Regrade",
+    "shape": "3mbox",
+    "family_tag": "D_Regrade_3mbox",
+    "P_winner_by_year": {
+      "2025": 0.5009903240827522
+    }
+  },
+  "RegradeM21box3m_W3M_SE3.0_SL3.0_SLP0": {
+    "diff": "Regrade",
+    "shape": "3mbox",
+    "family_tag": "D_Regrade_3mbox",
+    "P_winner_by_year": {
+      "2026": 0.5200647447364537
+    }
+  },
+  "RegradeM31_W12M_SE1.0_SL1.0_SLP0": {
+    "diff": "Regrade",
+    "shape": "outright",
+    "family_tag": "D_Regrade_outright",
+    "P_winner_by_year": {
+      "2021": 0.2076307404062933
+    }
+  },
+  "RegradeM31_W6M_SE1.0_SL3.0_SLP0": {
+    "diff": "Regrade",
+    "shape": "outright",
+    "family_tag": "D_Regrade_outright",
+    "P_winner_by_year": {
+      "2022": 0.5459916473798518
+    }
+  },
+  "RegradeM31_W3M_SE1.0_SL3.0_SLP0": {
+    "diff": "Regrade",
+    "shape": "outright",
+    "family_tag": "D_Regrade_outright",
+    "P_winner_by_year": {
+      "2023": 0.1618095593411043
+    }
+  },
+  "RegradeM31_W3M_SE3.0_SL3.0_SLP0": {
+    "diff": "Regrade",
+    "shape": "outright",
+    "family_tag": "D_Regrade_outright",
+    "P_winner_by_year": {
+      "2024": 0.5069085328175109
+    }
+  },
+  "RegradeM23_W6M_SE1.0_SL3.0_SLP0": {
+    "diff": "Regrade",
+    "shape": "outright",
+    "family_tag": "D_Regrade_outright",
+    "P_winner_by_year": {
+      "2025": 0.3367458277196064
+    }
+  },
+  "RegradeM13_W3M_SE3.0_SL1.0_SLP0": {
+    "diff": "Regrade",
+    "shape": "outright",
+    "family_tag": "D_Regrade_outright",
+    "P_winner_by_year": {
+      "2026": 1.0
+    }
+  },
+  "SGO-BrtM13box_W12M_SE1.0_SL3.0_SLP0": {
+    "diff": "SGO-Brt",
+    "shape": "1mbox",
+    "family_tag": "D_SGO-Brt_1mbox",
+    "P_winner_by_year": {
+      "2021": 0.44426754523648
+    }
+  },
+  "SGO-BrtM11box_W12M_SE1.0_SL3.0_SLP0": {
+    "diff": "SGO-Brt",
+    "shape": "1mbox",
+    "family_tag": "D_SGO-Brt_1mbox",
+    "P_winner_by_year": {
+      "2022": 0.1021087145747805
+    }
+  },
+  "SGO-BrtM23box_W12M_SE1.0_SL3.0_SLP0": {
+    "diff": "SGO-Brt",
+    "shape": "1mbox",
+    "family_tag": "D_SGO-Brt_1mbox",
+    "P_winner_by_year": {
+      "2023": 0.1316527748286156
+    }
+  },
+  "SGO-BrtM32box_W12M_SE2.0_SL2.0_SLP0": {
+    "diff": "SGO-Brt",
+    "shape": "1mbox",
+    "family_tag": "D_SGO-Brt_1mbox",
+    "P_winner_by_year": {
+      "2024": 0.1051600920589459
+    }
+  },
+  "SGO-BrtM11box_W3M_SE1.0_SL1.0_SLP0": {
+    "diff": "SGO-Brt",
+    "shape": "1mbox",
+    "family_tag": "D_SGO-Brt_1mbox",
+    "P_winner_by_year": {
+      "2025": 0.1214429529935556
+    }
+  },
+  "SGO-BrtM33box_W3M_SE1.0_SL1.0_SLP0": {
+    "diff": "SGO-Brt",
+    "shape": "1mbox",
+    "family_tag": "D_SGO-Brt_1mbox",
+    "P_winner_by_year": {
+      "2026": 0.8800980235170212
+    }
+  },
+  "SGO-BrtM33box3m_W6M_SE1.0_SL3.0_SLP0": {
+    "diff": "SGO-Brt",
+    "shape": "3mbox",
+    "family_tag": "D_SGO-Brt_3mbox",
+    "P_winner_by_year": {
+      "2021": 0.2562017149926579
+    }
+  },
+  "SGO-BrtM33box3m_W12M_SE1.0_SL3.0_SLP0": {
+    "diff": "SGO-Brt",
+    "shape": "3mbox",
+    "family_tag": "D_SGO-Brt_3mbox",
+    "P_winner_by_year": {
+      "2022": 0.6482127752568669
+    }
+  },
+  "SGO-BrtM33box3m_W6M_SE3.0_SL2.0_SLP0": {
+    "diff": "SGO-Brt",
+    "shape": "3mbox",
+    "family_tag": "D_SGO-Brt_3mbox",
+    "P_winner_by_year": {
+      "2023": 0.2054152760242317
+    }
+  },
+  "SGO-BrtM23box3m_W3M_SE1.0_SL3.0_SLP0": {
+    "diff": "SGO-Brt",
+    "shape": "3mbox",
+    "family_tag": "D_SGO-Brt_3mbox",
+    "P_winner_by_year": {
+      "2024": 0.1757191782300908
+    }
+  },
+  "SGO-BrtM23box3m_W3M_SE3.0_SL3.0_SLP0": {
+    "diff": "SGO-Brt",
+    "shape": "3mbox",
+    "family_tag": "D_SGO-Brt_3mbox",
+    "P_winner_by_year": {
+      "2025": 0.1955098783461417
+    }
+  },
+  "SGO-BrtM31box3m_W3M_SE1.0_SL3.0_SLP0": {
+    "diff": "SGO-Brt",
+    "shape": "3mbox",
+    "family_tag": "D_SGO-Brt_3mbox",
+    "P_winner_by_year": {
+      "2026": 0.07215975189417474
+    }
+  },
+  "SGO-BrtM33_W3M_SE2.0_SL2.0_SLP0": {
+    "diff": "SGO-Brt",
+    "shape": "outright",
+    "family_tag": "D_SGO-Brt_outright",
+    "P_winner_by_year": {
+      "2021": 0.6573068394113655
+    }
+  },
+  "SGO-BrtM11_W3M_SE1.0_SL2.0_SLP0": {
+    "diff": "SGO-Brt",
+    "shape": "outright",
+    "family_tag": "D_SGO-Brt_outright",
+    "P_winner_by_year": {
+      "2022": 0.3673955476575349
+    }
+  },
+  "SGO-BrtM11_W6M_SE1.0_SL1.0_SLP0": {
+    "diff": "SGO-Brt",
+    "shape": "outright",
+    "family_tag": "D_SGO-Brt_outright",
+    "P_winner_by_year": {
+      "2023": 0.6886471228842764
+    }
+  },
+  "SGO-BrtM31_W3M_SE1.0_SL1.0_SLP0": {
+    "diff": "SGO-Brt",
+    "shape": "outright",
+    "family_tag": "D_SGO-Brt_outright",
+    "P_winner_by_year": {
+      "2024": 0.3094804873448407
+    }
+  },
+  "SGO-BrtM33_W3M_SE1.0_SL2.0_SLP0": {
+    "diff": "SGO-Brt",
+    "shape": "outright",
+    "family_tag": "D_SGO-Brt_outright",
+    "P_winner_by_year": {
+      "2025": 0.2117846661257283
+    }
+  },
+  "SGO-BrtM33_W3M_SE1.0_SL3.0_SLP0": {
+    "diff": "SGO-Brt",
+    "shape": "outright",
+    "family_tag": "D_SGO-Brt_outright",
+    "P_winner_by_year": {
+      "2026": 0.2250907158199212
+    }
+  },
+  "SKO-BrtM22box_W12M_SE1.0_SL3.0_SLP0": {
+    "diff": "SKO-Brt",
+    "shape": "1mbox",
+    "family_tag": "D_SKO-Brt_1mbox",
+    "P_winner_by_year": {
+      "2021": 0.09959749991181527
+    }
+  },
+  "SKO-BrtM23box_W12M_SE2.0_SL3.0_SLP0": {
+    "diff": "SKO-Brt",
+    "shape": "1mbox",
+    "family_tag": "D_SKO-Brt_1mbox",
+    "P_winner_by_year": {
+      "2022": 0.008843378891905618
+    }
+  },
+  "SKO-BrtM13box_W3M_SE2.0_SL3.0_SLP0": {
+    "diff": "SKO-Brt",
+    "shape": "1mbox",
+    "family_tag": "D_SKO-Brt_1mbox",
+    "P_winner_by_year": {
+      "2023": 0.9979800818007818,
+      "2024": 0.3128739237578663
+    }
+  },
+  "SKO-BrtM33box_W3M_SE2.0_SL3.0_SLP0": {
+    "diff": "SKO-Brt",
+    "shape": "1mbox",
+    "family_tag": "D_SKO-Brt_1mbox",
+    "P_winner_by_year": {
+      "2025": 0.3227849709337121
+    }
+  },
+  "SKO-BrtM31box_W3M_SE3.0_SL2.0_SLP0": {
+    "diff": "SKO-Brt",
+    "shape": "1mbox",
+    "family_tag": "D_SKO-Brt_1mbox",
+    "P_winner_by_year": {
+      "2026": 0.00509699571646358
+    }
+  },
+  "SKO-BrtM13box3m_W6M_SE1.0_SL3.0_SLP0": {
+    "diff": "SKO-Brt",
+    "shape": "3mbox",
+    "family_tag": "D_SKO-Brt_3mbox",
+    "P_winner_by_year": {
+      "2021": 0.3532450979867511
+    }
+  },
+  "SKO-BrtM33box3m_W12M_SE1.0_SL3.0_SLP0": {
+    "diff": "SKO-Brt",
+    "shape": "3mbox",
+    "family_tag": "D_SKO-Brt_3mbox",
+    "P_winner_by_year": {
+      "2022": 0.3257574106790216
+    }
+  },
+  "SKO-BrtM33box3m_W3M_SE1.0_SL3.0_SLP0": {
+    "diff": "SKO-Brt",
+    "shape": "3mbox",
+    "family_tag": "D_SKO-Brt_3mbox",
+    "P_winner_by_year": {
+      "2023": 0.2590985306999004
+    }
+  },
+  "SKO-BrtM21box3m_W12M_SE1.0_SL3.0_SLP0": {
+    "diff": "SKO-Brt",
+    "shape": "3mbox",
+    "family_tag": "D_SKO-Brt_3mbox",
+    "P_winner_by_year": {
+      "2024": 0.2589428224723158
+    }
+  },
+  "SKO-BrtM12box3m_W12M_SE1.0_SL3.0_SLP0": {
+    "diff": "SKO-Brt",
+    "shape": "3mbox",
+    "family_tag": "D_SKO-Brt_3mbox",
+    "P_winner_by_year": {
+      "2025": 0.2068003212928133
+    }
+  },
+  "SKO-BrtM11box3m_W3M_SE1.0_SL3.0_SLP0": {
+    "diff": "SKO-Brt",
+    "shape": "3mbox",
+    "family_tag": "D_SKO-Brt_3mbox",
+    "P_winner_by_year": {
+      "2026": 0.09320950258269349
+    }
+  },
+  "SKO-BrtM31_W3M_SE1.0_SL3.0_SLP0": {
+    "diff": "SKO-Brt",
+    "shape": "outright",
+    "family_tag": "D_SKO-Brt_outright",
+    "P_winner_by_year": {
+      "2021": 0.9999869914514284
+    }
+  },
+  "SKO-BrtM23_W3M_SE1.0_SL3.0_SLP0": {
+    "diff": "SKO-Brt",
+    "shape": "outright",
+    "family_tag": "D_SKO-Brt_outright",
+    "P_winner_by_year": {
+      "2022": 0.07106408071827494
+    }
+  },
+  "SKO-BrtM33_W3M_SE1.0_SL3.0_SLP0": {
+    "diff": "SKO-Brt",
+    "shape": "outright",
+    "family_tag": "D_SKO-Brt_outright",
+    "P_winner_by_year": {
+      "2023": 0.1246736205848599
+    }
+  },
+  "SKO-BrtM31_W3M_SE3.0_SL3.0_SLP0": {
+    "diff": "SKO-Brt",
+    "shape": "outright",
+    "family_tag": "D_SKO-Brt_outright",
+    "P_winner_by_year": {
+      "2024": 0.1363367909795992
+    }
+  },
+  "SKO-BrtM22_W3M_SE3.0_SL3.0_SLP0": {
+    "diff": "SKO-Brt",
+    "shape": "outright",
+    "family_tag": "D_SKO-Brt_outright",
+    "P_winner_by_year": {
+      "2025": 0.6096780589361136
+    }
+  },
+  "SKO-BrtM13_W3M_SE3.0_SL3.0_SLP0": {
+    "diff": "SKO-Brt",
+    "shape": "outright",
+    "family_tag": "D_SKO-Brt_outright",
+    "P_winner_by_year": {
+      "2026": 0.5164444740891169
+    }
+  },
+  "SKO-NWE_JetM12box_W3M_SE2.0_SL1.0_SLP0": {
+    "diff": "SKO-NWE_Jet",
+    "shape": "1mbox",
+    "family_tag": "D_SKO-NWE_Jet_1mbox",
+    "P_winner_by_year": {
+      "2021": 0.4671137482314361
+    }
+  },
+  "SKO-NWE_JetM11box_W12M_SE3.0_SL3.0_SLP0": {
+    "diff": "SKO-NWE_Jet",
+    "shape": "1mbox",
+    "family_tag": "D_SKO-NWE_Jet_1mbox",
+    "P_winner_by_year": {
+      "2022": 0.8609257707489552
+    }
+  },
+  "SKO-NWE_JetM11box_W6M_SE3.0_SL2.0_SLP0": {
+    "diff": "SKO-NWE_Jet",
+    "shape": "1mbox",
+    "family_tag": "D_SKO-NWE_Jet_1mbox",
+    "P_winner_by_year": {
+      "2023": 0.2545613936447652
+    }
+  },
+  "SKO-NWE_JetM23box_W3M_SE1.0_SL3.0_SLP0": {
+    "diff": "SKO-NWE_Jet",
+    "shape": "1mbox",
+    "family_tag": "D_SKO-NWE_Jet_1mbox",
+    "P_winner_by_year": {
+      "2024": 0.6591954207325614,
+      "2026": 0.4707533688666172
+    }
+  },
+  "SKO-NWE_JetM33box_W3M_SE1.0_SL3.0_SLP0": {
+    "diff": "SKO-NWE_Jet",
+    "shape": "1mbox",
+    "family_tag": "D_SKO-NWE_Jet_1mbox",
+    "P_winner_by_year": {
+      "2025": 0.8659095833073427
+    }
+  },
+  "SKO-NWE_JetM12box3m_W3M_SE1.0_SL3.0_SLP0": {
+    "diff": "SKO-NWE_Jet",
+    "shape": "3mbox",
+    "family_tag": "D_SKO-NWE_Jet_3mbox",
+    "P_winner_by_year": {
+      "2021": 0.4203718787754087
+    }
+  },
+  "SKO-NWE_JetM33box3m_W6M_SE2.0_SL3.0_SLP0": {
+    "diff": "SKO-NWE_Jet",
+    "shape": "3mbox",
+    "family_tag": "D_SKO-NWE_Jet_3mbox",
+    "P_winner_by_year": {
+      "2022": 0.3699385180978933
+    }
+  },
+  "SKO-NWE_JetM11box3m_W6M_SE3.0_SL2.0_SLP0": {
+    "diff": "SKO-NWE_Jet",
+    "shape": "3mbox",
+    "family_tag": "D_SKO-NWE_Jet_3mbox",
+    "P_winner_by_year": {
+      "2023": 1.0
+    }
+  },
+  "SKO-NWE_JetM23box3m_W12M_SE2.0_SL3.0_SLP0": {
+    "diff": "SKO-NWE_Jet",
+    "shape": "3mbox",
+    "family_tag": "D_SKO-NWE_Jet_3mbox",
+    "P_winner_by_year": {
+      "2024": 0.6583587117457875
+    }
+  },
+  "SKO-NWE_JetM33box3m_W3M_SE1.0_SL3.0_SLP0": {
+    "diff": "SKO-NWE_Jet",
+    "shape": "3mbox",
+    "family_tag": "D_SKO-NWE_Jet_3mbox",
+    "P_winner_by_year": {
+      "2025": 0.8126366627821888
+    }
+  },
+  "SKO-NWE_JetM11box3m_W6M_SE2.0_SL3.0_SLP0": {
+    "diff": "SKO-NWE_Jet",
+    "shape": "3mbox",
+    "family_tag": "D_SKO-NWE_Jet_3mbox",
+    "P_winner_by_year": {
+      "2026": 0.5352231159227339
+    }
+  },
+  "SKO-NWE_JetM13_W12M_SE1.0_SL1.0_SLP0": {
+    "diff": "SKO-NWE_Jet",
+    "shape": "outright",
+    "family_tag": "D_SKO-NWE_Jet_outright",
+    "P_winner_by_year": {
+      "2021": 0.05895025848345457
+    }
+  },
+  "SKO-NWE_JetM13_W3M_SE1.0_SL1.0_SLP0": {
+    "diff": "SKO-NWE_Jet",
+    "shape": "outright",
+    "family_tag": "D_SKO-NWE_Jet_outright",
+    "P_winner_by_year": {
+      "2022": 0.09733939739028807
+    }
+  },
+  "SKO-NWE_JetM13_W3M_SE1.0_SL3.0_SLP0": {
+    "diff": "SKO-NWE_Jet",
+    "shape": "outright",
+    "family_tag": "D_SKO-NWE_Jet_outright",
+    "P_winner_by_year": {
+      "2023": 0.8749137257792021,
+      "2024": 0.977037416581461,
+      "2026": 0.7532829981490188
+    }
+  },
+  "SKO-NWE_JetM12_W3M_SE1.0_SL3.0_SLP0": {
+    "diff": "SKO-NWE_Jet",
+    "shape": "outright",
+    "family_tag": "D_SKO-NWE_Jet_outright",
+    "P_winner_by_year": {
+      "2025": 0.2949655154389104
+    }
+  },
+  "GNM1133box_W3M_SE3.0_SL3.0_SLP0": {
+    "diff": "GO_EW+Naph_EW",
+    "shape": "1mbox",
+    "family_tag": "GN_1mbox",
+    "P_winner_by_year": {
+      "2021": 0.1110803588361644
+    }
+  },
+  "GNM2132box_W12M_SE2.0_SL3.0_SLP0": {
+    "diff": "GO_EW+Naph_EW",
+    "shape": "1mbox",
+    "family_tag": "GN_1mbox",
+    "P_winner_by_year": {
+      "2022": 0.04584501633438121
+    }
+  },
+  "GNM1121box_W6M_SE3.0_SL3.0_SLP0": {
+    "diff": "GO_EW+Naph_EW",
+    "shape": "1mbox",
+    "family_tag": "GN_1mbox",
+    "P_winner_by_year": {
+      "2023": 0.5616867162400222
+    }
+  },
+  "GNM2312box_W12M_SE1.0_SL2.0_SLP0": {
+    "diff": "GO_EW+Naph_EW",
+    "shape": "1mbox",
+    "family_tag": "GN_1mbox",
+    "P_winner_by_year": {
+      "2024": 0.7913901589536808
+    }
+  },
+  "GNM3313box_W3M_SE1.0_SL3.0_SLP0": {
+    "diff": "GO_EW+Naph_EW",
+    "shape": "1mbox",
+    "family_tag": "GN_1mbox",
+    "P_winner_by_year": {
+      "2025": 0.7157526032721145
+    }
+  },
+  "GNM1212box_W3M_SE1.0_SL3.0_SLP0": {
+    "diff": "GO_EW+Naph_EW",
+    "shape": "1mbox",
+    "family_tag": "GN_1mbox",
+    "P_winner_by_year": {
+      "2026": 0.7681597564060295
+    }
+  },
+  "GNM1311box3m_W3M_SE1.0_SL3.0_SLP0": {
+    "diff": "GO_EW+Naph_EW",
+    "shape": "3mbox",
+    "family_tag": "GN_3mbox",
+    "P_winner_by_year": {
+      "2021": 0.6133831181859575
+    }
+  },
+  "GNM1212box3m_W3M_SE2.0_SL3.0_SLP0": {
+    "diff": "GO_EW+Naph_EW",
+    "shape": "3mbox",
+    "family_tag": "GN_3mbox",
+    "P_winner_by_year": {
+      "2022": 0.3476692103426013
+    }
+  },
+  "GNM2113box3m_W3M_SE1.0_SL3.0_SLP0": {
+    "diff": "GO_EW+Naph_EW",
+    "shape": "3mbox",
+    "family_tag": "GN_3mbox",
+    "P_winner_by_year": {
+      "2023": 0.3544868315333581
+    }
+  },
+  "GNM1313box3m_W3M_SE1.0_SL3.0_SLP0": {
+    "diff": "GO_EW+Naph_EW",
+    "shape": "3mbox",
+    "family_tag": "GN_3mbox",
+    "P_winner_by_year": {
+      "2024": 0.6314164448073571,
+      "2026": 0.6256731626264983
+    }
+  },
+  "GNM2213box3m_W3M_SE1.0_SL3.0_SLP0": {
+    "diff": "GO_EW+Naph_EW",
+    "shape": "3mbox",
+    "family_tag": "GN_3mbox",
+    "P_winner_by_year": {
+      "2025": 0.688362026223515
+    }
+  },
+  "GNM2333_W6M_SE1.0_SL3.0_SLP0": {
+    "diff": "GO_EW+Naph_EW",
+    "shape": "outright",
+    "family_tag": "GN_outright",
+    "P_winner_by_year": {
+      "2021": 0.2356142534613225
+    }
+  },
+  "GNM1313_W6M_SE1.0_SL3.0_SLP0": {
+    "diff": "GO_EW+Naph_EW",
+    "shape": "outright",
+    "family_tag": "GN_outright",
+    "P_winner_by_year": {
+      "2022": 0.3643262444861474,
+      "2023": 0.3935089139457565
+    }
+  },
+  "GNM1211_W3M_SE1.0_SL3.0_SLP0": {
+    "diff": "GO_EW+Naph_EW",
+    "shape": "outright",
+    "family_tag": "GN_outright",
+    "P_winner_by_year": {
+      "2024": 0.2695730982168522
+    }
+  },
+  "GNM1313_W3M_SE1.0_SL3.0_SLP0": {
+    "diff": "GO_EW+Naph_EW",
+    "shape": "outright",
+    "family_tag": "GN_outright",
+    "P_winner_by_year": {
+      "2025": 0.9411719790893744,
+      "2026": 0.2959453503225196
+    }
+  },
+  "GTM312box_W12M_SE2.0_SL3.0_SLP0": {
+    "diff": "GO_EW-TC5",
+    "shape": "1mbox",
+    "family_tag": "GT_1mbox",
+    "P_winner_by_year": {
+      "2021": 0.9891173737955132
+    }
+  },
+  "GTM211box_W3M_SE3.0_SL3.0_SLP0": {
+    "diff": "GO_EW-TC5",
+    "shape": "1mbox",
+    "family_tag": "GT_1mbox",
+    "P_winner_by_year": {
+      "2022": 0.5557096831303305
+    }
+  },
+  "GTM121box_W3M_SE3.0_SL3.0_SLP0": {
+    "diff": "GO_EW-TC5",
+    "shape": "1mbox",
+    "family_tag": "GT_1mbox",
+    "P_winner_by_year": {
+      "2023": 0.4115900005696786
+    }
+  },
+  "GTM112box_W3M_SE1.0_SL3.0_SLP0": {
+    "diff": "GO_EW-TC5",
+    "shape": "1mbox",
+    "family_tag": "GT_1mbox",
+    "P_winner_by_year": {
+      "2024": 0.5124681195018865
+    }
+  },
+  "GTM111box_W3M_SE1.0_SL3.0_SLP0": {
+    "diff": "GO_EW-TC5",
+    "shape": "1mbox",
+    "family_tag": "GT_1mbox",
+    "P_winner_by_year": {
+      "2025": 0.7761377364703164
+    }
+  },
+  "GTM121box_W3M_SE1.0_SL3.0_SLP0": {
+    "diff": "GO_EW-TC5",
+    "shape": "1mbox",
+    "family_tag": "GT_1mbox",
+    "P_winner_by_year": {
+      "2026": 0.3886862908092506
+    }
+  },
+  "GTM322box3m_W12M_SE1.0_SL3.0_SLP0": {
+    "diff": "GO_EW-TC5",
+    "shape": "3mbox",
+    "family_tag": "GT_3mbox",
+    "P_winner_by_year": {
+      "2021": 0.8131767266970652,
+      "2024": 0.1896341806981624
+    }
+  },
+  "GTM123box3m_W12M_SE1.0_SL3.0_SLP0": {
+    "diff": "GO_EW-TC5",
+    "shape": "3mbox",
+    "family_tag": "GT_3mbox",
+    "P_winner_by_year": {
+      "2022": 0.2299098148681372
+    }
+  },
+  "GTM123box3m_W6M_SE2.0_SL3.0_SLP0": {
+    "diff": "GO_EW-TC5",
+    "shape": "3mbox",
+    "family_tag": "GT_3mbox",
+    "P_winner_by_year": {
+      "2023": 0.2370746386873499
+    }
+  },
+  "GTM131box3m_W3M_SE1.0_SL3.0_SLP0": {
+    "diff": "GO_EW-TC5",
+    "shape": "3mbox",
+    "family_tag": "GT_3mbox",
+    "P_winner_by_year": {
+      "2025": 0.675702191708341
+    }
+  },
+  "GTM223box3m_W6M_SE3.0_SL1.0_SLP0": {
+    "diff": "GO_EW-TC5",
+    "shape": "3mbox",
+    "family_tag": "GT_3mbox",
+    "P_winner_by_year": {
+      "2026": 0.9999999697966593
+    }
+  },
+  "GTM313_W12M_SE1.0_SL1.0_SLP0": {
+    "diff": "GO_EW-TC5",
+    "shape": "outright",
+    "family_tag": "GT_outright",
+    "P_winner_by_year": {
+      "2021": 0.9926376517629663
+    }
+  },
+  "GTM213_W12M_SE1.0_SL3.0_SLP0": {
+    "diff": "GO_EW-TC5",
+    "shape": "outright",
+    "family_tag": "GT_outright",
+    "P_winner_by_year": {
+      "2022": 0.8612972772452678
+    }
+  },
+  "GTM123_W3M_SE2.0_SL3.0_SLP0": {
+    "diff": "GO_EW-TC5",
+    "shape": "outright",
+    "family_tag": "GT_outright",
+    "P_winner_by_year": {
+      "2023": 0.9813963724222972
+    }
+  },
+  "GTM133_W3M_SE1.0_SL3.0_SLP0": {
+    "diff": "GO_EW-TC5",
+    "shape": "outright",
+    "family_tag": "GT_outright",
+    "P_winner_by_year": {
+      "2024": 0.5782374970111775
+    }
+  },
+  "GTM333_W3M_SE1.0_SL3.0_SLP0": {
+    "diff": "GO_EW-TC5",
+    "shape": "outright",
+    "family_tag": "GT_outright",
+    "P_winner_by_year": {
+      "2025": 0.9326019359560773
+    }
+  },
+  "GTM133_W6M_SE1.0_SL3.0_SLP0": {
+    "diff": "GO_EW-TC5",
+    "shape": "outright",
+    "family_tag": "GT_outright",
+    "P_winner_by_year": {
+      "2026": 0.2369232227975826
+    }
+  }
+}

@@ -43,6 +43,101 @@ def load_family_data(family: str) -> dict:
     return json.loads(fp.read_text())
 
 
+@st.cache_data(ttl=900)
+def load_cell_universe(family: str) -> tuple[pd.DataFrame, dict]:
+    """Load the wide-format per-cell daily P&L and metadata for a family."""
+    fp = DATA_DIR / "perfamily" / family / "cells.parquet"
+    meta_fp = DATA_DIR / "perfamily" / family / "meta.json"
+    if not fp.exists() or not meta_fp.exists():
+        return pd.DataFrame(), {}
+    df = pd.read_parquet(fp)
+    df["Date"] = pd.to_datetime(df["Date"])
+    df = df.sort_values("Date").reset_index(drop=True)
+    meta = json.loads(meta_fp.read_text())
+    return df, meta
+
+
+def _solve_max_sharpe(mu: np.ndarray, Sigma: np.ndarray) -> np.ndarray:
+    """SLSQP max-Sharpe with weights summing to 1 in [0, 1]."""
+    from scipy.optimize import minimize
+    N = len(mu)
+    def neg_sharpe(w):
+        ret = float(w @ mu)
+        vol = float(np.sqrt(max(w @ Sigma @ w, 1e-12)))
+        return -ret / vol if vol > 0 else 0.0
+    constraints = [{"type": "eq", "fun": lambda w: w.sum() - 1.0}]
+    bounds = [(0.0, 1.0)] * N
+    w0 = np.ones(N) / N
+    result = minimize(neg_sharpe, w0, method="SLSQP", bounds=bounds,
+                       constraints=constraints,
+                       options={"ftol": 1e-9, "maxiter": 500})
+    w = np.clip(result.x if result.success else w0, 0.0, 1.0)
+    s = w.sum()
+    return w / s if s > 0 else w
+
+
+def run_mpt_on_subset(cells_df: pd.DataFrame, cell_ids: list[str],
+                       year: int) -> dict:
+    """Run MPT on selected cells, OOS year = `year`, IS = prior 5 yrs.
+
+    Returns dict with weights, daily_pnl (OOS year), metrics.
+    """
+    from sklearn.covariance import LedoitWolf
+    if not cell_ids:
+        return {}
+    # Date filter — must use prior 5 years for the MPT solve
+    df = cells_df[["Date"] + cell_ids].copy()
+    df = df.dropna(how="all", subset=cell_ids).set_index("Date")
+    is_start = pd.Timestamp(year - 5, 1, 1)
+    is_end = pd.Timestamp(year - 1, 12, 31)
+    is_df = df[(df.index >= is_start) & (df.index <= is_end)].fillna(0.0)
+    if is_df.empty or len(is_df) < 100:
+        return {"error": "Not enough in-sample data."}
+    mu = is_df.values.mean(axis=0)
+    Sigma = LedoitWolf().fit(is_df.values).covariance_
+    w = _solve_max_sharpe(mu, Sigma)
+    # OOS year P&L
+    oos_start = pd.Timestamp(year, 1, 1)
+    oos_end = pd.Timestamp(year, 12, 31)
+    oos_df = df[(df.index >= oos_start) & (df.index <= oos_end)].fillna(0.0)
+    if oos_df.empty:
+        oos_pnl = pd.Series(dtype=float)
+    else:
+        oos_pnl = pd.Series(oos_df.values @ w, index=oos_df.index)
+    return {
+        "weights": dict(zip(cell_ids, w)),
+        "oos_pnl": oos_pnl,
+        "is_n_days": len(is_df),
+        "mu": mu, "shrinkage": float(LedoitWolf().fit(is_df.values).shrinkage_),
+    }
+
+
+def perf_metrics(s: pd.Series) -> dict:
+    """Compute standard performance metrics from a daily-P&L series."""
+    s = s.dropna()
+    if s.empty:
+        return {}
+    cum = s.cumsum()
+    peak = cum.cummax()
+    dd = cum - peak
+    ann_ret = float(s.mean() * 252)
+    ann_vol = float(s.std() * np.sqrt(252))
+    sharpe = ann_ret / ann_vol if ann_vol > 0 else float("nan")
+    neg = s[s < 0]
+    dn_std = float(neg.std()) if len(neg) > 1 else 0.0
+    sortino = (ann_ret / (dn_std * np.sqrt(252))
+                if dn_std > 0 else float("nan"))
+    return {
+        "n_days": int(len(s)),
+        "total_pnl": float(s.sum()),
+        "sharpe": sharpe, "sortino": sortino,
+        "max_dd": float(dd.min()),
+        "calmar": (ann_ret / abs(float(dd.min()))
+                    if dd.min() < 0 else float("nan")),
+        "win_day_pct": float((s > 0).mean() * 100),
+    }
+
+
 # ── Page header ──────────────────────────────────────────────────
 st.title("Per-Family Portfolio Explorer")
 st.caption("Cap exploration · MPT mean-variance portfolios · Custom subset rebalancing")
@@ -288,14 +383,22 @@ else:
 
 st.divider()
 
-# ── SECTION 3: Custom multiselect ────────────────────────────────
-st.header("3. Custom portfolio — multiselect")
+# ── SECTION 3: Custom multiselect → live MPT solve ───────────────
+st.header("3. Custom portfolio — multiselect + MPT")
 st.caption(
-    "Pick which diffs to include. Each diff contributes its CLASSIFIER's top-1 "
-    f"cell for Y{oos_year}. Quick MPT re-solve coming next iteration."
+    "Pick diffs to include. Each diff contributes its CLASSIFIER's top-1 cell "
+    f"for Y{oos_year}. MPT re-solves on the selected subset using prior 5y "
+    "(LedoitWolf shrunk covariance, max-Sharpe, weights ≥ 0, sum to 1)."
 )
 
-if not universe_year:
+# Load cell universe
+cells_df, cells_meta = load_cell_universe(fam)
+if cells_df.empty:
+    st.warning(
+        f"Cell-level data missing for {fam}. Run "
+        "`analytics/_export_perfamily_cell_data.py` and commit."
+    )
+elif not universe_year:
     st.info(f"No top-1 candidates for Y{oos_year}.")
 else:
     options = [u["diff"] for u in universe_year]
@@ -304,22 +407,113 @@ else:
         options=options,
         default=options[: min(5, len(options))],
     )
-    if not chosen:
-        st.info("Select at least 2 diffs to continue.")
+    if len(chosen) < 2:
+        st.info("Select at least 2 diffs to run MPT.")
     else:
         chosen_rows = [u for u in universe_year if u["diff"] in chosen]
-        st.caption(f"Selected {len(chosen_rows)} cells:")
-        st.dataframe(
-            pd.DataFrame(chosen_rows)[["diff", "shape", "cell", "P_winner"]],
-            use_container_width=True, hide_index=True,
-        )
+        cell_ids = [r["cell"] for r in chosen_rows]
+        missing = [c for c in cell_ids if c not in cells_df.columns]
+        if missing:
+            st.warning(
+                f"{len(missing)} cell(s) not in bundled data: "
+                f"{missing[:5]}{'...' if len(missing) > 5 else ''}. "
+                "Re-run `_export_perfamily_cell_data.py`."
+            )
+            cell_ids = [c for c in cell_ids if c in cells_df.columns]
+        if len(cell_ids) < 2:
+            st.info("Need at least 2 cells with available data.")
+        else:
+            with st.spinner(f"Solving MPT on {len(cell_ids)} cells…"):
+                result = run_mpt_on_subset(cells_df, cell_ids, int(oos_year))
+            if result.get("error"):
+                st.error(result["error"])
+            else:
+                weights = result["weights"]
+                oos_pnl = result["oos_pnl"]
+                # Display weights
+                disp_rows = []
+                for u in chosen_rows:
+                    cid = u["cell"]
+                    if cid in weights:
+                        disp_rows.append({
+                            "diff": u["diff"], "shape": u["shape"],
+                            "cell": cid,
+                            "weight": weights[cid],
+                            "P_winner": u.get("P_winner"),
+                        })
+                w_df = pd.DataFrame(disp_rows).sort_values(
+                    "weight", ascending=False
+                )
+                n_eff = 1.0 / float((w_df["weight"] ** 2).sum())
 
-        st.info(
-            "**Custom MPT solve on this subset is the next iteration.** "
-            "For now, you can see exactly which cells would be in scope and "
-            "their classifier P_winner ranking. To approximate, use the "
-            "cap slider above with cap ≈ number of diffs selected."
-        )
+                # Compute IS metrics (prior 5y portfolio P&L)
+                is_start = pd.Timestamp(int(oos_year) - 5, 1, 1)
+                is_end = pd.Timestamp(int(oos_year) - 1, 12, 31)
+                is_df = (cells_df[["Date"] + cell_ids]
+                          .dropna(how="all", subset=cell_ids)
+                          .set_index("Date"))
+                is_sub = is_df[(is_df.index >= is_start)
+                                & (is_df.index <= is_end)].fillna(0.0)
+                w_vec = np.array([weights[c] for c in cell_ids])
+                is_pnl = pd.Series(is_sub.values @ w_vec, index=is_sub.index)
+
+                # Metric strip
+                m_is = perf_metrics(is_pnl)
+                m_oos = perf_metrics(oos_pnl)
+                mm1, mm2, mm3, mm4, mm5, mm6 = st.columns(6)
+                with mm1:
+                    st.metric("Picks", len(w_df))
+                with mm2:
+                    st.metric("N_eff", f"{n_eff:.2f}")
+                with mm3:
+                    st.metric("Shrinkage", f"{result['shrinkage']:.3f}")
+                with mm4:
+                    st.metric("IS Sharpe (5y)", f"{m_is.get('sharpe', 0):.2f}")
+                with mm5:
+                    st.metric(f"OOS Y{oos_year} P&L",
+                               f"{m_oos.get('total_pnl', 0):+.2f}")
+                with mm6:
+                    st.metric(f"OOS Y{oos_year} Sharpe",
+                               f"{m_oos.get('sharpe', 0):.2f}")
+
+                # Pick table with weights
+                st.subheader("Solved weights")
+                disp = w_df[["diff", "shape", "weight", "cell"]].copy()
+                disp["weight"] = (disp["weight"] * 100).round(2).astype(str) + "%"
+                st.dataframe(disp, use_container_width=True, hide_index=True)
+
+                # OOS equity curve
+                if not oos_pnl.empty:
+                    st.subheader(f"OOS Y{oos_year} cumulative P&L")
+                    cum = oos_pnl.cumsum()
+                    fig_oos = go.Figure()
+                    fig_oos.add_trace(go.Scatter(
+                        x=cum.index, y=cum.values,
+                        mode="lines",
+                        line=dict(color="#1f77b4", width=2),
+                        fill="tozeroy",
+                        fillcolor="rgba(31,119,180,0.10)",
+                        name=f"Custom MPT (cap={len(cell_ids)})",
+                        hovertemplate="%{x|%Y-%m-%d}: $%{y:+.2f}<extra></extra>",
+                    ))
+                    fig_oos.add_hline(y=0, line=dict(color="grey", width=0.7))
+                    fig_oos.update_layout(
+                        height=380,
+                        margin=dict(t=40, b=20, l=10, r=10),
+                        title=dict(
+                            text=f"<b>Custom subset MPT — OOS Y{oos_year}</b>",
+                            font=dict(size=12),
+                        ),
+                        xaxis_title="Date",
+                        yaxis_title="Cumulative P&L",
+                        plot_bgcolor="white",
+                        hovermode="x unified",
+                    )
+                    fig_oos.update_xaxes(showgrid=True,
+                                          gridcolor="rgba(0,0,0,0.06)")
+                    fig_oos.update_yaxes(showgrid=True,
+                                          gridcolor="rgba(0,0,0,0.06)")
+                    st.plotly_chart(fig_oos, use_container_width=True)
 
 st.divider()
 
