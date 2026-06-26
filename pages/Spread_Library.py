@@ -36,11 +36,20 @@ def load_index() -> list[dict]:
 
 
 @st.cache_data(ttl=900)
-def load_spread(filename: str) -> pd.DataFrame:
+def load_spread(filename: str, W: int, SE: float) -> pd.DataFrame:
     fp = SPREAD_DIR / filename
     df = pd.read_parquet(fp)
     df["Date"] = pd.to_datetime(df["Date"])
-    return df.sort_values("Date").reset_index(drop=True)
+    df = df.sort_values("Date").reset_index(drop=True)
+    # Compute rolling median + bands if not already present
+    if "rolling_median" not in df.columns:
+        # ~22 trading days per month
+        win = max(int(W * 22), 5)
+        df["rolling_median"] = df["EW_adj"].rolling(win, min_periods=win).median()
+        df["rolling_std"] = df["EW_adj"].rolling(win, min_periods=win).std()
+        df["upper_bound"] = df["rolling_median"] + SE * df["rolling_std"]
+        df["lower_bound"] = df["rolling_median"] - SE * df["rolling_std"]
+    return df
 
 
 def build_chart(df: pd.DataFrame, diff_name: str, pg: str,
@@ -157,7 +166,7 @@ for i in range(0, len(entries), 2):
     col1, col2 = st.columns(2, gap="small")
     for col, e in zip([col1, col2], entries[i:i + 2]):
         with col:
-            df = load_spread(e["data_file"])
+            df = load_spread(e["data_file"], e["W"], e["SE"])
             if view == "Jan 2025 onwards":
                 df = df[df["Date"] >= pd.Timestamp("2025-01-01")].reset_index(drop=True)
             if df.empty:
