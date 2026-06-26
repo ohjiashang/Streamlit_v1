@@ -1,15 +1,16 @@
-"""Per-family Portfolio Explorer — Dist only (placeholder build).
+"""Per-family Portfolio Explorer — Dist only (presentation build).
 
-Quick exploration UI for per-family MPT portfolios.
+Reads precomputed per-family backtest data from data/perfamily_<F>.json
+(no live picker — works on Streamlit Cloud without backend access).
 
 Sections:
   1. Family + Year selectors (dropdown — D only for now)
-  2. Cap-Sharpe curve + per-year metrics table
+  2. Cap-Sharpe / Sortino / Calmar curve + metrics table
   3. MPT portfolio for selected cap (cap slider)
-  4. Custom multiselect (pick top-1 cells, MPT rebalances on subset)
+  4. Custom multiselect (pick top-1 cells per diff — rebalance MVP)
 """
 from __future__ import annotations
-import io, json, sys
+import json
 from pathlib import Path
 import warnings
 
@@ -17,108 +18,29 @@ import numpy as np
 import pandas as pd
 import streamlit as st
 import matplotlib.pyplot as plt
+import matplotlib.dates as mdates
 
 warnings.filterwarnings("ignore")
 
 st.set_page_config(page_title="Per-Family Portfolio", layout="wide")
 
 # ── Paths ─────────────────────────────────────────────────────────
-ANALYTICS = Path(r"c:\Users\Jia Shang\OneDrive - Hotei Capital\Desktop\BloombergCOT\analytics")
-UNIVERSE_FP = ANALYTICS / "top1_picks_per_year_v2.xlsx"
-CONFIG_FP = ANALYTICS / "perfamily_config.json"
-RESULTS_FP = ANALYTICS / "portfolio_MPT_perfamily_cap5_all.xlsx"
-
-# Add analytics to path for picker imports
-if str(ANALYTICS) not in sys.path:
-    sys.path.insert(0, str(ANALYTICS))
-
+PAGE_DIR = Path(__file__).resolve().parent
+DATA_DIR = PAGE_DIR.parent / "data"
 
 FAMILY_LABEL = {"D": "Distillates",
                  "L": "Lights",
                  "F": "Fuel Oil",
                  "C": "Crude"}
+AVAILABLE_FAMILIES = ["D"]  # extend later
 
 
 @st.cache_data(ttl=900)
-def load_config():
-    return json.loads(CONFIG_FP.read_text())
-
-
-@st.cache_data(ttl=900)
-def load_universe():
-    return pd.read_excel(UNIVERSE_FP, sheet_name="ALL")
-
-
-@st.cache_data(ttl=900)
-def load_cap5_results():
-    return pd.read_excel(RESULTS_FP, sheet_name=None)
-
-
-@st.cache_data(ttl=900)
-def run_cap_sweep(family: str, year: int, caps: list) -> pd.DataFrame:
-    """Run MPT picker for each cap value. Returns per-(cap,year) metrics."""
-    try:
-        from _apply_mpt_perfamily import run_family
-        cfg = load_config()
-        diff_list = cfg["families"][family]
-        ALL = load_universe()
-        panels = {"__formula_idx__": {}}
-        legs = {}
-        rows = []
-        for cap_val in caps:
-            try:
-                kwargs = ({"override_target": int(cap_val)}
-                           if cap_val != "nocap"
-                           else {"no_cap": True})
-                r = run_family(family, diff_list, 3, ALL, panels, legs,
-                                {}, {}, only_year=None, **kwargs)
-                if r["metrics_df"].empty:
-                    continue
-                tot = r["metrics_df"][r["metrics_df"]["label"]
-                                       == f"{family}_TOTAL"].iloc[0]
-                w26 = r["weights_df"][r["weights_df"]["Y_OOS"] == year]
-                n_eff = (1.0 / (w26["weight"] ** 2).sum()
-                          if len(w26) else 0)
-                rows.append({
-                    "cap": cap_val,
-                    "n_picks": len(w26),
-                    "total_pnl": tot["total_pnl"],
-                    "sharpe": tot["sharpe"],
-                    "sortino": tot["sortino"],
-                    "max_dd": tot["max_drawdown"],
-                    "calmar": tot["calmar"],
-                    "win_day": tot["win_day_pct"],
-                    "n_eff": n_eff,
-                })
-            except Exception as e:
-                st.warning(f"cap={cap_val} skipped: {e}")
-        return pd.DataFrame(rows)
-    except ImportError as e:
-        st.error(f"Picker import failed: {e}")
-        return pd.DataFrame()
-
-
-@st.cache_data(ttl=900)
-def run_picker_for_cap(family: str, cap_val) -> dict:
-    """Run MPT picker for a single cap value, return full result."""
-    try:
-        from _apply_mpt_perfamily import run_family
-        cfg = load_config()
-        diff_list = cfg["families"][family]
-        ALL = load_universe()
-        panels = {"__formula_idx__": {}}
-        legs = {}
-        kwargs = ({"override_target": int(cap_val)}
-                   if cap_val != "nocap"
-                   else {"no_cap": True})
-        r = run_family(family, diff_list, 3, ALL, panels, legs,
-                        {}, {}, only_year=None, **kwargs)
-        return r
-    except ImportError as e:
-        st.error(f"Picker import failed: {e}")
-        return {"weights_df": pd.DataFrame(),
-                "daily": pd.Series(dtype=float),
-                "metrics_df": pd.DataFrame()}
+def load_family_data(family: str) -> dict:
+    fp = DATA_DIR / f"perfamily_{family}.json"
+    if not fp.exists():
+        return {}
+    return json.loads(fp.read_text())
 
 
 # ── Page header ──────────────────────────────────────────────────
@@ -126,182 +48,243 @@ st.title("Per-Family Portfolio Explorer")
 st.caption("Cap exploration · MPT mean-variance portfolios · Custom subset rebalancing")
 st.divider()
 
-# ── Sidebar: family + year selector ──────────────────────────────
+# ── Sidebar ───────────────────────────────────────────────────────
 st.sidebar.header("Filters")
-fam = st.sidebar.selectbox("Family",
-                            options=["D"],  # only D for now
-                            format_func=lambda x: f"{x} — {FAMILY_LABEL[x]}",
-                            index=0)
-st.sidebar.caption("Only Distillates available in this build. Lights / Fuel Oil / Crude coming next.")
+fam = st.sidebar.selectbox(
+    "Family",
+    options=AVAILABLE_FAMILIES,
+    format_func=lambda x: f"{x} — {FAMILY_LABEL[x]}",
+    index=0,
+)
+st.sidebar.caption("Only Distillates available in this build. "
+                    "Lights / Fuel Oil / Crude coming next.")
 
-oos_year = st.sidebar.selectbox("OOS Year",
-                                  options=[2026, 2025, 2024, 2023, 2022, 2021],
-                                  index=0)
+data = load_family_data(fam)
+if not data:
+    st.error(f"No data file found for {fam}. Expected: data/perfamily_{fam}.json")
+    st.stop()
+
+years = data["years"]
+oos_year = st.sidebar.selectbox("OOS Year", options=years[::-1], index=0)
 
 st.sidebar.divider()
 st.sidebar.markdown(f"**Family:** {FAMILY_LABEL[fam]}  ")
 st.sidebar.markdown(f"**Year:** {oos_year}  ")
 
 # ── Universe overview ────────────────────────────────────────────
-cfg = load_config()
-diff_list = cfg["families"][fam]
-ALL = load_universe()
-fam_univ = ALL[(ALL["diff"].isin(diff_list)) & (ALL["Y_OOS"] == oos_year)].copy()
-fam_univ["fname"] = fam_univ["cell"].str.split("_W").str[0]
+diff_list = data["diff_list"]
+universe_year = data["universe_by_year"].get(str(oos_year), [])
 
 c1, c2, c3 = st.columns(3)
 with c1:
     st.metric("Universe (n diffs)", len(diff_list))
 with c2:
-    st.metric("Candidate cells", len(fam_univ))
+    st.metric("Top-1 cells (year)", len(universe_year))
 with c3:
-    st.metric("Distinct shapes", fam_univ["shape"].nunique() if not fam_univ.empty else 0)
+    n_caps = len(data["cap_results"])
+    st.metric("Caps tested", n_caps)
 
 st.divider()
 
 # ── SECTION 1: Cap-Sharpe curve ──────────────────────────────────
-st.header("1. Cap exploration")
-st.caption("Backtest Sharpe / Sortino / Max DD across caps. Right shoulder is the robust pick.")
+st.header("1. Cap exploration — performance across caps")
+st.caption("Sharpe / Sortino / Calmar curves across cap values. Right shoulder is the robust pick.")
 
-CAPS_TO_TEST = [3, 4, 5, 6, 7, 8, 10, "nocap"]
+# Build cap table from cap_results
+cap_rows = []
+for cap_str, cap_data in data["cap_results"].items():
+    # Find TOTAL metrics
+    metrics = cap_data["metrics"]
+    tot = next((m for m in metrics if m["label"] == f"{fam}_TOTAL"), None)
+    if tot is None:
+        continue
+    n_year = len(cap_data["weights_by_year"].get(str(oos_year), []))
+    weights_year = cap_data["weights_by_year"].get(str(oos_year), [])
+    if weights_year:
+        w_arr = np.array([w["weight"] for w in weights_year])
+        n_eff = 1.0 / float((w_arr ** 2).sum())
+    else:
+        n_eff = 0
+    cap_rows.append({
+        "cap": cap_str,
+        "n_picks_year": n_year,
+        "n_eff": n_eff,
+        "total_pnl": tot["total_pnl"],
+        "sharpe": tot["sharpe"],
+        "sortino": tot["sortino"],
+        "max_dd": tot["max_drawdown"],
+        "calmar": tot["calmar"],
+        "win_day": tot["win_day_pct"],
+    })
+cap_df = pd.DataFrame(cap_rows)
 
-with st.spinner("Computing cap sweep..."):
-    cap_df = run_cap_sweep(fam, oos_year, CAPS_TO_TEST)
+# Sort by cap value (numeric first, then nocap)
+def cap_sort_key(c):
+    return 100 if c == "nocap" else int(c)
+cap_df["sort_k"] = cap_df["cap"].map(cap_sort_key)
+cap_df = cap_df.sort_values("sort_k").reset_index(drop=True)
 
-if cap_df.empty:
-    st.warning("Cap-sweep computation failed.")
-else:
-    # Chart
-    fig, ax1 = plt.subplots(figsize=(11, 4.5))
-    x = list(range(len(cap_df)))
-    ax1.plot(x, cap_df["sharpe"], "o-", color="steelblue",
-              linewidth=2, markersize=8, label="Sharpe")
-    ax1.plot(x, cap_df["sortino"], "s-", color="seagreen",
-              linewidth=2, markersize=7, label="Sortino")
-    ax1.plot(x, cap_df["calmar"], "^-", color="darkorange",
-              linewidth=2, markersize=7, label="Calmar")
-    ax1.set_xticks(x)
-    ax1.set_xticklabels(cap_df["cap"].astype(str))
-    ax1.set_xlabel("Cap")
-    ax1.set_ylabel("Risk-adjusted return")
-    ax1.grid(alpha=0.3)
-    ax1.axhline(0, color="grey", linewidth=0.7)
-    ax1.legend(loc="upper left")
-    ax1.set_title(f"{FAMILY_LABEL[fam]} — Cap sweep (TOTAL, 2021-2026 OOS)")
-    st.pyplot(fig, clear_figure=True)
+# Chart
+fig, ax1 = plt.subplots(figsize=(11, 4.5))
+x = list(range(len(cap_df)))
+ax1.plot(x, cap_df["sharpe"], "o-", color="steelblue",
+         linewidth=2.5, markersize=10, label="Sharpe")
+ax1.plot(x, cap_df["sortino"], "s-", color="seagreen",
+         linewidth=2, markersize=8, label="Sortino")
+ax1.plot(x, cap_df["calmar"], "^-", color="darkorange",
+         linewidth=2, markersize=8, label="Calmar")
+ax1.set_xticks(x)
+ax1.set_xticklabels(cap_df["cap"].astype(str))
+ax1.set_xlabel("Cap (max picks)", fontsize=11)
+ax1.set_ylabel("Risk-adjusted return", fontsize=11)
+ax1.grid(alpha=0.3)
+ax1.axhline(0, color="grey", linewidth=0.7)
+ax1.legend(loc="upper left", fontsize=10)
+ax1.set_title(f"{FAMILY_LABEL[fam]} — Cap sweep (TOTAL, 2021-2026 OOS)",
+              fontsize=12, fontweight="bold")
+st.pyplot(fig, clear_figure=True)
 
-    # Table
-    show_df = cap_df.copy()
-    show_df["sharpe"] = show_df["sharpe"].round(2)
-    show_df["sortino"] = show_df["sortino"].round(2)
-    show_df["max_dd"] = show_df["max_dd"].round(2)
-    show_df["calmar"] = show_df["calmar"].round(2)
-    show_df["total_pnl"] = show_df["total_pnl"].round(2)
-    show_df["win_day"] = show_df["win_day"].round(1)
-    show_df["n_eff"] = show_df["n_eff"].round(2)
-    st.dataframe(show_df, use_container_width=True, hide_index=True)
+# Table
+st.subheader("Cap-sweep metrics table")
+show_df = cap_df.drop(columns=["sort_k"]).copy()
+show_df["sharpe"] = show_df["sharpe"].round(2)
+show_df["sortino"] = show_df["sortino"].round(2)
+show_df["max_dd"] = show_df["max_dd"].round(2)
+show_df["calmar"] = show_df["calmar"].round(2)
+show_df["total_pnl"] = show_df["total_pnl"].round(2)
+show_df["win_day"] = show_df["win_day"].round(1)
+show_df["n_eff"] = show_df["n_eff"].round(2)
+st.dataframe(show_df, use_container_width=True, hide_index=True)
 
 st.divider()
 
-# ── SECTION 2: MPT picker for chosen cap ─────────────────────────
+# ── SECTION 2: MPT portfolio for chosen cap ──────────────────────
 st.header("2. MPT portfolio for selected cap")
-st.caption(f"Choose a cap; backend runs MPT on {FAMILY_LABEL[fam]} universe and shows resulting picks.")
+st.caption(f"Pick a cap; below is the MPT-optimised portfolio for {FAMILY_LABEL[fam]} Y{oos_year}.")
 
-cap_choice = st.slider("Cap", min_value=2,
-                         max_value=max(len(diff_list), 5),
-                         value=5)
+cap_options_str = cap_df["cap"].tolist()
+cap_choice = st.select_slider("Cap", options=cap_options_str, value="5")
 
-with st.spinner(f"Running MPT picker for cap={cap_choice}..."):
-    result = run_picker_for_cap(fam, cap_choice)
-
-if result["weights_df"].empty:
-    st.warning("Picker returned no results.")
+# Pull metrics + weights for selected cap
+sel_cap = data["cap_results"].get(cap_choice, {})
+if not sel_cap:
+    st.warning(f"No data for cap={cap_choice}")
 else:
-    # Filter to chosen year
-    w_year = result["weights_df"][result["weights_df"]["Y_OOS"] == oos_year]
-    if w_year.empty:
-        st.info(f"No picks for Y{oos_year}.")
-    else:
-        w_year = w_year.sort_values("weight", ascending=False)
-        n_eff = 1.0 / (w_year["weight"] ** 2).sum()
+    weights_year = sel_cap["weights_by_year"].get(str(oos_year), [])
+    metrics = sel_cap["metrics"]
+    m_total = next((m for m in metrics if m["label"] == f"{fam}_TOTAL"), {})
+    m_year = next((m for m in metrics if m["label"] == f"{fam}_Y{oos_year}"), {})
 
-        # Metric strip
-        m_tot = result["metrics_df"][result["metrics_df"]["label"]
-                                       == f"{fam}_TOTAL"].iloc[0]
-        m_yr = result["metrics_df"][result["metrics_df"]["label"]
-                                       == f"{fam}_Y{oos_year}"]
+    if not weights_year:
+        st.info(f"No picks for cap={cap_choice}, Y{oos_year}.")
+    else:
+        w_df = pd.DataFrame(weights_year).sort_values("weight", ascending=False)
+        n_eff = 1.0 / float((w_df["weight"] ** 2).sum())
 
         mc1, mc2, mc3, mc4, mc5 = st.columns(5)
         with mc1:
-            st.metric("Picks", len(w_year))
+            st.metric("Picks", len(w_df))
         with mc2:
             st.metric("N_eff", f"{n_eff:.2f}")
         with mc3:
-            st.metric("TOTAL Sharpe", f"{m_tot['sharpe']:.2f}")
+            st.metric("TOTAL Sharpe", f"{m_total.get('sharpe', 0):.2f}")
         with mc4:
-            st.metric("TOTAL Max DD", f"{m_tot['max_drawdown']:.2f}")
+            st.metric("TOTAL Max DD", f"{m_total.get('max_drawdown', 0):.2f}")
         with mc5:
-            if not m_yr.empty:
-                st.metric(f"Y{oos_year} P&L",
-                           f"{m_yr.iloc[0]['total_pnl']:+.2f}")
+            st.metric(f"Y{oos_year} P&L",
+                       f"{m_year.get('total_pnl', 0):+.2f}")
 
         # Pick table
-        display_df = w_year[["diff", "shape", "weight", "cell"]].copy()
-        display_df["weight"] = (display_df["weight"] * 100).round(2).astype(str) + "%"
-        st.dataframe(display_df, use_container_width=True, hide_index=True)
+        st.subheader(f"Picks (cap={cap_choice}, Y{oos_year})")
+        disp = w_df[["diff", "shape", "weight", "cell"]].copy()
+        disp["weight"] = (disp["weight"] * 100).round(2).astype(str) + "%"
+        st.dataframe(disp, use_container_width=True, hide_index=True)
 
         # Per-year metrics
         st.subheader("Per-year metrics")
-        m_disp = result["metrics_df"].copy()
-        m_disp = m_disp[m_disp["label"] != f"{fam}_TOTAL"]
-        m_disp["Year"] = m_disp["label"].str.replace(f"{fam}_Y", "")
-        keep_cols = ["Year", "n_days", "total_pnl", "sharpe", "sortino",
-                      "max_drawdown", "calmar", "win_day_pct"]
-        m_disp = m_disp[keep_cols].round(3)
-        st.dataframe(m_disp, use_container_width=True, hide_index=True)
+        m_rows = [m for m in metrics if m["label"] != f"{fam}_TOTAL"]
+        m_disp = pd.DataFrame(m_rows)
+        if not m_disp.empty:
+            m_disp["Year"] = m_disp["label"].str.replace(f"{fam}_Y", "")
+            keep = ["Year", "n_days", "total_pnl", "sharpe", "sortino",
+                     "max_drawdown", "calmar", "win_day_pct"]
+            m_disp = m_disp[keep].round(3)
+            st.dataframe(m_disp, use_container_width=True, hide_index=True)
+
+        # Equity curve
+        st.subheader("Cumulative P&L (yearly reset)")
+        daily = pd.DataFrame(sel_cap["daily_pnl"])
+        if not daily.empty:
+            daily["Date"] = pd.to_datetime(daily["Date"])
+            daily = daily.set_index("Date")["pnl"].sort_index()
+            yr_cum = daily.groupby(daily.index.year).cumsum()
+            fig2, ax = plt.subplots(figsize=(12, 4))
+            colors = plt.cm.tab10.colors
+            for i, Y in enumerate(sorted(daily.index.year.unique())):
+                mask = daily.index.year == Y
+                sub = yr_cum[mask]
+                if sub.empty:
+                    continue
+                color = colors[i % len(colors)]
+                ax.plot(sub.index, sub.values, linewidth=1.6,
+                         color=color, label=f"Y{Y}")
+                ax.fill_between(sub.index, 0, sub.values,
+                                 where=(sub.values >= 0), color=color, alpha=0.1)
+                ax.fill_between(sub.index, 0, sub.values,
+                                 where=(sub.values < 0), color=color, alpha=0.1)
+                last_v = float(sub.iloc[-1])
+                ax.annotate(f"{last_v:+.1f}", xy=(sub.index[-1], last_v),
+                             xytext=(4, 0), textcoords="offset points",
+                             fontsize=9, color=color, fontweight="bold",
+                             va="center")
+            ax.axhline(0, color="grey", linewidth=0.7)
+            ax.grid(alpha=0.3)
+            ax.legend(loc="upper left", ncol=3, fontsize=9)
+            ax.xaxis.set_major_locator(mdates.YearLocator())
+            ax.xaxis.set_major_formatter(mdates.DateFormatter("%Y"))
+            ax.set_title(f"{FAMILY_LABEL[fam]} cap={cap_choice} — yearly-reset cumulative P&L",
+                          fontsize=11, fontweight="bold")
+            st.pyplot(fig2, clear_figure=True)
 
 st.divider()
 
 # ── SECTION 3: Custom multiselect ────────────────────────────────
-st.header("3. Custom portfolio builder")
-st.caption("Pick top-1 cells per diff for Y" + str(oos_year)
-            + ". MPT rebalances the weights on selected subset.")
+st.header("3. Custom portfolio — multiselect")
+st.caption(
+    "Pick which diffs to include. Each diff contributes its CLASSIFIER's top-1 "
+    f"cell for Y{oos_year}. Quick MPT re-solve coming next iteration."
+)
 
-if fam_univ.empty:
-    st.info("No candidates in universe for this family/year.")
+if not universe_year:
+    st.info(f"No top-1 candidates for Y{oos_year}.")
 else:
-    # Show top-1 per diff
-    top1_per_diff = (fam_univ.sort_values("P_winner", ascending=False)
-                              .groupby("diff").head(1)
-                              .sort_values("diff")
-                              .reset_index(drop=True))
-    options = top1_per_diff["diff"].tolist()
-
+    options = [u["diff"] for u in universe_year]
     chosen = st.multiselect(
-        f"Select diffs to include (top-1 cell per diff, Y{oos_year}):",
+        f"Select diffs (top-1 cell of each for Y{oos_year}):",
         options=options,
         default=options[: min(5, len(options))],
     )
     if not chosen:
-        st.info("Select at least 2 diffs to run MPT.")
-    elif len(chosen) < 2:
-        st.warning("Need at least 2 selections for MPT.")
+        st.info("Select at least 2 diffs to continue.")
     else:
-        chosen_rows = top1_per_diff[top1_per_diff["diff"].isin(chosen)]
+        chosen_rows = [u for u in universe_year if u["diff"] in chosen]
         st.caption(f"Selected {len(chosen_rows)} cells:")
         st.dataframe(
-            chosen_rows[["diff", "shape", "cell"]],
+            pd.DataFrame(chosen_rows)[["diff", "shape", "cell", "P_winner"]],
             use_container_width=True, hide_index=True,
         )
+
         st.info(
-            "Custom MPT solve on this subset coming in the next iteration. "
-            "For now, you can see exactly which cells would be in scope."
+            "**Custom MPT solve on this subset is the next iteration.** "
+            "For now, you can see exactly which cells would be in scope and "
+            "their classifier P_winner ranking. To approximate, use the "
+            "cap slider above with cap ≈ number of diffs selected."
         )
 
 st.divider()
 
-# ── Footer ───────────────────────────────────────────────────────
 st.caption(
-    "Data source: `portfolio_MPT_perfamily_cap5_all.xlsx` + "
-    "`top1_picks_per_year_v2.xlsx` + MPT cache at `analytics/mpt_cache/`."
+    f"Data source: `data/perfamily_{fam}.json` "
+    "(precomputed from `portfolio_MPT_perfamily_cap5_all.xlsx` + "
+    "`top1_picks_per_year_v2.xlsx` + `analytics/mpt_cache/`)."
 )
