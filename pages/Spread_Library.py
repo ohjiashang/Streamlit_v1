@@ -53,7 +53,7 @@ def load_spread(filename: str, W: int, SE: float) -> pd.DataFrame:
 
 
 def build_chart(df: pd.DataFrame, diff_name: str, pg: str,
-                 last_med: float | None) -> go.Figure:
+                 shape: str, last_med: float | None) -> go.Figure:
     fig = go.Figure()
     # Bands
     fig.add_trace(go.Scatter(
@@ -94,7 +94,8 @@ def build_chart(df: pd.DataFrame, diff_name: str, pg: str,
         height=240,
         margin=dict(t=30, b=20, l=8, r=8),
         title=dict(
-            text=f"<b><span style='color:{pg_color}'>{pg}</span></b> · {diff_name}  "
+            text=f"<b><span style='color:{pg_color}'>{pg}</span></b> · {diff_name} "
+                  f"<span style='color:gray;font-size:10px'>({shape})</span> "
                   f"<span style='color:gray;font-size:11px'>last={last['EW_adj']:.2f}</span>",
             font=dict(size=12),
             x=0.02, xanchor="left",
@@ -110,8 +111,9 @@ def build_chart(df: pd.DataFrame, diff_name: str, pg: str,
 # ── Header ───────────────────────────────────────────────────────
 st.title("Spread Library")
 st.caption(
-    "Gallery of all 38 diffs · 1mbox shape · Y2026 classifier-recommended cell. "
-    "Use this to scan visually for mean-reverting vs trending series."
+    "Gallery of all 38 diffs · classifier-recommended top-1 cell per diff (Y2026 OOS, "
+    "best across outright/1mbox/3mbox). Use this to scan visually for mean-reverting "
+    "vs trending series."
 )
 
 # ── Load index ───────────────────────────────────────────────────
@@ -156,8 +158,7 @@ with n3:
     last_bars = sorted({e["last_bar"] for e in entries})
     st.metric("Latest bar", last_bars[-1] if last_bars else "n/a")
 with n4:
-    st.metric("Source",
-               "Universe Y2026 top-1 / 1mbox")
+    st.metric("Source", "Y2026 top-1 (all shapes)")
 
 st.divider()
 
@@ -172,7 +173,8 @@ for i in range(0, len(entries), 2):
             if df.empty:
                 st.caption(f"{e['diff']}: no data in selected range")
                 continue
-            fig = build_chart(df, e["diff"], e["product_group"], e.get("last_med"))
+            fig = build_chart(df, e["diff"], e["product_group"],
+                                e.get("shape", ""), e.get("last_med"))
             st.plotly_chart(fig, use_container_width=True,
                               config={"displayModeBar": False})
 
