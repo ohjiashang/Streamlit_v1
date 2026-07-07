@@ -283,63 +283,110 @@ def derive_status_row(pick: dict) -> dict:
     trades = load_pick_trades(fname)
     current_contract = str(df.iloc[-1]["contract"]) if not df.empty else ""
 
-    # ── Raw-spread display helpers ────────────────────────────────────
+    # ── Build raw series + EW_adj series ──────────────────────────────
+    # `raw_series` = sum of signed leg columns = the OLD-contract spread
+    #   (leg columns always point to current contracts that haven't rolled).
+    # `ew_adj_series` = framework's blended EW. CAVEAT: the framework's
+    #   blending uses the last-5-POPULATED dates of each chunk. When the
+    #   incremental refresh has data only through mid-roll, the framework
+    #   treats the last populated date as k=1 (100% NEW). That's why on
+    #   roll day 1 (Jun 24) EW_adj reflects 100% NEW contract spread, not
+    #   the user's expected 80/20 blend.
+    df_sorted = df.sort_values("Date").reset_index(drop=True) if not df.empty else df
+    ew_adj_series = None
+    if not df_sorted.empty and "EW_adj" in df_sorted.columns:
+        ew_adj_series = df_sorted["EW_adj"].copy()
+        ew_adj_series.index = pd.to_datetime(df_sorted["Date"])
     leg_cols = [c for c in df.columns
                 if c not in {"Date", "EW", "EW_adj", "rolling_median",
                               "rolling_std", "upper_bound", "lower_bound",
                               "contract", "pnl_running"}
                 and not c.endswith("_contract")] if not df.empty else []
-    df_sorted = df.sort_values("Date").reset_index(drop=True) if not df.empty else df
     raw_series = None
     if leg_cols and not df_sorted.empty:
         raw_series = df_sorted[leg_cols].sum(axis=1)
         raw_series.index = pd.to_datetime(df_sorted["Date"])
 
-    def _raw_at(ts: pd.Timestamp) -> float | None:
+    # ── Real-calendar blending of the live tail ───────────────────────
+    # For the LAST bar, replace EW_adj with the calendar-correct blend
+    # using the REAL last-5 BDs of that calendar month (holiday-aware).
+    # The framework's last-5-populated convention gets fixed live here.
+    from pandas.tseries.holiday import AbstractHolidayCalendar, Holiday, GoodFriday
+    from pandas.tseries.offsets import CustomBusinessDay
+    class _StratCal(AbstractHolidayCalendar):
+        rules = [Holiday("NewYears", month=1, day=1), GoodFriday,
+                 Holiday("Christmas", month=12, day=25)]
+    _bday = CustomBusinessDay(calendar=_StratCal())
+
+    def _real_last_n_bds(yr: int, mo: int, n: int = 5) -> list[pd.Timestamp]:
+        ms = pd.Timestamp(yr, mo, 1)
+        me = ms + pd.offsets.MonthEnd(0)
+        bds = list(pd.bdate_range(start=ms, end=me, freq=_bday))
+        return [pd.Timestamp(d).normalize() for d in bds[-n:]]
+
+    def _blended_at(ts: pd.Timestamp) -> float | None:
+        """Calendar-correct blended price at `ts`. On dates inside the real
+        last-5-BDs of the month, computes
+            old_w * raw[ts] + new_w * ew_adj[ts]
+        where the framework's EW_adj equals 100%-NEW on the latest populated
+        date. On dates outside the roll window, returns raw."""
         if raw_series is None:
             return None
-        if ts in raw_series.index:
+        if ts not in raw_series.index:
+            prior = raw_series.index[raw_series.index <= ts]
+            if len(prior) == 0:
+                return None
+            ts = prior[-1]
+        ts_n = pd.Timestamp(ts).normalize()
+        real_last5 = _real_last_n_bds(int(ts_n.year), int(ts_n.month), n=5)
+        if ts_n not in real_last5:
             return float(raw_series.loc[ts])
-        # Find nearest earlier date if exact match missing
-        prior = raw_series.index[raw_series.index <= ts]
-        if len(prior) == 0:
-            return None
-        return float(raw_series.loc[prior[-1]])
+        # ts is in real last-5-BDs of its calendar month → blend
+        k = 5 - real_last5.index(ts_n)   # k=5 first day, k=1 last day
+        old_w = (k - 1) / 5
+        new_w = (5 - k + 1) / 5
+        raw_v = float(raw_series.loc[ts])
+        ew_v = (float(ew_adj_series.loc[ts])
+                if ew_adj_series is not None and ts in ew_adj_series.index
+                else raw_v)
+        return old_w * raw_v + new_w * ew_v
 
-    # Use raw spread at last bar for "Current" column AND z-score
-    # (so Status σ-distance uses raw vs blended median — small inconsistency,
-    # but the user wants the live displayed Current to drive everything they see).
-    ew_raw_today = (float(raw_series.iloc[-1])
-                     if raw_series is not None and len(raw_series) > 0
-                     else pick["last_ew_adj"])
-    ew = ew_raw_today  # the "Current" displayed value
+    # Displayed Current = calendar-correct blend at the latest bar.
+    if raw_series is not None and len(raw_series) > 0:
+        last_ts = raw_series.index[-1]
+        ew = _blended_at(last_ts)
+        if ew is None:
+            ew = pick["last_ew_adj"]
+    else:
+        ew = pick["last_ew_adj"]
+    ew_blended_today = ew
     z = (ew - med) / std if (med is not None and std and std > 0) else np.nan
 
-    # ── Daily P&L (open-trade only, raw frame) ────────────────────────
-    # If the position was opened at today's close, Day P&L = 0 (nothing was
-    # held during yesterday → today). For any earlier entry, Day P&L =
-    # direction × (today's raw close − yesterday's raw close).
+    # ── Day P&L (blended frame) ───────────────────────────────────────
     daily_raw = 0.0
     if open_trade is not None and raw_series is not None and len(raw_series) >= 2:
         direction = +1 if str(open_trade["side"]).lower() == "long" else -1
         entry_d = pd.Timestamp(open_trade["entry_date"])
         last_bar_d = pd.Timestamp(raw_series.index[-1])
         if entry_d.date() < last_bar_d.date():
-            daily_raw = direction * float(raw_series.iloc[-1] - raw_series.iloc[-2])
-        # else: same-day entry → no overnight delta to mark, daily_raw stays 0
+            prev_bar_d = pd.Timestamp(raw_series.index[-2])
+            curr_b = _blended_at(last_bar_d)
+            prev_b = _blended_at(prev_bar_d)
+            if curr_b is not None and prev_b is not None:
+                daily_raw = direction * float(curr_b - prev_b)
 
     # ── Realised YTD (blended frame — unchanged) ──────────────────────
     ew_series_blended = df.set_index("Date")["EW_adj"]
     realised_daily = compute_daily_pnl(trades, ew_series_blended, YEAR, open_trade=None)
     ytd_realised_raw = float(realised_daily.sum()) if len(realised_daily) > 0 else 0.0
 
-    # ── Open-trade Unrealised P&L (raw frame) ─────────────────────────
+    # ── Open-trade Unrealised P&L (blended) ───────────────────────────
     if open_trade is not None and raw_series is not None and len(raw_series) > 0:
         entry_d = pd.Timestamp(open_trade["entry_date"])
-        raw_entry = _raw_at(entry_d)
-        if raw_entry is not None:
+        blended_entry = _blended_at(entry_d)
+        if blended_entry is not None:
             direction = +1 if str(open_trade["side"]).lower() == "long" else -1
-            open_pnl_raw = direction * (ew_raw_today - raw_entry)
+            open_pnl_raw = direction * (ew_blended_today - blended_entry)
         else:
             open_pnl_raw = 0.0
     else:
@@ -348,10 +395,11 @@ def derive_status_row(pick: dict) -> dict:
     if open_trade is not None:
         entry_date_str = (f"{pd.Timestamp(open_trade['entry_date']).date().isoformat()} "
                           f"({open_trade['days_held']}d)")
-        # Display entry in raw frame to match the Current column
+        # Display entry in BLENDED frame to match the Current column.
         entry_d = pd.Timestamp(open_trade["entry_date"])
-        raw_entry_display = _raw_at(entry_d)
-        entry_price_display = (round(raw_entry_display, 4) if raw_entry_display is not None
+        blended_entry_display = _blended_at(entry_d)
+        entry_price_display = (round(blended_entry_display, 4)
+                                if blended_entry_display is not None
                                 else open_trade['entry_price'])
         # Distance to median (take-profit) exit, in σ and $
         if not pd.isna(z) and med is not None:

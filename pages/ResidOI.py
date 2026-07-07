@@ -173,9 +173,17 @@ def build_product_table(products, pct_col='pct_chg'):
         prod_data['ref_bbl'] = prod_data.apply(
             lambda r: r.get(ref_col, 0) * conv_map.get(r['symbol'], 1.0), axis=1
         )
+        prod_data['oi_bbl'] = prod_data.apply(
+            lambda r: r['t2_oi'] * conv_map.get(r['symbol'], 1.0), axis=1
+        )
+        prod_data['vol_bbl'] = prod_data.apply(
+            lambda r: r['vol_2d'] * conv_map.get(r['symbol'], 1.0), axis=1
+        )
         agg = prod_data.groupby('contract').agg(
             resid_bbl=('resid_bbl', 'sum'),
             ref_bbl=('ref_bbl', 'sum'),
+            oi_bbl=('oi_bbl', 'sum'),
+            vol_bbl=('vol_bbl', 'sum'),
         ).reset_index()
         agg['product'] = prod
         all_rows.append(agg)
@@ -187,6 +195,9 @@ def build_product_table(products, pct_col='pct_chg'):
     df_all['pct_chg'] = df_all.apply(
         lambda r: round((r['resid_bbl'] / r['ref_bbl'] - 1) * 100, 1) if r['ref_bbl'] else None, axis=1
     )
+    df_all['v_oi'] = df_all.apply(
+        lambda r: round(r['vol_bbl'] / r['oi_bbl'], 4) if r['oi_bbl'] > 0 else None, axis=1
+    )
 
     pivot_resid = df_all.pivot(index='contract', columns='product', values='resid_bbl')
     pivot_resid = pivot_resid.reindex(columns=products)
@@ -194,7 +205,10 @@ def build_product_table(products, pct_col='pct_chg'):
     pivot_pct = df_all.pivot(index='contract', columns='product', values='pct_chg')
     pivot_pct = pivot_pct.reindex(columns=products)
 
-    return pivot_resid, pivot_pct
+    pivot_voi = df_all.pivot(index='contract', columns='product', values='v_oi')
+    pivot_voi = pivot_voi.reindex(columns=products)
+
+    return pivot_resid, pivot_pct, pivot_voi
 
 def build_symbol_table(products):
     """Pivot: rows=contracts, columns=symbols, values=resid OI (original units)."""
@@ -355,12 +369,19 @@ def render_section(title, products):
             styled, n = style_pivot(pivot_resid, pivot_pct)
             st.dataframe(styled, height=35 * (n + 1) + 2, use_container_width=True)
     else:
-        pivot_resid, pivot_pct = build_product_table(prods_in_selection, global_pct_col)
+        pivot_resid, pivot_pct, pivot_voi = build_product_table(prods_in_selection, global_pct_col)
         if not pivot_resid.empty:
             st.markdown("**Main Products Resid OI (1,000 BBLs)**")
             st.markdown(f"*{metric_label}*")
             styled, n = style_pivot(pivot_resid, pivot_pct)
             st.dataframe(styled, height=35 * (n + 1) + 2, use_container_width=True)
+
+            # V/OI table
+            sorted_idx = sorted(pivot_voi.index, key=contract_sort_key)
+            pivot_voi = pivot_voi.reindex(sorted_idx)
+            pivot_voi_display = pivot_voi.applymap(lambda x: f'{x:.2%}' if pd.notna(x) else '0')
+            st.markdown("**V/OI Ratio (2d Vol / T-2 OI, in BBLs)**")
+            st.dataframe(pivot_voi_display, height=35 * (len(pivot_voi) + 1) + 2, use_container_width=True)
 
 # ── Display ───────────────────────────────────────────────────────
 

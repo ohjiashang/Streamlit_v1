@@ -183,12 +183,18 @@ open_pnl_portfolio = float(status_df["open_trade_pnl_weighted"].sum())
 realised_ytd_portfolio = float(status_df["ytd_realised_weighted"].sum())
 n_active = int(status_df["status"].str.startswith(("LONG", "SHORT")).sum())
 
-# Max loss = worst negative cumulative P&L YTD (deepest point of equity curve below 0)
-if not port.empty:
-    _cum_ytd = port["portfolio_daily_pnl"].cumsum()
-    max_loss_ytd = float(min(_cum_ytd.min(), 0.0))
-else:
-    max_loss_ytd = 0.0
+# Wtd Max Loss = sum of (weight × worst single-trade intra-trade MAE) across picks
+# for trades entered in YEAR. Mirrors the methodology in MR_Yearly_Breakdown.docx,
+# so the scorecard number matches what's in the strategy docs.
+wtd_max_loss = 0.0
+for _, _r in status_df.iterrows():
+    _t = load_pick_trades(_r["fname"])
+    if _t.empty or "max_loss" not in _t.columns:
+        continue
+    _t_yr = _t[_t["entry_date"].dt.year == YEAR]
+    if _t_yr.empty:
+        continue
+    wtd_max_loss += float(_r["weight"]) * float(_t_yr["max_loss"].min())
 
 c1, c2, c3, c4, c5, c6, c7, _ = st.columns([1, 1, 1, 1, 1, 1, 1, 2])
 with c1:
@@ -210,7 +216,8 @@ with c4:
 with c5:
     st.metric("Active trades", f"{n_active} / {len(state['picks'])}")
 with c6:
-    st.metric("Max loss", f"${max_loss_ytd:+.3f}")
+    st.metric("Wtd Max Loss", f"${wtd_max_loss:+.3f}",
+              help="Sum across picks of (portfolio weight × worst single-trade intra-trade max adverse excursion) for trades entered this year. Matches the 'Wtd Max Loss' column in MR_Yearly_Breakdown.docx.")
 with c7:
     st.metric("Max DD", f"${metrics['max_dd']:+.3f}")
 
@@ -370,14 +377,41 @@ df = load_pick_df(sel["fname"])
 trades = load_pick_trades(sel["fname"])
 open_trade = load_pick_open_trade(sel["fname"])
 
-# 18-month tail chart with bands + entries/exits.
-# This chart stays in the STRATEGY's blended frame end-to-end so that the
-# bands, entry/exit markers, and the EW_adj line are all self-consistent —
-# i.e., a SHORT entry that fired because price > upper band is visually
-# obvious. The Portfolio Status "Current" column and the scorecards swap
-# to raw sum-of-legs for the live values; the chart deliberately doesn't.
-tail_start = df["Date"].max() - pd.DateOffset(months=18)
-chart_df = df[df["Date"] >= tail_start].copy()
+# Configurable date range. Default: Jan 2025 → last bar. Persisted per pick in
+# session_state so switching picks doesn't reset the selection.
+# This chart stays in the STRATEGY's blended frame end-to-end so bands, markers,
+# and EW_adj are self-consistent (a SHORT entry that fired because price > upper
+# band is visually obvious). Portfolio Status "Current" and the scorecards use
+# raw sum-of-legs for live values; the chart deliberately doesn't.
+_full_min = df["Date"].min().date() if not df.empty else pd.Timestamp("2025-01-01").date()
+_full_max = df["Date"].max().date() if not df.empty else pd.Timestamp.today().date()
+_default_start = max(pd.Timestamp("2025-01-01").date(), _full_min)
+_default_end = _full_max
+_range_key = f"drilldown_range_{sel['fname']}"
+_prev = st.session_state.get(_range_key, (_default_start, _default_end))
+col_dr_l, col_dr_r = st.columns([3, 1])
+with col_dr_l:
+    drilldown_range = st.date_input(
+        "Chart date range",
+        value=_prev,
+        min_value=_full_min,
+        max_value=_full_max,
+        key=_range_key,
+        help=("Default is Jan 2025 → latest bar. Adjust to any window within the "
+                "full backtest, or use the rangeslider below the chart to drag."),
+    )
+with col_dr_r:
+    if st.button("Reset range", key=f"reset_{sel['fname']}"):
+        st.session_state[_range_key] = (_default_start, _default_end)
+        st.rerun()
+# date_input may return a single date if only one is picked yet
+if isinstance(drilldown_range, tuple) and len(drilldown_range) == 2:
+    _rng_start, _rng_end = drilldown_range
+else:
+    _rng_start, _rng_end = _default_start, _default_end
+tail_start = pd.Timestamp(_rng_start)
+tail_end = pd.Timestamp(_rng_end)
+chart_df = df[(df["Date"] >= tail_start) & (df["Date"] <= tail_end)].copy()
 fig = make_subplots(rows=2, cols=1, shared_xaxes=True, vertical_spacing=0.04,
                     row_heights=[0.7, 0.3])
 fig.add_trace(go.Scatter(x=chart_df["Date"], y=chart_df["EW_adj"],
@@ -394,7 +428,9 @@ fig.add_trace(go.Scatter(x=chart_df["Date"], y=chart_df["lower_bound"],
                           fill="tonexty", fillcolor="rgba(173,216,230,0.15)"),
               row=1, col=1)
 
-trades_tail = trades[trades["entry_date"] >= tail_start] if not trades.empty else trades
+trades_tail = (trades[(trades["entry_date"] >= tail_start) &
+                        (trades["entry_date"] <= tail_end)]
+                if not trades.empty else trades)
 if not trades_tail.empty:
     longs = trades_tail[trades_tail["side"] == "long"]
     shorts = trades_tail[trades_tail["side"] == "short"]
@@ -421,15 +457,35 @@ if open_trade is not None:
                                           color="orange", line=dict(width=1.5, color="black"))),
                   row=1, col=1)
 
-# pnl_running subplot (year-to-date slice)
-pnl_running_ytd = chart_df[chart_df["Date"] >= pd.Timestamp(YEAR, 1, 1)]
-fig.add_trace(go.Scatter(x=pnl_running_ytd["Date"], y=pnl_running_ytd["pnl_running"],
+# Bottom panel: cumulative cell P&L within the selected date range.
+# Respects the same window as the top panel so both scroll together.
+fig.add_trace(go.Scatter(x=chart_df["Date"], y=chart_df["pnl_running"],
                           name="cum pnl (cell, since start)", line=dict(color="darkblue", width=1.0)),
               row=2, col=1)
 
-fig.update_layout(height=600, margin=dict(t=30, b=20, l=10, r=10),
+fig.update_layout(height=640, margin=dict(t=40, b=20, l=10, r=10),
                   legend=dict(orientation="h", yanchor="top", y=-0.05))
-fig.update_xaxes(title_text="Date", row=2, col=1)
+# Quick-preset buttons + rangeslider on the shared x-axis (bottom subplot).
+# The rangeslider lets users drag/pinch the window without leaving the chart.
+fig.update_xaxes(
+    title_text="Date", row=2, col=1,
+    rangeslider=dict(visible=True, thickness=0.06),
+    rangeselector=dict(
+        buttons=[
+            dict(count=3,  label="3M",  step="month", stepmode="backward"),
+            dict(count=6,  label="6M",  step="month", stepmode="backward"),
+            dict(count=1,  label="YTD", step="year",  stepmode="todate"),
+            dict(count=1,  label="1Y",  step="year",  stepmode="backward"),
+            dict(count=2,  label="2Y",  step="year",  stepmode="backward"),
+            dict(step="all", label="All"),
+        ],
+        y=1.10, x=0.0,
+    ),
+)
+# Force the initial view to the range selected in the date_input widget.
+# User can still drag the rangeslider or click preset buttons after.
+fig.update_xaxes(range=[tail_start, tail_end], row=1, col=1)
+fig.update_xaxes(range=[tail_start, tail_end], row=2, col=1)
 fig.update_yaxes(title_text="spread_normalised", row=1, col=1)
 fig.update_yaxes(title_text="Cum P&L", row=2, col=1)
 st.plotly_chart(fig, use_container_width=True)
