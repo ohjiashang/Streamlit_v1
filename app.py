@@ -387,13 +387,17 @@ _full_min = df["Date"].min().date() if not df.empty else pd.Timestamp("2025-01-0
 _full_max = df["Date"].max().date() if not df.empty else pd.Timestamp.today().date()
 _default_start = max(pd.Timestamp("2025-01-01").date(), _full_min)
 _default_end = _full_max
-_range_key = f"drilldown_range_{sel['fname']}"
-_prev = st.session_state.get(_range_key, (_default_start, _default_end))
+# Nonce-based key: incrementing the reset counter invalidates the widget's
+# stored value so the next render initialises with the default. Direct
+# session_state assignment on a widget-owned key is forbidden by Streamlit.
+_reset_ctr_key = f"drilldown_reset_ctr_{sel['fname']}"
+_reset_ctr = st.session_state.get(_reset_ctr_key, 0)
+_range_key = f"drilldown_range_{sel['fname']}_{_reset_ctr}"
 col_dr_l, col_dr_r = st.columns([3, 1])
 with col_dr_l:
     drilldown_range = st.date_input(
         "Chart date range",
-        value=_prev,
+        value=(_default_start, _default_end),
         min_value=_full_min,
         max_value=_full_max,
         key=_range_key,
@@ -401,8 +405,8 @@ with col_dr_l:
                 "full backtest, or use the rangeslider below the chart to drag."),
     )
 with col_dr_r:
-    if st.button("Reset range", key=f"reset_{sel['fname']}"):
-        st.session_state[_range_key] = (_default_start, _default_end)
+    if st.button("Reset range", key=f"reset_btn_{sel['fname']}"):
+        st.session_state[_reset_ctr_key] = _reset_ctr + 1
         st.rerun()
 # date_input may return a single date if only one is picked yet
 if isinstance(drilldown_range, tuple) and len(drilldown_range) == 2:
