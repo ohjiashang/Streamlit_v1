@@ -112,8 +112,11 @@ st.subheader("Cumulative equity — Shadow vs Production")
 
 shadow_d["Date"] = pd.to_datetime(shadow_d["Date"])
 prod_d["Date"] = pd.to_datetime(prod_d["Date"])
-shadow_cum = shadow_d.sort_values("Date").set_index("Date")["daily_pnl"].cumsum()
-prod_cum = prod_d.sort_values("Date").set_index("Date")["daily_pnl"].cumsum()
+# Column names differ between the two sources — normalise
+shadow_pnl_col = "daily_pnl" if "daily_pnl" in shadow_d.columns else "portfolio_daily_pnl"
+prod_pnl_col = "portfolio_daily_pnl" if "portfolio_daily_pnl" in prod_d.columns else "daily_pnl"
+shadow_cum = shadow_d.sort_values("Date").set_index("Date")[shadow_pnl_col].cumsum()
+prod_cum = prod_d.sort_values("Date").set_index("Date")[prod_pnl_col].cumsum()
 
 fig_cum = go.Figure()
 fig_cum.add_trace(go.Scatter(x=prod_cum.index, y=prod_cum.values,
