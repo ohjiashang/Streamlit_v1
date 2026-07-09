@@ -44,10 +44,22 @@ def load_pick_trades(cell: str) -> pd.DataFrame:
     return t
 
 
+# ── Universe toggle (top of page) ──────────────────────
+universe_choice = st.radio(
+    "Candidate universe for shadow MPT",
+    options=["With IP diffs", "Without IP diffs"],
+    horizontal=True,
+    help="Toggle between the two shadow variants. WITH IP adds the 7 Inter-Product diffs "
+          "(RB-HO, S92-S0.5, etc.) to the MPT candidate pool. WITHOUT IP restricts to only "
+          "the 4 traditional families (Crude, Distillates, Fuel Oil, Lights, plus GTGN).",
+)
+use_no_ip = (universe_choice == "Without IP diffs")
+_suffix = "_no_ip" if use_no_ip else ""
+
 # ── Data ───────────────────────────────────────────────
-shadow_w = load_parquet("shadow_weights")
-shadow_m = load_parquet("shadow_metrics")
-shadow_d = load_parquet("shadow_daily_pnl")
+shadow_w = load_parquet(f"shadow{_suffix}_weights")
+shadow_m = load_parquet(f"shadow{_suffix}_metrics")
+shadow_d = load_parquet(f"shadow{_suffix}_daily_pnl")
 prod_m = load_parquet("prod_metrics")
 prod_d = load_parquet("prod_daily_pnl")
 
@@ -70,15 +82,17 @@ last_bar = shadow_d["Date"].max()
 first_bar = shadow_d["Date"].min()
 
 with col_hdr_l:
-    st.title("Mean Reversion — Shadow (Entry-VaR $-MPT)")
+    ip_tag = "no IP" if use_no_ip else "with IP"
+    st.title(f"Mean Reversion — Shadow (Entry-VaR $-MPT, {ip_tag})")
     st.info(
         f"**Backtest window:** {first_bar.date()} → {last_bar.date()}  ·  "
         f"**{len(years)} OOS years**  ·  "
+        f"**Universe:** {'traditional 4 families only' if use_no_ip else 'includes IP diffs'}  ·  "
         f"Diagnostic — production **NOT** touched"
     )
     st.caption(
         "$-MPT re-solves each year's optimizer on entry-VaR-scaled dollar P&L (basis $1 unit capital). "
-        "Includes IP diffs in the candidate universe. See methodology at the bottom."
+        "Toggle universe above. See methodology at the bottom."
     )
 with col_hdr_r:
     YEAR = st.selectbox("Year", years, index=len(years) - 1)
