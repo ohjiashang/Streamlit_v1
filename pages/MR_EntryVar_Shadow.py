@@ -44,22 +44,37 @@ def load_pick_trades(cell: str) -> pd.DataFrame:
     return t
 
 
-# ── Universe toggle (top of page) ──────────────────────
-universe_choice = st.radio(
-    "Candidate universe for shadow MPT",
-    options=["With IP diffs", "Without IP diffs"],
-    horizontal=True,
-    help="Toggle between the two shadow variants. WITH IP adds the 7 Inter-Product diffs "
-          "(RB-HO, S92-S0.5, etc.) to the MPT candidate pool. WITHOUT IP restricts to only "
-          "the 4 traditional families (Crude, Distillates, Fuel Oil, Lights, plus GTGN).",
-)
+# ── Variant toggles (top of page) ──────────────────────
+col_u, col_n = st.columns([1, 1])
+with col_u:
+    universe_choice = st.radio(
+        "Candidate universe",
+        options=["With IP diffs", "Without IP diffs"],
+        horizontal=True,
+        help="With IP adds the 7 Inter-Product diffs (RB-HO, S92-S0.5, etc.) to the MPT "
+              "candidate pool. Without IP restricts to the 4 traditional families + GTGN.",
+    )
+with col_n:
+    n_choice = st.radio(
+        "Number of picks",
+        options=["7 picks", "9 picks"],
+        horizontal=True,
+        help="7 picks matches production. 9 picks is the sensitivity-analysis sweet spot "
+              "(highest Calmar, lower Max DD).",
+    )
 use_no_ip = (universe_choice == "Without IP diffs")
-_suffix = "_no_ip" if use_no_ip else ""
+use_top9 = (n_choice == "9 picks")
+_ip_suffix = "_no_ip" if use_no_ip else ""
+_n_suffix = "_top9" if use_top9 else ""
+# top-9 no-IP not bundled yet; fall back to top-9 with-IP if user picks it
+if use_top9 and use_no_ip:
+    st.warning("Top-9 without-IP variant not bundled yet — showing top-9 WITH IP instead.")
+    _ip_suffix = ""
 
 # ── Data ───────────────────────────────────────────────
-shadow_w = load_parquet(f"shadow{_suffix}_weights")
-shadow_m = load_parquet(f"shadow{_suffix}_metrics")
-shadow_d = load_parquet(f"shadow{_suffix}_daily_pnl")
+shadow_w = load_parquet(f"shadow{_n_suffix}{_ip_suffix}_weights")
+shadow_m = load_parquet(f"shadow{_n_suffix}{_ip_suffix}_metrics")
+shadow_d = load_parquet(f"shadow{_n_suffix}{_ip_suffix}_daily_pnl")
 prod_m = load_parquet("prod_metrics")
 prod_d = load_parquet("prod_daily_pnl")
 
@@ -83,16 +98,18 @@ first_bar = shadow_d["Date"].min()
 
 with col_hdr_l:
     ip_tag = "no IP" if use_no_ip else "with IP"
-    st.title(f"Mean Reversion — Shadow (Entry-VaR $-MPT, {ip_tag})")
+    n_tag = "top-9" if use_top9 else "top-7"
+    st.title(f"Mean Reversion — Shadow (Entry-VaR $-MPT, {n_tag}, {ip_tag})")
     st.info(
         f"**Backtest window:** {first_bar.date()} → {last_bar.date()}  ·  "
         f"**{len(years)} OOS years**  ·  "
         f"**Universe:** {'traditional 4 families only' if use_no_ip else 'includes IP diffs'}  ·  "
+        f"**Picks/year:** {'9 (sensitivity sweet spot)' if use_top9 else '7 (matches prod)'}  ·  "
         f"Diagnostic — production **NOT** touched"
     )
     st.caption(
         "$-MPT re-solves each year's optimizer on entry-VaR-scaled dollar P&L (basis $1 unit capital). "
-        "Toggle universe above. See methodology at the bottom."
+        "Toggle universe / pick count above. See methodology at the bottom."
     )
 with col_hdr_r:
     YEAR = st.selectbox("Year", years, index=len(years) - 1)
