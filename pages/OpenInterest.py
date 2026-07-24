@@ -10,13 +10,24 @@ from utils.oi_daily import (
     get_all_OI,
     get_pivot_table,
     style_forward_cells,
-    plot_forwards_combined, 
+    plot_forwards_combined,
     get_n_day_OI,
-    get_OI_volume_table
+    get_OI_volume_table,
+    format_last_refreshed,
 )
 
 st.set_page_config(layout="wide")
 st.title("Open Interest")
+
+# ── Last refreshed banner (Firebase blob metadata) ─────────────────
+# AEO_24m_OI.xlsx is a canonical, always-present OI file.
+# OI_volume.xlsx tracks the "OI & Volume" table (updated independently).
+_oi_refreshed = format_last_refreshed("OI/AEO_24m_OI.xlsx")
+_vol_refreshed = format_last_refreshed("Test/OI_volume.xlsx")
+st.info(
+    f"**OI files refreshed:** {_oi_refreshed}   ·   "
+    f"**OI & Volume refreshed:** {_vol_refreshed}"
+)
 
 # ── Sidebar: scrollable checklist ──────────────────────────────────
 # Read the Excel file from the data folder

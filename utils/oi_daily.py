@@ -1,14 +1,52 @@
 import pandas as pd
 from datetime import datetime
 import calendar
+import json
 from functools import reduce, lru_cache
 import urllib.parse
+import urllib.request
 import streamlit as st
 import plotly.graph_objects as go
 import numpy as np
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from concurrent.futures import ThreadPoolExecutor
 from utils.oi_constants import OI_V2_SPREAD_SYMBOLS
+
+
+FIREBASE_BUCKET = "hotei-streamlit.firebasestorage.app"
+
+
+@st.cache_data(ttl=600)
+def get_firebase_last_updated(remote_path: str) -> datetime | None:
+    """Firebase Storage metadata `updated` (UTC upload time) for a blob.
+    Returns None if the blob doesn't exist or metadata fetch fails.
+
+    Uses the /o/{path} endpoint WITHOUT ?alt=media which returns JSON metadata
+    instead of the file bytes."""
+    try:
+        encoded = urllib.parse.quote(remote_path, safe="")
+        url = (f"https://firebasestorage.googleapis.com/v0/b/"
+               f"{FIREBASE_BUCKET}/o/{encoded}")
+        with urllib.request.urlopen(url, timeout=10) as r:
+            meta = json.loads(r.read().decode("utf-8"))
+        updated_str = meta.get("updated")
+        if not updated_str:
+            return None
+        # ISO8601 with 'Z' suffix -> parse as UTC
+        return datetime.fromisoformat(updated_str.replace("Z", "+00:00"))
+    except Exception:
+        return None
+
+
+def format_last_refreshed(remote_path: str, tz_offset_hours: float = 8.0) -> str:
+    """Return a display string like 'Refreshed: 2026-07-24 14:35 SGT' from the
+    Firebase blob metadata. Defaults to SGT display (UTC+8).
+    Returns '(unknown)' if metadata fetch fails."""
+    ts_utc = get_firebase_last_updated(remote_path)
+    if ts_utc is None:
+        return "(unknown)"
+    ts_local = ts_utc.astimezone(timezone(timedelta(hours=tz_offset_hours)))
+    return ts_local.strftime("%Y-%m-%d %H:%M SGT")
 
 @lru_cache(maxsize=None)
 def read_dfs(symbol, suffix="OI"):
