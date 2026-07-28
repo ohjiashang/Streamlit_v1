@@ -18,6 +18,7 @@ st.set_page_config(page_title="TAPS", layout="wide")
 FIREBASE_BUCKET = "hotei-streamlit.firebasestorage.app"
 REMOTE_PATH = "taps/display.json"
 REFRESH_SEC = 30
+HIGHLIGHT_THRESHOLD = 5000   # highlight non-total cells whose live value >= this
 
 
 def _public_url() -> str:
@@ -37,11 +38,23 @@ def render_table(t: dict) -> None:
     matrix = [t["totals"]] + [t["bins"][bl] for bl in t["bin_labels"]]
     df = pd.DataFrame(matrix, index=index, columns=t["columns"])
 
-    def _bold_total(row):
-        hit = row.name == t["total_label"]
-        # Semi-transparent grey reads well in BOTH light and dark themes
-        # (darkens a light bg, lightens a dark bg); text colour left to the theme.
-        return ["font-weight:bold;background-color:rgba(128,128,128,0.25)" if hit else "" for _ in row]
+    def _cell_style(row):
+        # Total row: semi-transparent grey (reads in both light/dark themes).
+        # Non-total cells >= threshold: semi-transparent AMBER (distinct from grey).
+        # Both are live/conditional — no state; at 07:00 reset or a drop below the
+        # threshold the value changes and the highlight simply goes away.
+        is_total = row.name == t["total_label"]
+        out = []
+        for v in row:
+            if is_total:
+                out.append("font-weight:bold;background-color:rgba(128,128,128,0.25)")
+                continue
+            try:
+                hot = float(v) >= HIGHLIGHT_THRESHOLD
+            except (ValueError, TypeError):
+                hot = False
+            out.append("font-weight:bold;background-color:rgba(255,165,0,0.55)" if hot else "")
+        return out
 
     def _fmt(v):
         # whole numbers as ints (0, 112); composite fractions to 1 dp (32.7)
@@ -49,7 +62,7 @@ def render_table(t: dict) -> None:
         return f"{int(f):,}" if f == int(f) else f"{f:,.1f}"
 
     styled = (df.style
-                .apply(_bold_total, axis=1)
+                .apply(_cell_style, axis=1)
                 .set_properties(**{"text-align": "right"})
                 .format(_fmt))
 
