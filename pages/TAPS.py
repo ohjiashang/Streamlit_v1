@@ -84,20 +84,13 @@ def live():
 
     tables = {t["title"]: t for t in data.get("tables", [])}
 
-    # Row 1: Dubai — full window width.
-    if "Dubai" in tables:
-        render_table(tables["Dubai"])
-
-    # Row 2: SGO + SKO — split the full width 50/50.
-    row2 = st.columns(2)
-    for i, name in enumerate(["SGO", "SKO"]):
-        if name in tables:
-            with row2[i]:
-                render_table(tables[name])
-
-    # Row 3: S92 — full window width.
-    if "S92" in tables:
-        render_table(tables["S92"])
+    # 2x2 grid: Dubai | S92  on top, SGO | SKO below.
+    for left, right in [("Dubai", "S92"), ("SGO", "SKO")]:
+        cols = st.columns(2)
+        for col, name in zip(cols, (left, right)):
+            if name in tables:
+                with col:
+                    render_table(tables[name])
 
 
 live()
