@@ -18,7 +18,15 @@ st.set_page_config(page_title="TAPS", layout="wide")
 FIREBASE_BUCKET = "hotei-streamlit.firebasestorage.app"
 REMOTE_PATH = "taps/display.json"
 REFRESH_SEC = 30
-HIGHLIGHT_THRESHOLD = 5000   # highlight non-total cells whose live value >= this
+# Highlight the premium (+XC) or discount (-XC) group when that group's summed value
+# (across all its rows and contracts) reaches the table's threshold. FLAT + totals never
+# highlight. Live/conditional — resets at 07:00 or when the sum drops back below.
+HIGHLIGHT_THRESHOLDS = {
+    "Dubai": 1000,
+    "SGO": 500, "SKO": 500, "S92": 500,
+    "S0.5": 500 / 6.35, "S380": 500 / 6.35,
+}
+HIGHLIGHT_DEFAULT = 500
 
 
 def _public_url() -> str:
@@ -38,23 +46,23 @@ def render_table(t: dict) -> None:
     matrix = [t["totals"]] + [t["bins"][bl] for bl in t["bin_labels"]]
     df = pd.DataFrame(matrix, index=index, columns=t["columns"])
 
+    # Premium (+XC) / discount (-XC) groups — FLAT and the totals row are excluded.
+    # Highlight the WHOLE group when its summed value (all its rows, all contracts)
+    # reaches the table's threshold.
+    def _grp_sum(prefix):
+        return sum(float(v) for bl in t["bin_labels"] if bl.startswith(prefix)
+                   for v in t["bins"][bl])
+    thr = HIGHLIGHT_THRESHOLDS.get(t["title"], HIGHLIGHT_DEFAULT)
+    prem_hot = _grp_sum("+") >= thr
+    disc_hot = _grp_sum("-") >= thr
+
     def _cell_style(row):
-        # Total row: semi-transparent grey (reads in both light/dark themes).
-        # Non-total cells >= threshold: semi-transparent AMBER (distinct from grey).
-        # Both are live/conditional — no state; at 07:00 reset or a drop below the
-        # threshold the value changes and the highlight simply goes away.
-        is_total = row.name == t["total_label"]
-        out = []
-        for v in row:
-            if is_total:
-                out.append("font-weight:bold;background-color:rgba(128,128,128,0.25)")
-                continue
-            try:
-                hot = float(v) >= HIGHLIGHT_THRESHOLD
-            except (ValueError, TypeError):
-                hot = False
-            out.append("font-weight:bold;background-color:rgba(255,165,0,0.55)" if hot else "")
-        return out
+        name = str(row.name)
+        if name == t["total_label"]:   # totals row: grey emphasis (both themes)
+            return ["font-weight:bold;background-color:rgba(128,128,128,0.25)"] * len(row)
+        if (name.startswith("+") and prem_hot) or (name.startswith("-") and disc_hot):
+            return ["font-weight:bold;background-color:rgba(255,165,0,0.55)"] * len(row)
+        return [""] * len(row)         # FLAT and un-triggered groups: no highlight
 
     def _fmt(v):
         # whole numbers as ints (0, 112); composite fractions to 1 dp (32.7)
