@@ -1,8 +1,9 @@
 """TAPS page — live T&S bin tallies (Dubai / SGO / SKO).
 
-Reads the JSON the DubaiTS daemon uploads to Firebase Storage every cycle
-(taps/display.json, written with Cache-Control: no-cache so reads are fresh) and
-auto-refreshes. Works anywhere — no credentials needed, the object is public-read.
+Reads taps/display.json from Firebase Storage (uploaded by the DubaiTS daemon each
+cycle, Cache-Control: no-cache) and auto-refreshes every 30s. Public-read, no creds.
+
+Layout: Dubai on row 1, SGO + SKO on row 2; each table is 1/4 of the page width.
 """
 import json
 import time
@@ -16,6 +17,7 @@ st.set_page_config(page_title="TAPS", layout="wide")
 
 FIREBASE_BUCKET = "hotei-streamlit.firebasestorage.app"
 REMOTE_PATH = "taps/display.json"
+REFRESH_SEC = 30
 
 
 def _public_url() -> str:
@@ -43,17 +45,14 @@ def render_table(t: dict) -> None:
                 .apply(_bold_total, axis=1)
                 .set_properties(**{"text-align": "right"})
                 .format("{:,}"))
-    st.markdown(f"### {t['title']}")
+    st.markdown(f"#### {t['title']}")
     st.table(styled)
 
 
 st.title("TAPS")
 
-refresh_sec = st.sidebar.slider("Auto-refresh (seconds)", 5, 60, 10, 5)
-st.sidebar.caption("Lag ≈ daemon poll (15–30s) + this refresh. Data via Firebase (no-cache).")
 
-
-@st.fragment(run_every=f"{refresh_sec}s")
+@st.fragment(run_every=f"{REFRESH_SEC}s")
 def live():
     try:
         data = fetch()
@@ -66,19 +65,28 @@ def live():
     if data.get("updated_epoch"):
         age = max(0, int(time.time() - float(data["updated_epoch"])))
 
-    left, right = st.columns([4, 1])
-    with left:
-        age_txt = f"  ·  {age}s ago" if age is not None else ""
-        st.caption(f"**Last updated:** {updated} SGT{age_txt}")
-    with right:
-        st.caption(f"↻ every {refresh_sec}s")
+    # Prominent status banner (app.py style): green when fresh, amber when stale.
+    age_txt = f"  ·  **{age}s ago**" if age is not None else ""
+    banner = f"**Last updated:** {updated} SGT{age_txt}  ·  ↻ auto-refresh every {REFRESH_SEC}s"
     if age is not None and age > 180:
-        st.warning(f"⚠️ Data is {age}s old — daemon may be paused/stopped, or market is closed.")
+        st.warning(banner + "  ·  ⚠️ Data is stale — daemon may be paused/stopped, or market closed.")
+    else:
+        st.success(banner)
 
-    tables = data.get("tables", [])
-    for col, t in zip(st.columns(len(tables)), tables):
-        with col:
-            render_table(t)
+    tables = {t["title"]: t for t in data.get("tables", [])}
+
+    # Row 1: Dubai — 1/4 page width (first of four columns).
+    row1 = st.columns(4)
+    if "Dubai" in tables:
+        with row1[0]:
+            render_table(tables["Dubai"])
+
+    # Row 2: SGO + SKO — each 1/4 page width.
+    row2 = st.columns(4)
+    for i, name in enumerate(["SGO", "SKO"]):
+        if name in tables:
+            with row2[i]:
+                render_table(tables[name])
 
 
 live()
