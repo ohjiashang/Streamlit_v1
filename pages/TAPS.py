@@ -76,13 +76,9 @@ def live():
     if data.get("updated_epoch"):
         age = max(0, int(time.time() - float(data["updated_epoch"])))
 
-    # Prominent status banner (app.py style): green when fresh, amber when stale.
+    # Status banner (app.py style): last-updated time + how long ago.
     age_txt = f"  ·  **{age}s ago**" if age is not None else ""
-    banner = f"**Last updated:** {updated} SGT{age_txt}  ·  ↻ auto-refresh every {REFRESH_SEC}s"
-    if age is not None and age > 180:
-        st.warning(banner + "  ·  ⚠️ Data is stale — daemon may be paused/stopped, or market closed.")
-    else:
-        st.success(banner)
+    st.success(f"**Last updated:** {updated} SGT{age_txt}  ·  ↻ auto-refresh every {REFRESH_SEC}s")
 
     tables = {t["title"]: t for t in data.get("tables", [])}
 
