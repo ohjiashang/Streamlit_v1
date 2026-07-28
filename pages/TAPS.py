@@ -43,10 +43,15 @@ def render_table(t: dict) -> None:
         # (darkens a light bg, lightens a dark bg); text colour left to the theme.
         return ["font-weight:bold;background-color:rgba(128,128,128,0.25)" if hit else "" for _ in row]
 
+    def _fmt(v):
+        # whole numbers as ints (0, 112); composite fractions to 1 dp (32.7)
+        f = float(v)
+        return f"{int(f):,}" if f == int(f) else f"{f:,.1f}"
+
     styled = (df.style
                 .apply(_bold_total, axis=1)
                 .set_properties(**{"text-align": "right"})
-                .format("{:,}"))
+                .format(_fmt))
 
     # Thick grey rules: under the totals row, and wrapping the FLAT row
     # (span the label + data cells).
@@ -84,8 +89,8 @@ def live():
 
     tables = {t["title"]: t for t in data.get("tables", [])}
 
-    # 2x2 grid: Dubai | S92  on top, SGO | SKO below.
-    for left, right in [("Dubai", "S92"), ("SGO", "SKO")]:
+    # grid: Dubai | S92, SGO | SKO, S0.5 | S380 (S380 shows once added).
+    for left, right in [("Dubai", "S92"), ("SGO", "SKO"), ("S0.5", "S380")]:
         cols = st.columns(2)
         for col, name in zip(cols, (left, right)):
             if name in tables:
