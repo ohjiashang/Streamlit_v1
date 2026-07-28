@@ -46,15 +46,16 @@ def render_table(t: dict) -> None:
                 .set_properties(**{"text-align": "right"})
                 .format("{:,}"))
 
-    # Thick top + bottom borders around the FLAT row (spans label + data cells).
+    # Thick grey rules: under the totals row, and wrapping the FLAT row
+    # (span the label + data cells).
+    grey = "3px solid #888"
+    styles = [{"selector": "tbody tr:nth-child(1) td, tbody tr:nth-child(1) th",
+               "props": [("border-bottom", grey)]}]
     if "FLAT" in t["bin_labels"]:
         pos = 2 + t["bin_labels"].index("FLAT")   # tbody nth-child (row 1 = totals)
-        styled = styled.set_table_styles(
-            [{"selector": f"tbody tr:nth-child({pos}) td, tbody tr:nth-child({pos}) th",
-              "props": [("border-top", "3px solid #444"),
-                        ("border-bottom", "3px solid #444")]}],
-            overwrite=False,
-        )
+        styles.append({"selector": f"tbody tr:nth-child({pos}) td, tbody tr:nth-child({pos}) th",
+                       "props": [("border-top", grey), ("border-bottom", grey)]})
+    styled = styled.set_table_styles(styles, overwrite=False)
     st.markdown(f"#### {t['title']}")
     st.table(styled)
 
