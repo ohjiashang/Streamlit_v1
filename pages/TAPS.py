@@ -99,5 +99,11 @@ def live():
             with row2[i]:
                 render_table(tables[name])
 
+    # Row 3: S92 — 1/4 page width.
+    row3 = st.columns(4)
+    if "S92" in tables:
+        with row3[0]:
+            render_table(tables["S92"])
+
 
 live()
