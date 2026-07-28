@@ -39,7 +39,9 @@ def render_table(t: dict) -> None:
 
     def _bold_total(row):
         hit = row.name == t["total_label"]
-        return ["font-weight:bold;background-color:#eef2ff" if hit else "" for _ in row]
+        # Semi-transparent grey reads well in BOTH light and dark themes
+        # (darkens a light bg, lightens a dark bg); text colour left to the theme.
+        return ["font-weight:bold;background-color:rgba(128,128,128,0.25)" if hit else "" for _ in row]
 
     styled = (df.style
                 .apply(_bold_total, axis=1)
