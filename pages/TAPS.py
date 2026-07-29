@@ -110,9 +110,9 @@ def live():
 
     tables = {t["title"]: t for t in data.get("tables", [])}
 
-    # grid: Dubai | S92, SGO | SKO, S0.5 | S380, Brent SMM | LSGO SMM.
-    for left, right in [("Dubai", "S92"), ("SGO", "SKO"), ("S0.5", "S380"),
-                        ("Brent SMM", "LSGO SMM")]:
+    # grid: Dubai | Brent SMM, S92 | SGO, SKO | S0.5, S380 | LSGO SMM.
+    for left, right in [("Dubai", "Brent SMM"), ("S92", "SGO"),
+                        ("SKO", "S0.5"), ("S380", "LSGO SMM")]:
         cols = st.columns(2)
         for col, name in zip(cols, (left, right)):
             if name in tables:
