@@ -90,14 +90,32 @@ def render_table(t: dict) -> None:
 
 st.title("TAPS")
 
+# Auto-refresh cadence follows the daemon's current poll interval (in the feed):
+# 30s normally, 10s during the fast window. Seed from a boot fetch; if the daemon's
+# interval changes while the page is open, rebuild the fragment via a full rerun.
+if "refresh_interval" not in st.session_state:
+    try:
+        st.session_state.refresh_interval = int(fetch().get("interval", REFRESH_SEC))
+    except Exception:
+        st.session_state.refresh_interval = REFRESH_SEC
+st.session_state.refresh_interval = max(5, st.session_state.refresh_interval)
 
-@st.fragment(run_every=f"{REFRESH_SEC}s")
+
+@st.fragment(run_every=f"{st.session_state.refresh_interval}s")
 def live():
     try:
         data = fetch()
     except Exception as e:
         st.error(f"Could not load data from Firebase: {e}")
         return
+
+    cur = max(5, int(data.get("interval", st.session_state.refresh_interval)))
+    if cur != st.session_state.refresh_interval:    # cadence changed -> rebuild at new rate
+        st.session_state.refresh_interval = cur
+        try:
+            st.rerun(scope="app")
+        except TypeError:
+            st.rerun()
 
     updated = data.get("updated", "?")
     age = None
@@ -106,7 +124,7 @@ def live():
 
     # Status banner (app.py style): last-updated time + how long ago.
     age_txt = f"  ·  **{age}s ago**" if age is not None else ""
-    st.success(f"**Last updated:** {updated} SGT{age_txt}  ·  ↻ auto-refresh every {REFRESH_SEC}s")
+    st.success(f"**Last updated:** {updated} SGT{age_txt}  ·  ↻ auto-refresh every {cur}s")
 
     tables = {t["title"]: t for t in data.get("tables", [])}
 
