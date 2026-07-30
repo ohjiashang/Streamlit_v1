@@ -18,8 +18,9 @@ st.set_page_config(page_title="TAPS", layout="wide")
 FIREBASE_BUCKET = "hotei-streamlit.firebasestorage.app"
 REMOTE_PATH = "taps/display.json"
 REFRESH_SEC = 30
-PAGE_POLL_SEC = 3   # how often the PAGE re-reads the Firebase JSON (NO ICE — decoupled
-                    # from the daemon's poll, so it cuts on-screen lag at zero ICE cost)
+PAGE_POLL_SEC = 3   # page Firebase-read rate DURING the daemon's fast (10s) window (NO ICE).
+                    # Outside it, the page reads at the daemon's own cadence (30s) — no point
+                    # polling faster than the data changes. Cuts lag at zero ICE cost.
 # Highlight the premium (+XC) or discount (-XC) group when that group's summed value
 # (across all its rows and contracts) reaches the table's threshold. FLAT + totals never
 # highlight. Live/conditional — resets at 07:00 or when the sum drops back below.
@@ -92,11 +93,20 @@ def render_table(t: dict) -> None:
 
 st.title("TAPS")
 
-# The PAGE re-reads the tiny Firebase JSON every PAGE_POLL_SEC — this touches NO ICE, so
-# it's cheap and independent of the daemon. Polling faster than the daemon's data cadence
-# keeps on-screen lag low without adding any ICE load. The banner still shows the daemon's
-# actual data-update cadence (10s in the fast window, 30s otherwise) from the feed.
-@st.fragment(run_every=f"{PAGE_POLL_SEC}s")
+# Page read rate: fast (PAGE_POLL_SEC) during the daemon's 10s window to cut lag, else match
+# the daemon's cadence (reading faster than the data changes is wasted). Reading the JSON
+# touches NO ICE. Re-tune via a full rerun when the daemon's cadence changes.
+def _page_poll(di):
+    return PAGE_POLL_SEC if di <= 10 else di
+
+if "page_poll" not in st.session_state:
+    try:
+        st.session_state.page_poll = _page_poll(int(fetch().get("interval", REFRESH_SEC)))
+    except Exception:
+        st.session_state.page_poll = REFRESH_SEC
+
+
+@st.fragment(run_every=f"{st.session_state.page_poll}s")
 def live():
     try:
         data = fetch()
@@ -106,6 +116,14 @@ def live():
 
     updated = data.get("updated", "?")
     di = int(data.get("interval", REFRESH_SEC))     # daemon's data-update cadence
+    want = _page_poll(di)
+    if want != st.session_state.page_poll:          # cadence changed -> re-tune page rate
+        st.session_state.page_poll = want
+        try:
+            st.rerun(scope="app")
+        except TypeError:
+            st.rerun()
+
     age = None
     if data.get("updated_epoch"):
         age = max(0, int(time.time() - float(data["updated_epoch"])))
