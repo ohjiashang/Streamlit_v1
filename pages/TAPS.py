@@ -18,6 +18,8 @@ st.set_page_config(page_title="TAPS", layout="wide")
 FIREBASE_BUCKET = "hotei-streamlit.firebasestorage.app"
 REMOTE_PATH = "taps/display.json"
 REFRESH_SEC = 30
+PAGE_POLL_SEC = 3   # how often the PAGE re-reads the Firebase JSON (NO ICE — decoupled
+                    # from the daemon's poll, so it cuts on-screen lag at zero ICE cost)
 # Highlight the premium (+XC) or discount (-XC) group when that group's summed value
 # (across all its rows and contracts) reaches the table's threshold. FLAT + totals never
 # highlight. Live/conditional — resets at 07:00 or when the sum drops back below.
@@ -90,18 +92,11 @@ def render_table(t: dict) -> None:
 
 st.title("TAPS")
 
-# Auto-refresh cadence follows the daemon's current poll interval (in the feed):
-# 30s normally, 10s during the fast window. Seed from a boot fetch; if the daemon's
-# interval changes while the page is open, rebuild the fragment via a full rerun.
-if "refresh_interval" not in st.session_state:
-    try:
-        st.session_state.refresh_interval = int(fetch().get("interval", REFRESH_SEC))
-    except Exception:
-        st.session_state.refresh_interval = REFRESH_SEC
-st.session_state.refresh_interval = max(5, st.session_state.refresh_interval)
-
-
-@st.fragment(run_every=f"{st.session_state.refresh_interval}s")
+# The PAGE re-reads the tiny Firebase JSON every PAGE_POLL_SEC — this touches NO ICE, so
+# it's cheap and independent of the daemon. Polling faster than the daemon's data cadence
+# keeps on-screen lag low without adding any ICE load. The banner still shows the daemon's
+# actual data-update cadence (10s in the fast window, 30s otherwise) from the feed.
+@st.fragment(run_every=f"{PAGE_POLL_SEC}s")
 def live():
     try:
         data = fetch()
@@ -109,22 +104,15 @@ def live():
         st.error(f"Could not load data from Firebase: {e}")
         return
 
-    cur = max(5, int(data.get("interval", st.session_state.refresh_interval)))
-    if cur != st.session_state.refresh_interval:    # cadence changed -> rebuild at new rate
-        st.session_state.refresh_interval = cur
-        try:
-            st.rerun(scope="app")
-        except TypeError:
-            st.rerun()
-
     updated = data.get("updated", "?")
+    di = int(data.get("interval", REFRESH_SEC))     # daemon's data-update cadence
     age = None
     if data.get("updated_epoch"):
         age = max(0, int(time.time() - float(data["updated_epoch"])))
 
-    # Status banner (app.py style): last-updated time + how long ago.
+    # Status banner: last-updated time, how fresh, and the data-update cadence.
     age_txt = f"  ·  **{age}s ago**" if age is not None else ""
-    st.success(f"**Last updated:** {updated} SGT{age_txt}  ·  ↻ auto-refresh every {cur}s")
+    st.success(f"**Last updated:** {updated} SGT{age_txt}  ·  ↻ updates every {di}s")
 
     tables = {t["title"]: t for t in data.get("tables", [])}
 
