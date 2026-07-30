@@ -18,7 +18,7 @@ st.set_page_config(page_title="TAPS", layout="wide")
 FIREBASE_BUCKET = "hotei-streamlit.firebasestorage.app"
 REMOTE_PATH = "taps/display.json"
 REFRESH_SEC = 30
-PAGE_POLL_SEC = 3   # page Firebase-read rate DURING the daemon's fast (10s) window (NO ICE).
+PAGE_POLL_SEC = 5   # page Firebase-read rate DURING the daemon's fast (10s ICE) window (NO ICE).
                     # Outside it, the page reads at the daemon's own cadence (30s) — no point
                     # polling faster than the data changes. Cuts lag at zero ICE cost.
 # Highlight the premium (+XC) or discount (-XC) group when that group's summed value
