@@ -12,6 +12,7 @@ import urllib.parse
 
 import pandas as pd
 import streamlit as st
+from streamlit_sortables import sort_items
 
 st.set_page_config(page_title="TAPS", layout="wide")
 
@@ -32,6 +33,21 @@ HIGHLIGHT_THRESHOLDS = {
     "S0.5": 500 / 6.35, "S380": 500 / 6.35,
 }
 HIGHLIGHT_DEFAULT = 500
+
+# --- Sidebar product filter -------------------------------------------------------
+# Products grouped by family. Each product has its own checkbox; each family header is a
+# master checkbox that toggles all products under it (kept in two-way sync). Default:
+# everything on == the full current layout. Selection lives in session_state, so it's
+# per-user and survives every auto-refresh (only a hard browser reload resets it).
+FAMILIES = {
+    "Crude":  ["Dubai", "Brent SMM"],
+    "Light":  ["S92"],
+    "Middle": ["SGO", "SKO", "LSGO SMM"],
+    "Heavy":  ["S0.5", "S380"],
+}
+# Display order = the current page grid read L->R, top->bottom. Selected tables re-flow
+# into this order 2-per-row, so all-selected reproduces the original layout exactly.
+GRID_ORDER = ["Dubai", "Brent SMM", "S92", "SGO", "SKO", "S0.5", "S380", "LSGO SMM"]
 
 
 def _public_url() -> str:
@@ -95,6 +111,60 @@ def render_table(t: dict) -> None:
 
 st.title("TAPS")
 
+# Sidebar filter — seed everything ON, then draw family (master) + product checkboxes.
+for _fam, _prods in FAMILIES.items():
+    st.session_state.setdefault(f"fam::{_fam}", True)
+    for _p in _prods:
+        st.session_state.setdefault(f"tbl::{_p}", True)
+
+
+def _sync_family(fam):          # family master toggled -> set all its products
+    v = st.session_state[f"fam::{fam}"]
+    for p in FAMILIES[fam]:
+        st.session_state[f"tbl::{p}"] = v
+
+
+def _sync_product(fam):         # a product toggled -> family reflects "all on?"
+    st.session_state[f"fam::{fam}"] = all(st.session_state[f"tbl::{p}"] for p in FAMILIES[fam])
+
+
+st.sidebar.header("Products Selected:")
+for fam, prods in FAMILIES.items():
+    st.sidebar.checkbox(f"**{fam}**", key=f"fam::{fam}", on_change=_sync_family, args=(fam,))
+    for p in prods:
+        _, c = st.sidebar.columns([1, 10])      # small left gutter -> products indent under family
+        c.checkbox(p, key=f"tbl::{p}", on_change=_sync_product, args=(fam,))
+    st.sidebar.divider()
+
+# Drag-to-reorder (Route A). Per-user, persists across auto-refresh; resets on hard reload.
+# Shows ONLY the checked products, laid out 2-per-row to mirror the page's 2-col grid; the
+# dragged (row-major) order is spliced back into the master order and drives the layout.
+# Sortable lives OUTSIDE the auto-refresh fragment so drags aren't reset. Its key tracks the
+# selected *set* (not order) so it re-mounts on check/uncheck but stays put during a drag.
+_all = st.session_state.get("tbl_order", GRID_ORDER)
+_all = [p for p in _all if p in GRID_ORDER] + [p for p in GRID_ORDER if p not in _all]
+_sel = [p for p in _all if st.session_state.get(f"tbl::{p}", True)]
+# Blueprint: 2-col grid of tiles whose position == the table's slot on the page (row-major,
+# left->right then top->bottom). Bordered tiles at 50% width give the 2xN page mirror.
+_blueprint = (".sortable-container-body{display:grid!important;grid-template-columns:1fr 1fr;"
+              "gap:6px;}"
+              ".sortable-item{width:auto!important;margin:0!important;box-sizing:border-box;"
+              "text-align:center;padding:8px 4px;border-radius:6px;}")
+with st.sidebar:
+    st.header("Layout")
+    st.caption("Drag — each tile's slot mirrors the table's spot on the page")
+    if _sel:
+        _res = sort_items(_sel, direction="horizontal", custom_style=_blueprint,
+                          key="sort_" + "_".join(sorted(_sel))) or _sel
+    else:
+        _res = []
+        st.caption("Select products to arrange.")
+# splice the reordered selected items back into their slots in the master order
+_it = iter(_res)
+st.session_state["tbl_order"] = [
+    next(_it) if st.session_state.get(f"tbl::{p}", True) else p for p in _all
+]
+
 # Page read rate: fast (PAGE_POLL_SEC) during the daemon's 10s window to cut lag, else match
 # the daemon's cadence (reading faster than the data changes is wasted). Reading the JSON
 # touches NO ICE. Re-tune via a full rerun when the daemon's cadence changes.
@@ -143,14 +213,18 @@ def live():
 
     tables = {t["title"]: t for t in data.get("tables", [])}
 
-    # grid: Dubai | Brent SMM, S92 | SGO, SKO | S0.5, S380 | LSGO SMM.
-    for left, right in [("Dubai", "Brent SMM"), ("S92", "SGO"),
-                        ("SKO", "S0.5"), ("S380", "LSGO SMM")]:
+    # Show only the sidebar-selected tables, in the user's dragged order, re-flowed 2-per-row
+    # (default order == the original Dubai|Brent, S92|SGO, SKO|S0.5, S380|LSGO layout).
+    order = st.session_state.get("tbl_order", GRID_ORDER)
+    sel = [name for name in order
+           if st.session_state.get(f"tbl::{name}", True) and name in tables]
+    if not sel:
+        st.info("No products selected — pick some from the sidebar.")
+    for i in range(0, len(sel), 2):
         cols = st.columns(2)
-        for col, name in zip(cols, (left, right)):
-            if name in tables:
-                with col:
-                    render_table(tables[name])
+        for col, name in zip(cols, sel[i:i + 2]):
+            with col:
+                render_table(tables[name])
 
 
 live()
