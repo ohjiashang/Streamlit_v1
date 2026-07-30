@@ -134,7 +134,7 @@ st.markdown(
     'section[data-testid="stSidebar"] [data-testid="stCheckbox"]{margin-bottom:0;}</style>',
     unsafe_allow_html=True)
 
-st.sidebar.header("Selected")
+st.sidebar.header("Selected:")
 for fam, prods in FAMILIES.items():
     st.sidebar.checkbox(f"**{fam}**", key=f"fam::{fam}", on_change=_sync_family, args=(fam,))
     for p in prods:
