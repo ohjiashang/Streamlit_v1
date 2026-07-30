@@ -128,7 +128,13 @@ def _sync_product(fam):         # a product toggled -> family reflects "all on?"
     st.session_state[f"fam::{fam}"] = all(st.session_state[f"tbl::{p}"] for p in FAMILIES[fam])
 
 
-st.sidebar.header("Products Selected:")
+# Tighten vertical spacing between rows in the sidebar (more compact checkbox list).
+st.markdown(
+    '<style>section[data-testid="stSidebar"] [data-testid="stVerticalBlock"]{gap:0.2rem;}'
+    'section[data-testid="stSidebar"] [data-testid="stCheckbox"]{margin-bottom:0;}</style>',
+    unsafe_allow_html=True)
+
+st.sidebar.header("Selected")
 for fam, prods in FAMILIES.items():
     st.sidebar.checkbox(f"**{fam}**", key=f"fam::{fam}", on_change=_sync_family, args=(fam,))
     for p in prods:
