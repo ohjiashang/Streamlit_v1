@@ -136,7 +136,7 @@ def live():
     if age is None or age > STALE_AFTER_SEC:
         st.markdown(
             f'<div style="background:rgba(128,128,128,0.2);padding:0.5rem 0.9rem;'
-            f'border-radius:0.5rem;">as of {updated} SGT</div>',
+            f'border-radius:0.5rem;">As of {updated} SGT</div>',
             unsafe_allow_html=True)
     else:
         st.success(f"**Last updated:** {updated} SGT  ·  **{age}s ago**  ·  ↻ updates every {di}s")
