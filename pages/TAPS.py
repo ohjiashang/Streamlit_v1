@@ -21,6 +21,8 @@ REFRESH_SEC = 30
 PAGE_POLL_SEC = 5   # page Firebase-read rate DURING the daemon's fast (10s ICE) window (NO ICE).
                     # Outside it, the page reads at the daemon's own cadence (30s) — no point
                     # polling faster than the data changes. Cuts lag at zero ICE cost.
+STALE_AFTER_SEC = 120   # if the feed hasn't updated in this long (daemon stopped @17:00 / stalled),
+                        # show a neutral grey "as of HH:MM" bar instead of the live green one.
 # Highlight the premium (+XC) or discount (-XC) group when that group's summed value
 # (across all its rows and contracts) reaches the table's threshold. FLAT + totals never
 # highlight. Live/conditional — resets at 07:00 or when the sum drops back below.
@@ -128,9 +130,16 @@ def live():
     if data.get("updated_epoch"):
         age = max(0, int(time.time() - float(data["updated_epoch"])))
 
-    # Status banner: last-updated time, how fresh, and the data-update cadence.
-    age_txt = f"  ·  **{age}s ago**" if age is not None else ""
-    st.success(f"**Last updated:** {updated} SGT{age_txt}  ·  ↻ updates every {di}s")
+    # Live GREEN bar when fresh; neutral GREY "as of <ts>" bar when the daemon is stopped or
+    # stalled (after 17:00, overnight, or a mid-day hang) — no scary warning, just marks the
+    # data as static. Grey rgba reads in both light/dark themes.
+    if age is None or age > STALE_AFTER_SEC:
+        st.markdown(
+            f'<div style="background:rgba(128,128,128,0.2);padding:0.5rem 0.9rem;'
+            f'border-radius:0.5rem;">as of {updated} SGT</div>',
+            unsafe_allow_html=True)
+    else:
+        st.success(f"**Last updated:** {updated} SGT  ·  **{age}s ago**  ·  ↻ updates every {di}s")
 
     tables = {t["title"]: t for t in data.get("tables", [])}
 
