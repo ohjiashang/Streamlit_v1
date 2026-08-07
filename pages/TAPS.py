@@ -31,6 +31,7 @@ HIGHLIGHT_THRESHOLDS = {
     "Dubai": 1000,
     "SGO": 500, "SKO": 500, "S92": 500,
     "S0.5": 500 / 6.35, "S380": 500 / 6.35,
+    "MOPJ": 500 / 8.9,           # $/mt, naphtha conversion (8.9 bbl/mt)
 }
 HIGHLIGHT_DEFAULT = 500
 
@@ -41,13 +42,13 @@ HIGHLIGHT_DEFAULT = 500
 # per-user and survives every auto-refresh (only a hard browser reload resets it).
 FAMILIES = {
     "Crude":  ["Dubai", "Brent SMM"],
-    "Light":  ["S92"],
+    "Light":  ["S92", "MOPJ"],
     "Middle": ["SGO", "SKO", "LSGO SMM"],
     "Heavy":  ["S0.5", "S380"],
 }
 # Display order = the current page grid read L->R, top->bottom. Selected tables re-flow
 # into this order 2-per-row, so all-selected reproduces the original layout exactly.
-GRID_ORDER = ["Dubai", "Brent SMM", "S92", "SGO", "SKO", "S0.5", "S380", "LSGO SMM"]
+GRID_ORDER = ["Dubai", "Brent SMM", "S92", "MOPJ", "SGO", "SKO", "S0.5", "S380", "LSGO SMM"]
 
 
 def _public_url() -> str:
