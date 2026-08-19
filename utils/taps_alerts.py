@@ -165,8 +165,15 @@ def _on_audio_toggled() -> None:
     if not st.session_state.get("audio_on"):
         return
     for key, rec in st.session_state.get("fired", {}).items():
-        if key not in st.session_state.get("acked", set()):
-            st.session_state.speak.append(phrase(rec["title"], rec["side"]))
+        if key in st.session_state.get("acked", set()):
+            continue
+        # `spoken` is what stops a re-enable repeating an alert: switching audio off and on
+        # again must not replay something already announced. Only chunks that have never
+        # been read out get queued.
+        if key in st.session_state.spoken:
+            continue
+        st.session_state.spoken.add(key)
+        st.session_state.speak.append(phrase(rec["title"], rec["side"]))
 
 
 def audio_toggle() -> None:
@@ -200,6 +207,7 @@ def init_state() -> None:
     st.session_state.setdefault("fired", {})     # "table|group" -> alert record, write-once
     st.session_state.setdefault("acked", set())  # chunks crossed off by the user
     st.session_state.setdefault("speak", [])     # phrases waiting to be spoken
+    st.session_state.setdefault("spoken", set()) # chunks already announced today
 
 
 def clear() -> None:
@@ -207,6 +215,7 @@ def clear() -> None:
     st.session_state.fired = {}
     st.session_state.acked = set()
     st.session_state.speak = []
+    st.session_state.spoken = set()
 
 
 def slug(key: str) -> str:
@@ -223,6 +232,7 @@ def trigger(key: str, *, title: str, side: str, vol: str, unit: str, ts: str) ->
     st.session_state.fired[key] = {"ts": ts, "title": title, "side": side,
                                    "vol": vol, "unit": unit}
     if st.session_state.get("audio_on"):
+        st.session_state.spoken.add(key)
         st.session_state.speak.append(phrase(title, side))
     return True
 
