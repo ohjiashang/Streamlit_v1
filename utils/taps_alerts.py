@@ -266,7 +266,10 @@ def render_popups() -> None:
         f'box-shadow:{_shadow()};}}'
         # text scales with the viewport, and may wrap on a narrow screen
         'div[class*="st-key-popup_"] p{color:#111;font-weight:700;margin:0;padding:0;'
-        'font-size:clamp(1.0rem,3.6vw,1.5rem);line-height:1.35;overflow-wrap:anywhere;}'
+        # Font stays BIG at every width -- deliberately not clamped down on narrow
+        # screens. The stack flows, so a phone just wraps to a second line and the
+        # box grows; it does not have to shrink the text to fit.
+        'font-size:1.5rem;line-height:1.35;overflow-wrap:anywhere;}'
         'div[class*="st-key-popup_"] button{background:transparent;border:none;color:#111;'
         'font-weight:800;min-height:0;height:1.6rem;font-size:1.4rem;padding:0 0.2rem;'
         'line-height:1;}'
