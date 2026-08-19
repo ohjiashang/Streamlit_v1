@@ -262,10 +262,7 @@ def render_popups() -> None:
         f'width:min({POPUP_MAX_WIDTH_PX}px, calc(100vw - 2rem));z-index:9999;}}'
         # each box: normal flow inside the stack, so heights can vary freely
         'div[class*="st-key-popup_"]{background:rgba(255,214,0,0.97);border-radius:0.6rem;'
-        # vertical padding plus a min-height, so a single-line alert still has some
-        # body to it; a wrapped one simply grows past the floor.
-        'padding:1.1rem 0.55rem 1.1rem 0.9rem;margin-bottom:0.45rem;'
-        'min-height:4.2rem;display:flex;align-items:center;'
+        'padding:0.5rem 0.55rem 0.5rem 0.9rem;margin-bottom:0.4rem;'
         f'box-shadow:{_shadow()};}}'
         # text scales with the viewport, and may wrap on a narrow screen
         'div[class*="st-key-popup_"] p{color:#111;font-weight:700;margin:0;padding:0;'
@@ -279,7 +276,7 @@ def render_popups() -> None:
         'div[class*="st-key-popup_"] button:hover{color:#b00;background:transparent;}'
         # neutralise Streamlit's own column wrappers so text and X share a centre line
         'div[class*="st-key-popup_"] div[data-testid="stHorizontalBlock"]'
-        '{gap:0.3rem;align-items:center;width:100%;}'
+        '{gap:0.3rem;align-items:center;}'
         'div[class*="st-key-popup_"] div[data-testid="stColumn"]'
         '{display:flex;align-items:center;min-height:1.6rem;}'
         'div[class*="st-key-popup_"] [data-testid="stVerticalBlock"]{gap:0;}'
