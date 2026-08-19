@@ -209,6 +209,9 @@ for fam, prods in FAMILIES.items():
         c.checkbox(p, key=f"tbl::{p}", on_change=_sync_product, args=(fam,))
     st.sidebar.divider()
 
+taps_alerts.audio_toggle()
+st.sidebar.divider()
+
 # Drag-to-reorder (Route A). Per-user, persists across auto-refresh; resets on hard reload.
 # Shows ONLY the checked products, laid out 2-per-row to mirror the page's 2-col grid; the
 # dragged (row-major) order is spliced back into the master order and drives the layout.
@@ -314,239 +317,19 @@ def live():
     with notif_slot:
         taps_alerts.render_popups()
 
+    # Queued inside the fragment (auto-poll fire) -> ask for a full app rerun so the clip is
+    # rendered at MODULE level instead. Draining happens before live() below, so the queue is
+    # already empty by the time this check runs again: no rerun loop.
+    if st.session_state.get("audio_on") and st.session_state.get("speak"):
+        try:
+            st.rerun(scope="app")
+        except Exception:
+            st.rerun()
+
+
+# Audio is rendered HERE, outside the fragment. live() re-runs every few seconds and clears
+# everything it drew, which would rip the <audio> element out before the browser had played
+# it. Draining before live() also guarantees the rerun request inside it cannot loop.
+taps_alerts.play_queued()
 
 live()
-
-
-# ======================================================================================
-# SPOKEN ALERTS — retained, commented out. Not wired to anything; delete or restore at will.
-#
-# This spoke the alert instead of (or alongside) the popup, e.g.
-#     "Gas oil. 508 kay bee traded at premium at 4:59PM"
-# One clip per alert: chime + 0.7s gap + product name + 0.5s pause + the rest, built
-# server-side as a SINGLE wav so the chime and speech can never overlap.
-#
-# To restore:
-#   1. paste the blocks below back in at the marked places and set AUDIO_ENABLED = True;
-#   2. the trigger loop in render_table() must also queue the sentence:
-#          if AUDIO_ENABLED and st.session_state.get("chime_on"):
-#              st.session_state.speak.append(
-#                  _alert_sentence(t["title"], _g, _grp_sum(_g), _when))
-#   3. re-add the session keys: "speak" (list), "chime_now" (bool);
-#   4. add to requirements.txt:  gtts, imageio-ffmpeg, audioop-lts
-#      (audioop left the stdlib in Python 3.13, and pydub/ffmpeg decode the mp3);
-#   5. keep the once-per-CHUNK latch — per table would silence a table's second side.
-#
-# Notes worth keeping: browsers block autoplay until the user interacts, so the toggle's
-# own click doubles as the unlock gesture; and the volume is spoken "kay bee"/"kay tee"
-# because TTS reads "kb"/"kt" as gibberish.
-# ======================================================================================
-#  --- master switch + chime synthesis ---
-#  AUDIO_ENABLED = False   # TEMPORARY: audio parked while the flashing highlight is trialled
-#
-#  @st.cache_data
-#  def _chime_wav() -> bytes:
-#      """A short two-tone chime, synthesised so there is no asset to host or fetch."""
-#      rate, out = 44100, bytearray()
-#      for freq, secs in ((880.0, 0.14), (1174.7, 0.26)):      # A5 -> D6
-#          n = int(rate * secs)
-#          for i in range(n):
-#              fade = min(1.0, i / (rate * 0.01)) * (1.0 - i / n) ** 2   # attack + decay
-#              out += struct.pack("<h", int(0.5 * fade * 32767
-#                                           * math.sin(2 * math.pi * freq * i / rate)))
-#      buf = io.BytesIO()
-#      with wave.open(buf, "wb") as w:
-#          w.setnchannels(1)
-#          w.setsampwidth(2)
-#          w.setframerate(rate)
-#          w.writeframes(bytes(out))
-#      return buf.getvalue()
-#
-#
-#
-#  --- spoken product names ---
-#  SPOKEN_NAME = {
-#      "Dubai":     "Dubai",
-#      "Brent SMM": "Brent Marker",
-#      "S92":       "92 Ron",
-#      "MOPJ":      "mop J",
-#      "SGO":       "Gas oil",
-#      "SKO":       "Kerro",        # "Kero" as in kerosene — chosen from the voice-test alternatives
-#      "S0.5":      "point five",
-#      "S380":      "Three eighty",
-#      "LSGO SMM":  "Gas oil Marker",
-#  }
-#  # $/mt products: their thresholds are divided by a bbl/mt factor, so the volumes are
-#  # tonnes (kt). Everything else is barrels (kb).
-#
-#  --- TTS + single-clip builder (chime + gap + name + pause + rest) ---
-#  @st.cache_data(show_spinner=False)
-#  def _tts(text: str) -> bytes:
-#      """Synthesise one phrase to mp3. Cached, so each distinct sentence costs one call."""
-#      from gtts import gTTS
-#      buf = io.BytesIO()
-#      gTTS(text=text, lang="en", tld="com").write_to_fp(buf)
-#      return buf.getvalue()
-#
-#
-#
-#  # One alert = chime + gap + name + pause + rest, rendered as a SINGLE clip. Building it
-#  # server-side is what guarantees the chime and the speech can never overlap: two
-#  # autoplaying <audio> elements would start together and talk over each other, and the
-#  # page's poll interval is far too coarse to sequence them.
-#  PCM_RATE = 24000
-#  CHIME_GAP_MS = 700       # chime -> first word
-#  NAME_PAUSE_MS = 500      # after the product name; TTS rattles short names off too fast
-#
-#
-#  def _ffmpeg_exe() -> str:
-#      import imageio_ffmpeg
-#      return imageio_ffmpeg.get_ffmpeg_exe()
-#
-#
-#  def _mp3_to_pcm(mp3: bytes) -> bytes:
-#      """Decode mp3 -> raw signed 16-bit mono PCM at PCM_RATE, so clips can be concatenated."""
-#      import subprocess
-#      r = subprocess.run([_ffmpeg_exe(), "-hide_banner", "-loglevel", "error", "-i", "pipe:0",
-#                          "-f", "s16le", "-acodec", "pcm_s16le",
-#                          "-ar", str(PCM_RATE), "-ac", "1", "pipe:1"],
-#                         input=mp3, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-#      if r.returncode:
-#          raise RuntimeError(r.stderr[:200].decode("utf-8", "replace"))
-#      return r.stdout
-#
-#
-#  def _chime_pcm() -> bytes:
-#      out = bytearray()
-#      for freq, secs in ((880.0, 0.14), (1174.7, 0.26)):          # A5 -> D6
-#          n = int(PCM_RATE * secs)
-#          for i in range(n):
-#              fade = min(1.0, i / (PCM_RATE * 0.01)) * (1.0 - i / n) ** 2
-#              out += struct.pack("<h", int(0.5 * fade * 32767
-#                                           * math.sin(2 * math.pi * freq * i / PCM_RATE)))
-#      return bytes(out)
-#
-#
-#  def _silence_pcm(ms: int) -> bytes:
-#      return bytes(2 * int(PCM_RATE * ms / 1000))   # 2 bytes per silent sample
-#
-#
-#  @st.cache_data(show_spinner=False)
-#  def _alert_audio(sentence: str) -> bytes:
-#      """The full alert as one wav: chime, gap, "<name>.", pause, then the rest."""
-#      head, sep, tail = sentence.partition(". ")
-#      pcm = _chime_pcm() + _silence_pcm(CHIME_GAP_MS) + _mp3_to_pcm(_tts(head + "."))
-#      if tail:
-#          pcm += _silence_pcm(NAME_PAUSE_MS) + _mp3_to_pcm(_tts(tail))
-#      buf = io.BytesIO()
-#      with wave.open(buf, "wb") as w:
-#          w.setnchannels(1)
-#          w.setsampwidth(2)
-#          w.setframerate(PCM_RATE)
-#          w.writeframes(pcm)
-#      return buf.getvalue()
-#
-#
-#  def _volume_phrase(title: str, total: float) -> str:
-#      if title in CONV_TABLES:
-#          return f"{round(total):g} kay tee"
-#      if total >= 1000:                       # read big barrel counts as millions
-#          return f"{total / 1000:g} million barrels"
-#      return f"{total:g} kay bee"
-#
-#
-#  def _alert_sentence(title: str, group: str, total: float, when_iso: str) -> str:
-#      side = "premium" if group == "+" else "discount"
-#      try:
-#          clock = datetime.fromisoformat(when_iso).strftime("%I:%M%p").lstrip("0")
-#      except Exception:
-#          clock = ""
-#      return (f"{SPOKEN_NAME.get(title, title)}. {_volume_phrase(title, total)} "
-#              f"traded at {side} at {clock}")
-#
-#
-#
-#  --- sidebar toggle + voice-test panel ---
-#  def _chime_test():
-#      """Ticking the box is the user gesture browsers require before audio may play, so
-#      sound a confirmation chime right then — it proves it works AND unlocks audio for the
-#      session. Without a gesture the first real alert is silently swallowed by autoplay policy."""
-#      if st.session_state.get("chime_on"):
-#          st.session_state.speak.append("Voice alerts enabled")
-#
-#
-#  if AUDIO_ENABLED:
-#      st.sidebar.checkbox("🔊 Voice alert on first highlight", key="chime_on",
-#                      on_change=_chime_test,
-#                      help="One spoken alert per table, the first time it highlights each day.")
-#  if AUDIO_ENABLED:
-#      st.sidebar.checkbox("🧪 Voice test (temporary)", key="voice_test",
-#                      help="Preview product-name pronunciation and full alert sentences.")
-#
-#  # TEMPORARY preview panel — delete once the wording and pronunciation are signed off.
-#  if st.session_state.get("voice_test"):
-#      with st.expander("🧪 Voice test — product names & sample sentences", expanded=True):
-#          st.caption("Press play on each; nothing autoplays. Each phrase is synthesised once and cached.")
-#          st.markdown("**Product names**")
-#          for _title, _spoken in SPOKEN_NAME.items():
-#              _c1, _c2, _c3 = st.columns([2, 3, 5])
-#              _c1.markdown(f"`{_title}`")
-#              _c2.markdown(f"→ *{_spoken}*")
-#              with _c3:
-#                  st.audio(_tts(_spoken), format="audio/mp3")
-#          st.divider()
-#          st.markdown("**SKO alternatives** — pick whichever lands closest to *kerosene*")
-#          for _alt in ["Care-oh", "Kair-oh", "Care oh", "Kerro", "Kero"]:
-#              _a1, _a2 = st.columns([5, 5])
-#              _a1.markdown(f"*{_alt}*")
-#              with _a2:
-#                  st.audio(_tts(_alt), format="audio/mp3")
-#          st.divider()
-#          st.markdown("**Sample sentences**")
-#          for _t, _g, _v in [
-#              ("Dubai", "+", 1000.0),      # -> "1 million barrels"
-#              ("Dubai", "+", 1500.0),      # -> "1.5 million barrels"
-#              ("SGO", "+", 508.0),         # kb — today's real SGO trigger
-#              ("S92", "-", 640.0),         # kb, discount side
-#              ("S0.5", "-", 78.7),         # kt — conversion product
-#              ("SKO", "-", 512.0),         # kb — hear SKO inside a full sentence
-#              ("S380", "-", 78.2),         # kt -> rounds DOWN to 78
-#              ("MOPJ", "+", 56.6),         # kt -> rounds UP to 57
-#              ("Brent SMM", "+", 900.0),   # kb — PREM now maps to '+'
-#          ]:
-#              _sent = _alert_sentence(_t, _g, _v, "2026-08-18T16:23:00")
-#              _c1, _c2 = st.columns([6, 4])
-#              _c1.markdown(f"*{_sent}*")
-#              with _c2:
-#                  st.audio(_alert_audio(_sent), format="audio/wav")
-#  st.sidebar.divider()
-#
-#
-#  --- playback, at the end of live() ---
-#      # At most one chime per rerun, after the tables have set the flag. The element renders
-#      # ONLY on the triggering run, so it mounts, plays once, and is gone by the next poll.
-#      # Hidden via CSS: autoplay still fires, but no stray player widget appears on the page.
-#      with notif_slot:
-#          taps_alerts.render_popups()
-#
-#      if AUDIO_ENABLED and st.session_state.chime_now and st.session_state.get("chime_on"):
-#          st.markdown('<style>[data-testid="stAudio"]{display:none;}</style>',
-#                      unsafe_allow_html=True)
-#          st.audio(_chime_wav(), format="audio/wav", autoplay=True)
-#      st.session_state.chime_now = False
-#
-#      # Speak ONE queued alert per rerun — two clips autoplaying together would talk over each
-#      # other, so anything else waits for the next poll (seconds away). Rendered only on the
-#      # run that plays it, so it mounts, speaks once, and is gone by the next poll.
-#      if AUDIO_ENABLED and st.session_state.speak and st.session_state.get("chime_on"):
-#          _line = st.session_state.speak.pop(0)
-#          st.markdown('<style>[data-testid="stAudio"]{display:none;}</style>',
-#                      unsafe_allow_html=True)
-#          try:
-#              st.audio(_alert_audio(_line), format="audio/wav", autoplay=True)
-#          except Exception:                      # TTS unreachable -> fall back to the chime
-#              st.audio(_chime_wav(), format="audio/wav", autoplay=True)
-#          st.caption(f"🔊 {_line}")              # visible too, so a muted tab still sees it
-#
-#
-#

@@ -5,3 +5,5 @@ numpy
 openpyxl
 plotly
 streamlit-sortables
+gtts
+imageio-ffmpeg
