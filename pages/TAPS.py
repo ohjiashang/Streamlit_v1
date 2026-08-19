@@ -308,6 +308,12 @@ def live():
             with col:
                 render_table(tables[name])
 
+    # Fill the slot reserved above the tables. This runs AFTER render_table(), because that
+    # is what evaluates the thresholds and raises the alerts -- rendering the popups earlier
+    # would always be one poll behind.
+    with notif_slot:
+        taps_alerts.render_popups()
+
 
 live()
 
