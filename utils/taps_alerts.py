@@ -16,8 +16,8 @@ import streamlit as st
 # Popup geometry. Boxes are position:fixed so they float over the page instead of pushing
 # the tables down, and stack downwards when several chunks are live.
 POPUP_TOP_REM = 5.0        # first box, clear of the Streamlit header
-POPUP_STEP_REM = 4.4       # vertical pitch between stacked boxes
-POPUP_WIDTH_PX = 360
+POPUP_STEP_REM = 6.4       # vertical pitch between stacked boxes
+POPUP_WIDTH_PX = 470
 
 # What the popup calls each side. The record stores the domain term ("premium" /
 # "discount"); this is purely how it reads on screen.
@@ -72,16 +72,16 @@ def render_popups() -> None:
         css.append(
             f'div.st-key-popup_{sl} {{position:fixed;top:{top}rem;right:1.5rem;'
             f'width:{POPUP_WIDTH_PX}px;z-index:9999;background:rgba(255,214,0,0.97);'
-            f'border-radius:0.6rem;padding:0.5rem 0.55rem 0.5rem 0.9rem;'
+            f'border-radius:0.8rem;padding:1.05rem 0.8rem 1.05rem 1.4rem;'
             f'box-shadow:0 6px 20px rgba(0,0,0,0.35);}}'
             f'div.st-key-popup_{sl} p {{color:#111;font-weight:700;'
-            f'margin:0;padding:0;line-height:1.5rem;}}'
+            f'margin:0;padding:0;font-size:1.5rem;line-height:2.1rem;}}'
             # The X is laid out by a column, NOT absolute positioning: Streamlit wraps
             # buttons in their own block, so position:absolute fell back into normal flow
             # and dropped the X below the text. A column keeps it on the same line, right.
             f'div.st-key-popup_{sl} button {{background:transparent;border:none;'
-            f'color:#111;font-weight:800;min-height:0;height:1.5rem;'
-            f'padding:0 0.2rem;line-height:1;}}'
+            f'color:#111;font-weight:800;min-height:0;height:2rem;'
+            f'font-size:1.5rem;padding:0 0.35rem;line-height:1;}}'
             f'div.st-key-popup_{sl} button:hover {{color:#b00;background:transparent;}}'
             # Centring the text needed more than columns(vertical_alignment): the button
             # is taller than a line of text, so the row height comes from the button and
@@ -91,7 +91,7 @@ def render_popups() -> None:
             f'div.st-key-popup_{sl} div[data-testid="stHorizontalBlock"]'
             f'  {{gap:0.3rem;align-items:center;}}'
             f'div.st-key-popup_{sl} div[data-testid="stColumn"]'
-            f'  {{display:flex;align-items:center;min-height:1.6rem;}}'
+            f'  {{display:flex;align-items:center;min-height:2rem;}}'
             f'div.st-key-popup_{sl} div[data-testid="stColumn"] > div'
             f'  {{width:100%;display:flex;align-items:center;}}'
             f'div.st-key-popup_{sl} [data-testid="stVerticalBlock"]'
