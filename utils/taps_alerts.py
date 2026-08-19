@@ -17,9 +17,8 @@ import streamlit as st
 
 # Popup geometry. Boxes are position:fixed so they float over the page instead of pushing
 # the tables down, and stack downwards when several chunks are live.
-POPUP_TOP_REM = 5.0        # first box, clear of the Streamlit header
-POPUP_STEP_REM = 6.4       # vertical pitch between stacked boxes
-POPUP_WIDTH_PX = 470
+POPUP_TOP_REM = 5.0        # top of the stack, clear of the Streamlit header
+POPUP_MAX_WIDTH_PX = 470   # a CAP, not a fixed width -- see the stack CSS below
 
 # What the popup calls each side. The record stores the domain term ("premium" /
 # "discount"); this is purely how it reads on screen.
@@ -238,68 +237,63 @@ def trigger(key: str, *, title: str, side: str, vol: str, unit: str, ts: str) ->
 
 
 def render_popups() -> None:
-    """One floating popup per un-acknowledged chunk, with the X on the right of the bar,
-    level with the text. Newest sits on top, phone-style.
+    """Floating popups, newest on top, each crossed out via the X on its right.
+
+    The boxes live inside ONE fixed-position stack and flow normally within it, rather
+    than each being pinned at a computed offset. That is what makes them mobile-safe: a
+    box whose text wraps to two lines simply pushes the ones below it down, whereas fixed
+    per-box offsets would have them overlap. Width is a CAP, so on a narrow screen the
+    stack shrinks to the viewport instead of overflowing it.
 
     Not st.dialog: that is a true modal, so it would cover the numbers being watched, can
-    only show one at a time, and re-opens itself on every fragment rerun. A fixed-position
-    card avoids all three. The X must be a real Streamlit button to be clickable, and a
-    button cannot live inside an st.markdown div — so the row sits in a KEYED container
-    that CSS paints and positions, with a narrow column holding the button.
+    only show one at a time, and re-opens itself on every fragment rerun. The X must be a
+    real Streamlit button to be clickable, and a button cannot live inside an st.markdown
+    div -- so each row sits in a KEYED container that CSS paints, with a narrow column
+    holding the button.
     """
     live = [(k, r) for k, r in st.session_state.fired.items()
             if k not in st.session_state.acked][::-1]      # newest first
     if not live:
         return
-    css = []
-    _sh = _shadow()
-    for n, (k, _) in enumerate(live):
-        sl = slug(k)
-        top = POPUP_TOP_REM + n * POPUP_STEP_REM
-        css.append(
-            f'div.st-key-popup_{sl} {{position:fixed;top:{top}rem;right:1.5rem;'
-            f'width:{POPUP_WIDTH_PX}px;z-index:9999;background:rgba(255,214,0,0.97);'
-            f'border-radius:0.8rem;padding:1.05rem 0.8rem 1.05rem 1.4rem;'
-            f'box-shadow:{_sh};}}'
-            f'div.st-key-popup_{sl} p {{color:#111;font-weight:700;'
-            f'margin:0;padding:0;font-size:1.5rem;line-height:2.1rem;}}'
-            # The X is laid out by a column, NOT absolute positioning: Streamlit wraps
-            # buttons in their own block, so position:absolute fell back into normal flow
-            # and dropped the X below the text. A column keeps it on the same line, right.
-            f'div.st-key-popup_{sl} button {{background:transparent;border:none;'
-            f'color:#111;font-weight:800;min-height:0;height:2rem;'
-            f'font-size:1.5rem;padding:0 0.35rem;line-height:1;}}'
-            f'div.st-key-popup_{sl} button:hover {{color:#b00;background:transparent;}}'
-            # Centring the text needed more than columns(vertical_alignment): the button
-            # is taller than a line of text, so the row height comes from the button and
-            # Streamlit's own column wrappers (stColumn > stVerticalBlock >
-            # stElementContainer) each add gap/margin that push the paragraph down. Make
-            # every one of those a centred flex box so the text sits on the button's axis.
-            f'div.st-key-popup_{sl} div[data-testid="stHorizontalBlock"]'
-            f'  {{gap:0.3rem;align-items:center;}}'
-            f'div.st-key-popup_{sl} div[data-testid="stColumn"]'
-            f'  {{display:flex;align-items:center;min-height:2rem;}}'
-            f'div.st-key-popup_{sl} div[data-testid="stColumn"] > div'
-            f'  {{width:100%;display:flex;align-items:center;}}'
-            f'div.st-key-popup_{sl} [data-testid="stVerticalBlock"]'
-            f'  {{gap:0;display:flex;align-items:center;}}'
-            f'div.st-key-popup_{sl} [data-testid="stElementContainer"]'
-            f'  {{margin:0;padding:0;display:flex;align-items:center;}}'
-            f'div.st-key-popup_{sl} [data-testid="stMarkdown"],'
-            f'div.st-key-popup_{sl} [data-testid="stMarkdownContainer"]'
-            f'  {{display:flex;align-items:center;margin:0;padding:0;}}')
-    st.markdown("<style>" + "".join(css) + "</style>", unsafe_allow_html=True)
-    for k, r in live:
-        with st.container(key=f"popup_{slug(k)}"):
-            c1, c2 = st.columns([11, 1], vertical_alignment="center")
-            _side = SIDE_WORD.get(r["side"], r["side"])
-            c1.markdown(f'{r["ts"]} - [{r["title"]}] {r["vol"]} {r["unit"]} {_side}')
-            if c2.button("✕", key=f"popup_btn::{k}", help="Dismiss"):
-                st.session_state.acked.add(k)
-                try:
-                    # scope="fragment" is the cheap rerun on the live page; outside a
-                    # fragment (the test harness) it raises, so fall back to a full rerun.
-                    # Safe to catch broadly: RerunException derives from BaseException.
-                    st.rerun(scope="fragment")
-                except Exception:
-                    st.rerun()
+    st.markdown(
+        "<style>"
+        # the stack: fixed to the viewport, width capped but free to shrink on mobile
+        f'div.st-key-taps_popup_stack{{position:fixed;top:{POPUP_TOP_REM}rem;right:1rem;'
+        f'width:min({POPUP_MAX_WIDTH_PX}px, calc(100vw - 2rem));z-index:9999;}}'
+        # each box: normal flow inside the stack, so heights can vary freely
+        'div[class*="st-key-popup_"]{background:rgba(255,214,0,0.97);border-radius:0.6rem;'
+        'padding:0.5rem 0.55rem 0.5rem 0.9rem;margin-bottom:0.4rem;'
+        f'box-shadow:{_shadow()};}}'
+        # text scales with the viewport, and may wrap on a narrow screen
+        'div[class*="st-key-popup_"] p{color:#111;font-weight:700;margin:0;padding:0;'
+        'font-size:clamp(1.0rem,3.6vw,1.5rem);line-height:1.35;overflow-wrap:anywhere;}'
+        'div[class*="st-key-popup_"] button{background:transparent;border:none;color:#111;'
+        'font-weight:800;min-height:0;height:1.6rem;font-size:1.4rem;padding:0 0.2rem;'
+        'line-height:1;}'
+        'div[class*="st-key-popup_"] button:hover{color:#b00;background:transparent;}'
+        # neutralise Streamlit's own column wrappers so text and X share a centre line
+        'div[class*="st-key-popup_"] div[data-testid="stHorizontalBlock"]'
+        '{gap:0.3rem;align-items:center;}'
+        'div[class*="st-key-popup_"] div[data-testid="stColumn"]'
+        '{display:flex;align-items:center;min-height:1.6rem;}'
+        'div[class*="st-key-popup_"] [data-testid="stVerticalBlock"]{gap:0;}'
+        'div[class*="st-key-popup_"] [data-testid="stElementContainer"]{margin:0;padding:0;}'
+        'div[class*="st-key-popup_"] [data-testid="stMarkdown"],'
+        'div[class*="st-key-popup_"] [data-testid="stMarkdownContainer"]'
+        '{display:flex;align-items:center;margin:0;padding:0;}'
+        "</style>", unsafe_allow_html=True)
+    with st.container(key="taps_popup_stack"):
+        for k, r in live:
+            with st.container(key=f"popup_{slug(k)}"):
+                c1, c2 = st.columns([11, 1], vertical_alignment="center")
+                _side = SIDE_WORD.get(r["side"], r["side"])
+                c1.markdown(f'{r["ts"]} - [{r["title"]}] {r["vol"]} {r["unit"]} {_side}')
+                if c2.button("✕", key=f"popup_btn::{k}", help="Dismiss"):
+                    st.session_state.acked.add(k)
+                    try:
+                        # scope="fragment" is the cheap rerun on the live page; outside a
+                        # fragment it raises, so fall back to a full rerun. Safe to catch
+                        # broadly: RerunException derives from BaseException.
+                        st.rerun(scope="fragment")
+                    except Exception:
+                        st.rerun()
