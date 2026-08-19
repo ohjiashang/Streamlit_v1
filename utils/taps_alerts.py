@@ -25,6 +25,14 @@ POPUP_WIDTH_PX = 470
 # "discount"); this is purely how it reads on screen.
 SIDE_WORD = {"premium": "bid", "discount": "offer"}
 
+# The <audio> element is only ever a carrier for autoplay -- the player itself should never
+# be seen. This is injected unconditionally on every run (see audio_toggle) rather than
+# beside the element on the runs that play something: emitted conditionally, a rerun could
+# render the element while the style block was absent, and the player would flash up.
+HIDE_PLAYER_CSS = ('<style>[data-testid="stAudio"],div:has(> [data-testid="stAudio"])'
+                   '{display:none !important;height:0 !important;margin:0 !important;}'
+                   '</style>')
+
 
 
 def _shadow() -> str:
@@ -164,6 +172,7 @@ def _on_audio_toggled() -> None:
 def audio_toggle() -> None:
     """Sidebar switch, off by default. Ticking it is also the user gesture browsers demand
     before audio may autoplay — without one the first alert is silently swallowed."""
+    st.markdown(HIDE_PLAYER_CSS, unsafe_allow_html=True)   # always present, see above
     st.sidebar.checkbox("🔊 Enable audio", key="audio_on", on_change=_on_audio_toggled,
                         help="Speaks the product and side when an alert is raised.")
 
@@ -181,9 +190,6 @@ def play_queued() -> None:
     if not (st.session_state.get("audio_on") and st.session_state.get("speak")):
         return
     lines, st.session_state.speak = st.session_state.speak, []
-    # Hidden: autoplay still fires, but no player widget clutters the page.
-    st.markdown('<style>[data-testid="stAudio"]{display:none;}</style>',
-                unsafe_allow_html=True)
     try:
         st.audio(_say(". ".join(lines)), format="audio/wav", autoplay=True)
     except Exception:
