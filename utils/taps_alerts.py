@@ -24,6 +24,24 @@ POPUP_WIDTH_PX = 470
 SIDE_WORD = {"premium": "bid", "discount": "offer"}
 
 
+
+def _shadow() -> str:
+    """Drop shadow for the popup, flipped for dark themes.
+
+    A black shadow is invisible against a dark page, so use a soft white halo there.
+    Streamlit's own theme is the authority rather than a prefers-color-scheme media query:
+    that would miss someone who picks Dark in Streamlit while their OS stays light.
+    Unknown theme falls back to the dark-on-light shadow.
+    """
+    try:
+        theme = st.context.theme
+        kind = getattr(theme, "type", None) or (theme or {}).get("type")
+    except Exception:
+        kind = None
+    return ("0 6px 22px rgba(255,255,255,0.5)" if kind == "dark"
+            else "0 6px 20px rgba(0,0,0,0.35)")
+
+
 def init_state() -> None:
     st.session_state.setdefault("fired", {})     # "table|group" -> alert record, write-once
     st.session_state.setdefault("acked", set())  # chunks crossed off by the user
@@ -66,6 +84,7 @@ def render_popups() -> None:
     if not live:
         return
     css = []
+    _sh = _shadow()
     for n, (k, _) in enumerate(live):
         sl = slug(k)
         top = POPUP_TOP_REM + n * POPUP_STEP_REM
@@ -73,7 +92,7 @@ def render_popups() -> None:
             f'div.st-key-popup_{sl} {{position:fixed;top:{top}rem;right:1.5rem;'
             f'width:{POPUP_WIDTH_PX}px;z-index:9999;background:rgba(255,214,0,0.97);'
             f'border-radius:0.8rem;padding:1.05rem 0.8rem 1.05rem 1.4rem;'
-            f'box-shadow:0 6px 20px rgba(0,0,0,0.35);}}'
+            f'box-shadow:{_sh};}}'
             f'div.st-key-popup_{sl} p {{color:#111;font-weight:700;'
             f'margin:0;padding:0;font-size:1.5rem;line-height:2.1rem;}}'
             # The X is laid out by a column, NOT absolute positioning: Streamlit wraps
