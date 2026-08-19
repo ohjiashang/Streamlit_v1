@@ -9,7 +9,7 @@ import json
 import time
 import urllib.request
 import urllib.parse
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 import pandas as pd
 import streamlit as st
@@ -72,6 +72,22 @@ def fetch():
 # alert would reappear for as long as the condition held; instead each chunk is latched in
 # session_state once raised, and only unlatches when the trading day rolls at 05:00.
 RESET_HOUR = 5          # daemon resets its bins at 05:00, so that is the day boundary
+ALERT_END_HOUR = 17     # daemon stops at 17:00; the day's popups are cleared with it
+# Singapore, no DST. Explicit rather than datetime.now(): Streamlit Cloud runs in UTC, so a
+# naive local time there would be 8 hours out and the window would open and close at the
+# wrong moment for everyone.
+SGT = timezone(timedelta(hours=8))
+
+
+def _alerts_open() -> bool:
+    """True only inside the daemon's own 05:00-17:00 window.
+
+    Outside it the alerts are cleared AND no new one may be raised. Both halves are
+    required: the feed freezes at the daemon's last write, so the tables still show
+    whatever was over threshold at 17:00 -- clearing alone would let every chunk re-fire
+    instantly off that stale data and the popups would reappear.
+    """
+    return RESET_HOUR <= datetime.now(SGT).hour < ALERT_END_HOUR
 
 
 def _trading_day(updated_iso: str) -> str:
@@ -122,6 +138,8 @@ def render_table(t: dict) -> None:
     # FIRST crossing, so the popup quotes when it actually tripped, not when it is read.
     for _g, _hot in (("+", prem_hot), ("-", disc_hot)):
         _key = f"{t['title']}|{_g}"
+        if not st.session_state.get("alerts_open", True):
+            break                     # outside 05:00-17:00: raise nothing
         if not _hot or _key in st.session_state.fired:
             continue
         try:
@@ -293,6 +311,9 @@ def live():
 
     st.session_state.feed_updated = updated   # the popup clock comes from the feed
     # Trading day rolled (05:00) -> clear the latches so each table may alert once again.
+    st.session_state.alerts_open = _alerts_open()
+    if not st.session_state.alerts_open:
+        taps_alerts.clear()           # 17:00 SGT -> the day's popups go with the daemon
     day = _trading_day(updated)
     if day != st.session_state.alert_day:
         st.session_state.alert_day = day
