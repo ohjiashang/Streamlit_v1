@@ -85,6 +85,11 @@ BEEP_LEN = 0.085                                   # seconds per beep
 BEEP_GAP = 0.070                                   # silence between the two
 BEEP_HARMONICS = ((1, 1.0), (2, 0.28), (3, 0.16))  # a little edge, still musical
 CHIME_GAP_MS = 180                                 # silence before the first word
+LEAD_IN_MS = 250        # silence at the very START of the clip. A browser loses the first
+                        # fraction of a second of an element it has just mounted and begun
+                        # playing -- and the beeps are the first thing in the clip, so
+                        # without this they are what gets swallowed while the speech,
+                        # further in, survives. This makes the sacrifice silence instead.
 
 
 def _chime_pcm() -> bytes:
@@ -141,7 +146,8 @@ def _say(text: str) -> bytes:
         input=buf.getvalue(), stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     if fast.returncode:
         raise RuntimeError(fast.stderr[:200].decode("utf-8", "replace"))
-    pcm = (_chime_pcm()
+    pcm = (bytes(2 * int(PCM_RATE * LEAD_IN_MS / 1000))    # lead-in, see LEAD_IN_MS
+           + _chime_pcm()
            + bytes(2 * int(PCM_RATE * CHIME_GAP_MS / 1000))      # 2 bytes per silent sample
            + _mp3_to_pcm(fast.stdout))
     out = io.BytesIO()
