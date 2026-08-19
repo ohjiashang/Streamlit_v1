@@ -118,8 +118,8 @@ def render_table(t: dict) -> None:
     disc_hot = _grp_sum("-") >= thr
 
     # Latched per CHUNK -- (table, group) -- not per table, so one table can raise two
-    # independent alerts in a day: one premium, one discount. We store the feed clock at
-    # FIRST crossing; that timestamp is what the header shows and it never moves after.
+    # independent alerts in a day: one premium, one discount. The feed clock is captured at
+    # FIRST crossing, so the popup quotes when it actually tripped, not when it is read.
     for _g, _hot in (("+", prem_hot), ("-", disc_hot)):
         _key = f"{t['title']}|{_g}"
         if not _hot or _key in st.session_state.fired:
@@ -165,19 +165,6 @@ def render_table(t: dict) -> None:
                        "props": [("border-top", grey), ("border-bottom", grey)]})
     styled = styled.set_table_styles(styles, overwrite=False)
     st.markdown(f"#### {t['title']}")
-
-    # Under the header: when each chunk FIRST tripped. Frozen at that moment and kept for
-    # the rest of the day -- the record of when it happened, not a live readout, so it
-    # stays put after the popup has been crossed off.
-    for _g3 in ("+", "-"):
-        _k3 = f"{t['title']}|{_g3}"
-        _rec = st.session_state.fired.get(_k3)
-        if not _rec:
-            continue
-        st.markdown(
-            f'<span style="color:#000;font-weight:600;">'
-            f'{_rec["side"].capitalize()} triggered {_rec["ts"]}</span>',
-            unsafe_allow_html=True)
 
     st.table(styled)
 

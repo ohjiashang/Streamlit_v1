@@ -8,8 +8,8 @@ The contract:
     "-" discount, so a single table can raise two independent alerts in a day;
   * an alert fires ONCE, the first time its threshold is crossed that trading day.
     `fired` is write-once per key; nothing re-arms it except the 05:00 day rollover;
-  * crossing a popup marks the chunk acknowledged, which only hides the popup. The
-    table keeps its static highlight and its first-crossed timestamp.
+  * crossing a popup marks the chunk acknowledged, which only hides that popup. The
+    table keeps its static highlight for the rest of the day.
 """
 import streamlit as st
 
@@ -18,6 +18,10 @@ import streamlit as st
 POPUP_TOP_REM = 5.0        # first box, clear of the Streamlit header
 POPUP_STEP_REM = 4.4       # vertical pitch between stacked boxes
 POPUP_WIDTH_PX = 360
+
+# What the popup calls each side. The record stores the domain term ("premium" /
+# "discount"); this is purely how it reads on screen.
+SIDE_WORD = {"premium": "bid", "discount": "offer"}
 
 
 def init_state() -> None:
@@ -101,7 +105,8 @@ def render_popups() -> None:
     for k, r in live:
         with st.container(key=f"popup_{slug(k)}"):
             c1, c2 = st.columns([11, 1], vertical_alignment="center")
-            c1.markdown(f'{r["ts"]} - [{r["title"]}] {r["vol"]} {r["unit"]} @ {r["side"]}')
+            _side = SIDE_WORD.get(r["side"], r["side"])
+            c1.markdown(f'{r["ts"]} - [{r["title"]}] {r["vol"]} {r["unit"]} {_side}')
             if c2.button("✕", key=f"popup_btn::{k}", help="Dismiss"):
                 st.session_state.acked.add(k)
                 try:
