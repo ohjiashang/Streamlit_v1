@@ -13,6 +13,8 @@ from concurrent.futures import ThreadPoolExecutor
 from utils.oi_constants import OI_V2_SPREAD_SYMBOLS
 
 
+from utils.theme_tint import tint_css
+
 FIREBASE_BUCKET = "hotei-streamlit.firebasestorage.app"
 
 
@@ -72,11 +74,13 @@ def read_OI_volume():
     return df
 
 def style_OI_column_groups(df):
-    # Define suffixes and their colors
+    # Column-group tints, composited onto the viewer's theme background
+    # (utils/theme_tint.py) so they read on both light and dark mode:
+    # a warm amber family for the OI columns, a cool blue for volume.
     suffix_color_map = {
-        '_OI': "#FFFFE0",  
-        '_OI_chg': '#FFD480',  # Mellow, warm, and coherent with #FFFFE0
-        '_vol': '#b3e6ff',
+        '_OI': tint_css((255, 193, 7), 0.22),       # amber, light wash
+        '_OI_chg': tint_css((255, 152, 0), 0.38),   # orange, a step warmer
+        '_vol': tint_css((66, 133, 244), 0.28),     # blue
     }
 
     # Map each column to a color based on its suffix
@@ -91,8 +95,8 @@ def style_OI_column_groups(df):
 
     # Style function for each column
     def highlight(col):
-        color = col_colors.get(col.name, '')
-        return [f'background-color: {color}'] * len(col)
+        css = col_colors.get(col.name, '')
+        return [css] * len(col)
 
     return df.style.apply(highlight, axis=0)
 
@@ -481,11 +485,13 @@ _MONTH_TO_NUM = {"Jan":1, "Feb":2, "Mar":3, "Apr":4, "May":5, "Jun":6,
                  "Jul":7, "Aug":8, "Sep":9, "Oct":10, "Nov":11, "Dec":12}
 
 def highlight_forward(val, row, col, t2_date):
-    """Returns light yellow background if the cell is a current or future forward contract."""
-    light_yellow = "background-color: #FFFFE0"  # very light yellow
+    """Amber tint if the cell is a current or future forward contract. The tint
+    is composited onto the viewer's theme background, so it is a pale yellow on
+    the light theme and a dark amber on the dark theme (utils/theme_tint.py)."""
+    forward_css = tint_css((255, 193, 7), 0.30)
     cell_month = _MONTH_TO_NUM.get(row, 0)
     if (col, cell_month) > (t2_date.year, t2_date.month):
-        return light_yellow
+        return forward_css
     return ""
 
 def style_forward_cells(pivot_df):

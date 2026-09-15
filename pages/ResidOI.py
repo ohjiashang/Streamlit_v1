@@ -4,6 +4,8 @@ import urllib.parse
 import warnings
 warnings.filterwarnings("ignore")
 
+from utils.theme_tint import tint_css
+
 
 st.set_page_config(layout="wide")
 
@@ -38,7 +40,7 @@ PRODUCT_ORDER = {
 # ── Styling ───────────────────────────────────────────────────────
 # Cell colour: red for a negative % change, blue for a positive one, with the
 # strength scaling on |pct| up to ±100%. The tint is composited onto the
-# viewer's own theme background (st.context.theme), so it reads on light AND
+# viewer's own theme background (utils/theme_tint.py), so it reads on light AND
 # dark mode: small moves are a faint wash rather than a near-white block, big
 # moves top out at a mid-strength colour rather than neon, and the text keeps
 # the theme's default colour instead of being forced black or white.
@@ -49,34 +51,12 @@ _MAX_PCT = 100                 # |pct| at which the tint saturates
 _ALPHA_MIN, _ALPHA_MAX = 0.10, 0.75
 
 
-def _theme_background():
-    """Cell background of the viewer's current theme as an (r, g, b) tuple,
-    or None if the theme cannot be determined (then an rgba colour is emitted
-    and the browser blends it)."""
-    try:
-        theme = st.context.theme
-        bg = None
-        if hasattr(theme, "get"):
-            bg = theme.get("backgroundColor")
-        if not bg:
-            bg = "#0E1117" if getattr(theme, "type", None) == "dark" else "#FFFFFF"
-        bg = bg.lstrip("#")
-        return tuple(int(bg[i:i + 2], 16) for i in (0, 2, 4))
-    except Exception:
-        return None
-
-
 def color_pct(val):
     if pd.isna(val) or val == 0:
         return ""
     strength = min(abs(val) / _MAX_PCT, 1.0)
     alpha = _ALPHA_MIN + (_ALPHA_MAX - _ALPHA_MIN) * strength
-    tint = _NEG_RGB if val < 0 else _POS_RGB
-    bg = _theme_background()
-    if bg is None:
-        return f"background-color: rgba({tint[0]}, {tint[1]}, {tint[2]}, {alpha:.2f})"
-    r, g, b = (round(alpha * t + (1 - alpha) * c) for t, c in zip(tint, bg))
-    return f"background-color: #{r:02X}{g:02X}{b:02X}"
+    return tint_css(_NEG_RGB if val < 0 else _POS_RGB, alpha)
 
 # ── Fetch data ────────────────────────────────────────────────────
 
