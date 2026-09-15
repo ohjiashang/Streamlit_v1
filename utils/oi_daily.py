@@ -379,7 +379,12 @@ def get_n_day_OI(symbol, months, years, forwards, cf, suffix="OI"):
             df_contract["contract_month"] = month
             df_contract["year"] = 2000+year
 
-            days = n_trading_day_dct[month]  # tuple of 1 or 2 days
+            days = n_trading_day_dct.get(month)  # tuple of 1 or 2 days
+            if not days:
+                # No forward contract for this month in the workbook (e.g. a
+                # price file that stops short of next year's strip): skip the
+                # month instead of taking the whole table down with a KeyError.
+                continue
             if contract in forward_26 and len(days) > 1:
                 days_to_do = days[1:2]   # only the second element
             else:
