@@ -4,7 +4,6 @@ import urllib.parse
 import warnings
 warnings.filterwarnings("ignore")
 
-import matplotlib.colors as mcolors
 
 st.set_page_config(layout="wide")
 
@@ -37,29 +36,47 @@ PRODUCT_ORDER = {
 }
 
 # ── Styling ───────────────────────────────────────────────────────
+# Cell colour: red for a negative % change, blue for a positive one, with the
+# strength scaling on |pct| up to ±100%. The tint is composited onto the
+# viewer's own theme background (st.context.theme), so it reads on light AND
+# dark mode: small moves are a faint wash rather than a near-white block, big
+# moves top out at a mid-strength colour rather than neon, and the text keeps
+# the theme's default colour instead of being forced black or white.
 
-def lighten_color(color, amount):
-    color_rgb = mcolors.to_rgb(color)
-    white = (1, 1, 1)
-    blended = tuple((1 - amount) * c + amount * w for c, w in zip(color_rgb, white))
-    return mcolors.to_hex(blended)
+_NEG_RGB = (239, 83, 80)       # red   — negative % change
+_POS_RGB = (66, 133, 244)      # blue  — positive % change
+_MAX_PCT = 100                 # |pct| at which the tint saturates
+_ALPHA_MIN, _ALPHA_MAX = 0.10, 0.75
+
+
+def _theme_background():
+    """Cell background of the viewer's current theme as an (r, g, b) tuple,
+    or None if the theme cannot be determined (then an rgba colour is emitted
+    and the browser blends it)."""
+    try:
+        theme = st.context.theme
+        bg = None
+        if hasattr(theme, "get"):
+            bg = theme.get("backgroundColor")
+        if not bg:
+            bg = "#0E1117" if getattr(theme, "type", None) == "dark" else "#FFFFFF"
+        bg = bg.lstrip("#")
+        return tuple(int(bg[i:i + 2], 16) for i in (0, 2, 4))
+    except Exception:
+        return None
+
 
 def color_pct(val):
     if pd.isna(val) or val == 0:
         return ""
-    max_val = 100
-    norm_val = min(abs(val) / max_val, 1.0)
-    lighten_amt = 1 - norm_val
-    if val < 0:
-        color = lighten_color("red", lighten_amt)
-    else:
-        color = lighten_color("#065DDF", lighten_amt)
-    # White text when background is dark (lighten_amt < 0.5 means dark)
-    text_color = "white" if lighten_amt < 0.5 else "black"
-    return f"background-color: {color}; color: {text_color}"
-
-def highlight_oi(val):
-    return 'background-color: #FFFFE0'
+    strength = min(abs(val) / _MAX_PCT, 1.0)
+    alpha = _ALPHA_MIN + (_ALPHA_MAX - _ALPHA_MIN) * strength
+    tint = _NEG_RGB if val < 0 else _POS_RGB
+    bg = _theme_background()
+    if bg is None:
+        return f"background-color: rgba({tint[0]}, {tint[1]}, {tint[2]}, {alpha:.2f})"
+    r, g, b = (round(alpha * t + (1 - alpha) * c) for t, c in zip(tint, bg))
+    return f"background-color: #{r:02X}{g:02X}{b:02X}"
 
 # ── Fetch data ────────────────────────────────────────────────────
 
