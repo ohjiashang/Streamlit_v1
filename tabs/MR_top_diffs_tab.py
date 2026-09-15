@@ -125,7 +125,7 @@ def get_table(diffs_to_track_map, sheet_name):
 
         return f"background-color: {color}"
 
-    styled_df = result_df.style.applymap(color_num_sd, subset=["num_sd"]).format({
+    styled_df = result_df.style.map(color_num_sd, subset=["num_sd"]).format({
         col: "{:.2f}" for col in result_df.select_dtypes(include=["float"]).columns
     })
 

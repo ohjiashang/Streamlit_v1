@@ -729,7 +729,7 @@ def create_diffs_heatmap(symbols, name_map):
     heatmap_data = heatmap_data.loc[heatmap_data['pct_from_avg'].abs().sort_values(ascending=False).index].reset_index(drop=True)
     heatmap_data.index = heatmap_data.index + 1
 
-    styled_df = heatmap_data.style.applymap(color_pct_from_avg, subset=["pct_from_avg"]).format({
+    styled_df = heatmap_data.style.map(color_pct_from_avg, subset=["pct_from_avg"]).format({
         'OI': '{:,.0f}',
         '3m_avg_OI': '{:,.0f}',
         'T-5_OI': '{:,.0f}', 
@@ -779,7 +779,7 @@ def create_main_product_heatmap(dct, product_fam_map_main):
     heatmap_data = heatmap_data.loc[heatmap_data['pct_from_avg'].abs().sort_values(ascending=False).index].reset_index(drop=True)
     heatmap_data.index = heatmap_data.index + 1
 
-    styled_df = heatmap_data.style.applymap(color_pct_from_avg, subset=["pct_from_avg"]).format({
+    styled_df = heatmap_data.style.map(color_pct_from_avg, subset=["pct_from_avg"]).format({
         'OI': '{:,.0f}',
         '3m_avg_OI': '{:,.0f}',
         'T-5_OI': '{:,.0f}', 

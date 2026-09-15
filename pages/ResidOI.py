@@ -379,7 +379,7 @@ def render_section(title, products):
             # V/OI table
             sorted_idx = sorted(pivot_voi.index, key=contract_sort_key)
             pivot_voi = pivot_voi.reindex(sorted_idx)
-            pivot_voi_display = pivot_voi.applymap(lambda x: f'{x:.2%}' if pd.notna(x) else '0')
+            pivot_voi_display = pivot_voi.map(lambda x: f'{x:.2%}' if pd.notna(x) else '0')
             st.markdown("**V/OI Ratio (2d Vol / T-2 OI, in BBLs)**")
             st.dataframe(pivot_voi_display, height=35 * (len(pivot_voi) + 1) + 2, use_container_width=True)
 
