@@ -84,11 +84,24 @@ def load_resid_oi():
 data = load_resid_oi()
 
 if data is None:
-    st.warning("Could not load residual OI data. Has the pipeline been run?")
+    st.warning("Could not load OI data. Has the pipeline been run?")
     st.stop()
 
 df_sym = data['symbol_data']
 df_sym = df_sym[df_sym['contract'] != 'Mar26']  # exclude expired prompt month
+
+# Display T-2 OI itself, not OI minus 2-day volume. The pipeline still writes
+# resid_oi and the volume-based pct columns; here the value column is
+# replaced by t2_oi and every % change is recomputed against the same
+# reference OI columns, so the aggregation and colouring below are unchanged.
+# Volume is still used, only for the V/OI ratio table.
+df_sym = df_sym.copy()
+df_sym['resid_oi'] = df_sym['t2_oi']
+for _pct, _ref in (('pct_chg', 'ref_oi'), ('pct_chg_y1', 'ref_oi_y1'),
+                   ('pct_chg_5y', 'ref_oi_5y'), ('pct_chg_curve', 'ref_oi_curve')):
+    if _ref in df_sym.columns:
+        _r = pd.to_numeric(df_sym[_ref], errors='coerce')
+        df_sym[_pct] = ((df_sym['t2_oi'] / _r - 1) * 100).where(_r > 0).round(1)
 df_meta = data['meta']
 
 # Extract the resid OI date for display
@@ -98,7 +111,7 @@ if not df_info.empty and 'run_date' in df_info.columns:
 else:
     resid_date_str = "N/A"
 
-st.title(f"Residual OI — {resid_date_str}")
+st.title(f"Open Interest (T-2) — {resid_date_str}")
 
 # Build lookups from meta
 conv_map = dict(zip(df_meta['symbol'], df_meta['conversion_factor']))
@@ -150,10 +163,10 @@ _pct_col_map = {"vs 27 Feb": "pct_chg", "vs Y-1": "pct_chg_y1", "vs 5Y Avg": "pc
 _ref_col_map = {"vs 27 Feb": "ref_oi", "vs Y-1": "ref_oi_y1", "vs 5Y Avg": "ref_oi_5y"}
 global_pct_col = _pct_col_map[global_metric]
 global_ref_col = _ref_col_map[global_metric]
-metric_label = f"{resid_date_str} Resid OI (% chg {global_metric})"
+metric_label = f"{resid_date_str} T-2 OI (% chg {global_metric})"
 
 st.sidebar.markdown("---")
-st.sidebar.markdown("*Resid OI = T-2 OI − 2d Vol*")
+st.sidebar.markdown("*Values are T-2 open interest; V/OI = 2d Vol / T-2 OI*")
 
 # ── Helper: build product summary table (converted to 1,000 BBL) ──
 
@@ -368,7 +381,7 @@ def render_section(title, products):
     else:
         pivot_resid, pivot_pct, pivot_voi = build_product_table(prods_in_selection, global_pct_col)
         if not pivot_resid.empty:
-            st.markdown("**Main Products Resid OI (1,000 BBLs)**")
+            st.markdown("**Main Products OI (1,000 BBLs)**")
             st.markdown(f"*{metric_label}*")
             styled, n = style_pivot(pivot_resid, pivot_pct)
             st.dataframe(styled, height=35 * (n + 1) + 2, use_container_width=True)
