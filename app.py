@@ -76,6 +76,18 @@ if "error" in state:
         st.rerun()
     st.stop()
 
+# ── HARDCODED (local): drop S180-S380 from the portfolio, renormalise weights ──
+# The excluded pick disappears from the status grid, scorecards, P&L,
+# attribution, correlation and drilldown; the remaining weights are scaled
+# so they sum to 100% again. _W_RESCALE is reused on the P&L frame below.
+_EXCLUDE_FNAMES = {"S180-S380M12box3m"}
+_all_w = sum(p["weight"] for p in state["picks"])
+state["picks"] = [p for p in state["picks"] if p["fname"] not in _EXCLUDE_FNAMES]
+_kept_w = sum(p["weight"] for p in state["picks"])
+_W_RESCALE = (_all_w / _kept_w) if _kept_w else 1.0
+for _p in state["picks"]:
+    _p["weight"] = _p["weight"] * _W_RESCALE
+
 
 # Build a small M1..M6 → contract month caption under the title. Uses 92_EW
 # (M1/M2 box, both products at offsets [1]/[2]) as the reference so we know
@@ -130,29 +142,32 @@ with col_hdr_l:
     if _roll_lbl:
         st.warning(f"🔄 **{_roll_lbl}** — within the last 5 business days of the month")
 with col_hdr_r:
-    if LOCAL_MODE:
-        refresh_kind = st.radio("Refresh:", ["State only", "Full (data + state)"],
-                                 horizontal=True, label_visibility="collapsed", index=0)
-        if st.button("🔄 Refresh", use_container_width=True, type="primary"):
-            with st.spinner("Refreshing — may take 1-5 min..."):
-                ok, log = run_refresh(include_data=(refresh_kind == "Full (data + state)"))
-            if ok:
-                st.success("Refreshed + synced to Firebase.")
-            else:
-                st.error("Refresh failed.")
-            with st.expander("Refresh log"):
-                st.text(log[-5000:])
-            st.cache_data.clear()
-            st.rerun()
-    else:
-        if st.button("🔄 Reload from Firebase", use_container_width=True):
-            st.cache_data.clear()
-            st.rerun()
-        st.caption("Cloud view (read-only)")
+    # Data is refreshed by the scheduled task (MPT7_Refresh_Weekdays_8AM);
+    # the page only reloads from Firebase.
+    if st.button("🔄 Reload from Firebase", use_container_width=True):
+        st.cache_data.clear()
+        st.rerun()
 
 # Status rows for grid + metrics
 status_rows = [derive_status_row(p) for p in state["picks"]]
 status_df = pd.DataFrame(status_rows)
+
+# ── HARDCODED OVERRIDE (local): show the GO_EW+Naph_EW row as the MINUS box ──
+# Formula / params cells are fixed text; "Current" is recomputed live from the
+# pick's signed leg columns as [GO EW box] − [Naph EW box], with MOPJ Naph
+# (NJC) re-converted at 9.0 $/mt per bbl instead of the panel's 8.9.
+_GN_FNAME = "GNM1212box"
+_gn_mask = status_df["fname"] == _GN_FNAME
+if _gn_mask.any():
+    _gn_df = load_pick_df(_GN_FNAME)
+    if not _gn_df.empty:
+        _r = _gn_df.sort_values("Date").iloc[-1]
+        _go_box = _r["SGO[1]"] + _r["SGO[2]"] + _r["ICEGO[2]"] + _r["ICEGO[3]"]
+        _naph_box = (_r["NJC[1]"] + _r["NJC[2]"]) * 8.9 / 9.0 + _r["NEC[2]"] + _r["NEC[3]"]
+        status_df.loc[_gn_mask, "current"] = float(_go_box - _naph_box)
+    status_df.loc[_gn_mask, "formula_display"] = (
+        "+ [SGO (M1/M2) − ICEGO (M2/M3)] - [MOPJ Naph (M1/M2) − NWE Naph (M2/M3)]")
+    status_df.loc[_gn_mask, "params"] = "W3 / SE1 / SL2"
 
 # Default sort: active trades (0) → FLAT non-cooldown by ascending σ (1) → cooldown (2)
 def _sort_group(status: str) -> int:
@@ -173,6 +188,12 @@ status_df = (status_df
 
 # Portfolio metrics
 port = build_portfolio_daily_pnl(YEAR)
+if not port.empty:
+    port = port.drop(columns=[c for c in _EXCLUDE_FNAMES if c in port.columns])
+    _pick_cols = [p["fname"] for p in state["picks"] if p["fname"] in port.columns]
+    port[_pick_cols] = port[_pick_cols] * _W_RESCALE
+    port["portfolio_daily_pnl"] = port[_pick_cols].sum(axis=1)
+    port["cumulative_pnl"] = port["portfolio_daily_pnl"].cumsum()
 metrics = portfolio_metrics(port["portfolio_daily_pnl"]) if not port.empty else portfolio_metrics(pd.Series(dtype=float))
 baseline = load_backtest_baseline_daily_pnl(YEAR)
 baseline_ytd = float(baseline.sum()) if not baseline.empty else np.nan
@@ -724,6 +745,8 @@ if SHOW_DIAGNOSTICS:
             st.caption("Correlation of daily price moves of each spread, regardless of trade state. "
                        "Reflects underlying market co-movement (not realised P&L overlap).")
             corr = spread_return_correlation(window_months=12)
+            if not corr.empty:
+                corr = corr.drop(index=list(_EXCLUDE_FNAMES), columns=list(_EXCLUDE_FNAMES), errors="ignore")
             if corr.empty:
                 st.caption("Not enough data yet.")
             else:
