@@ -161,10 +161,28 @@ _gn_mask = status_df["fname"] == _GN_FNAME
 if _gn_mask.any():
     _gn_df = load_pick_df(_GN_FNAME)
     if not _gn_df.empty:
-        _r = _gn_df.sort_values("Date").iloc[-1]
-        _go_box = _r["SGO[1]"] + _r["SGO[2]"] + _r["ICEGO[2]"] + _r["ICEGO[3]"]
-        _naph_box = (_r["NJC[1]"] + _r["NJC[2]"]) * 8.9 / 9.0 + _r["NEC[2]"] + _r["NEC[3]"]
-        status_df.loc[_gn_mask, "current"] = float(_go_box - _naph_box)
+        def _minus_box(_row):
+            _go = _row["SGO[1]"] + _row["SGO[2]"] + _row["ICEGO[2]"] + _row["ICEGO[3]"]
+            _naph = (_row["NJC[1]"] + _row["NJC[2]"]) * 8.9 / 9.0 + _row["NEC[2]"] + _row["NEC[3]"]
+            return float(_go - _naph)
+        _gn_sorted = _gn_df.sort_values("Date")
+        _cur = _minus_box(_gn_sorted.iloc[-1])
+        _prev = _minus_box(_gn_sorted.iloc[-2]) if len(_gn_sorted) > 1 else _cur
+        status_df.loc[_gn_mask, "current"] = _cur
+        # P&L on the same basis: open trade valued at the override Current
+        # against the production short's entry (0.5248 on 2026-09-10).
+        _gn_ot = load_pick_open_trade(_GN_FNAME)
+        if _gn_ot is not None:
+            _gn_w = float(status_df.loc[_gn_mask, "weight"].iloc[0])
+            _dir = -1.0 if str(_gn_ot.get("side", "short")).lower() == "short" else 1.0
+            _entry = float(_gn_ot.get("entry_price", 0.5248))
+            _open_raw = _dir * (_cur - _entry)
+            _day_raw = _dir * (_cur - _prev)
+            status_df.loc[_gn_mask, "open_trade_pnl_raw"] = _open_raw
+            status_df.loc[_gn_mask, "open_trade_pnl_weighted"] = _open_raw * _gn_w
+            status_df.loc[_gn_mask, "daily_pnl_raw"] = _day_raw
+            status_df.loc[_gn_mask, "daily_pnl_weighted"] = _day_raw * _gn_w
+    status_df.loc[_gn_mask, "diff"] = "GO_EW-Naph_EW"
     status_df.loc[_gn_mask, "formula_display"] = (
         "+ [SGO (M1/M2) − ICEGO (M2/M3)] - [MOPJ Naph (M1/M2) − NWE Naph (M2/M3)]")
     status_df.loc[_gn_mask, "params"] = "W3 / SE1 / SL2"
