@@ -187,6 +187,9 @@ if _gn_mask.any():
         "+ [SGO (M1/M2) − ICEGO (M2/M3)] - [MOPJ Naph (M1/M2) − NWE Naph (M2/M3)]")
     status_df.loc[_gn_mask, "params"] = "W3 / SE1 / SL2"
 
+# ── HARDCODED (local): Ebob-Brt params cell ──
+status_df.loc[status_df["fname"] == "Ebob-BrtM21box", "params"] = "W12 / SE1 / SL3"
+
 # Default sort: active trades (0) → FLAT non-cooldown by ascending σ (1) → cooldown (2)
 def _sort_group(status: str) -> int:
     s = str(status)
